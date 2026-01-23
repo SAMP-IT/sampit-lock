@@ -1,0 +1,48 @@
+{
+  "name": "awakey-smart-lock-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Awakey Smart Lock System with Supabase",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "migrate": "node src/utils/migrate.js",
+    "seed": "node src/utils/seed.js",
+    "test": "jest --watchAll",
+    "verify-env": "node scripts/verify-env.js",
+    "prestart": "node scripts/verify-env.js"
+  },
+  "keywords": [
+    "smart-lock",
+    "iot",
+    "supabase",
+    "api"
+  ],
+  "author": "Awakey Team",
+  "license": "MIT",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.3",
+    "axios": "^1.6.7",
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "expo-server-sdk": "^3.15.0",
+    "express": "^4.18.2",
+    "helmet": "^7.1.0",
+    "joi": "^17.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "md5": "^2.3.0",
+    "morgan": "^1.10.0",
+    "node-cron": "^3.0.3",
+    "socket.io": "^4.6.2",
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2"
+  }
+}

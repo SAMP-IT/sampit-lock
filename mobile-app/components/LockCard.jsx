@@ -1,0 +1,774 @@
+import React, { useState, useMemo } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Modal,
+  TextInput,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import Colors from '../constants/Colors';
+import Theme from '../constants/Theme';
+import { updateLock } from '../services/api';
+
+/**
+ * Check if ttlock_data contains valid data for Bluetooth control.
+ * Returns object with control capabilities.
+ */
+const checkTTLockData = (ttlockData, hasGateway, ttlockLockId) => {
+  const result = {
+    hasBluetoothControl: false,
+    hasCloudControl: false,
+    hasCloudKeys: false
+  };
+
+  // Cloud control is available if lock has gateway AND ttlock_lock_id
+  if (hasGateway && ttlockLockId) {
+    result.hasCloudControl = true;
+  }
+
+  if (!ttlockData) return result;
+
+  // If it's a plain string that doesn't start with '{', it's likely the encrypted lockData
+  if (typeof ttlockData === 'string' && !ttlockData.startsWith('{')) {
+    result.hasBluetoothControl = true;
+    return result;
+  }
+
+  // Try to parse as JSON and check for lockData or cloud keys
+  try {
+    const parsed = JSON.parse(ttlockData);
+    // Valid for Bluetooth if it has the lockData property (from Bluetooth pairing)
+    if (parsed.lockData && typeof parsed.lockData === 'string') {
+      result.hasBluetoothControl = true;
+    }
+    // Cloud-imported locks have lockKey/aesKeyStr - can use Cloud API if gateway
+    if (parsed.lockKey && parsed.aesKeyStr) {
+      result.hasCloudKeys = true;
+      // If we have gateway and cloud keys, we can use cloud API
+      if (hasGateway) {
+        result.hasCloudControl = true;
+      }
+    }
+  } catch (e) {
+    // If parse fails, might be raw encrypted string
+    result.hasBluetoothControl = true;
+  }
+
+  return result;
+};
+
+/**
+ * Main prominent lock card - full width, with two separate Lock/Unlock buttons
+ */
+const LockCard = ({
+  lock,
+  onPress,
+  onLock,
+  onUnlock,
+  onLockUpdated,
+  isProminent = false,
+  isLocking = false,
+  isUnlocking = false,
+}) => {
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const hasGateway = lock.has_gateway === true || lock.has_gateway === 'true';
+  const batteryLevel = lock.battery_level || 0;
+
+  const ttlockCapabilities = checkTTLockData(lock.ttlock_data, hasGateway, lock.ttlock_lock_id);
+  const hasCloudControl = ttlockCapabilities.hasCloudControl;
+  const hasBluetooth = ttlockCapabilities.hasBluetoothControl;
+
+  const getControlMethod = () => {
+    if (hasCloudControl && hasBluetooth) return 'hybrid';
+    if (hasCloudControl) return 'cloud';
+    if (hasBluetooth) return 'bluetooth';
+    return 'none';
+  };
+
+  const controlMethod = getControlMethod();
+  const isProcessing = isLocking || isUnlocking;
+  const canControl = controlMethod !== 'none';
+
+  // Schedule status for restricted users
+  const scheduleStatus = useMemo(() => {
+    // Only check for restricted role with time restrictions
+    const userRole = lock.userRole || lock.user_role;
+    if (!lock.time_restricted && userRole !== 'restricted') {
+      return { isWithinSchedule: true, message: null };
+    }
+
+    const now = new Date();
+    const currentDay = now.getDay();
+    const currentHours = now.getHours();
+    const currentMinutes = now.getMinutes();
+    const currentTime = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`;
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    // Check day of week
+    const allowedDays = lock.days_of_week || [0, 1, 2, 3, 4, 5, 6];
+    if (allowedDays.length > 0 && !allowedDays.includes(currentDay)) {
+      const nextAllowedDay = allowedDays.find(d => d > currentDay) || allowedDays[0];
+      return {
+        isWithinSchedule: false,
+        message: `Available ${dayNames[nextAllowedDay]}`
+      };
+    }
+
+    // Check time window
+    if (lock.time_restriction_start && lock.time_restriction_end) {
+      const startTime = lock.time_restriction_start.slice(0, 5);
+      const endTime = lock.time_restriction_end.slice(0, 5);
+
+      if (currentTime < startTime) {
+        return {
+          isWithinSchedule: false,
+          message: `Available from ${startTime}`
+        };
+      }
+
+      if (currentTime > endTime) {
+        return {
+          isWithinSchedule: false,
+          message: `Available tomorrow ${startTime}`
+        };
+      }
+    }
+
+    return { isWithinSchedule: true, message: null };
+  }, [lock]);
+
+  // Adjusted canControl based on schedule
+  const effectiveCanControl = canControl && scheduleStatus.isWithinSchedule;
+
+  const handleUnlock = (e) => {
+    e.stopPropagation();
+    if (effectiveCanControl && onUnlock && !isProcessing) {
+      onUnlock(lock);
+    } else if (!scheduleStatus.isWithinSchedule) {
+      Alert.alert(
+        'Access Restricted',
+        `You can only access this lock during your scheduled times.\n\n${scheduleStatus.message}`
+      );
+    }
+  };
+
+  const handleLock = (e) => {
+    e.stopPropagation();
+    if (effectiveCanControl && onLock && !isProcessing) {
+      onLock(lock);
+    } else if (!scheduleStatus.isWithinSchedule) {
+      Alert.alert(
+        'Access Restricted',
+        `You can only access this lock during your scheduled times.\n\n${scheduleStatus.message}`
+      );
+    }
+  };
+
+  const handleSettings = (e) => {
+    e.stopPropagation();
+    if (onPress) {
+      onPress(lock);
+    }
+  };
+
+  const handleEditPress = (e) => {
+    e.stopPropagation();
+    // Pre-fill with current display name or empty for new name
+    const currentName = getLockDisplayName();
+    setEditName(currentName === 'My Lock' ? '' : currentName);
+    setShowEditModal(true);
+  };
+
+  const handleSaveName = async () => {
+    const trimmedName = editName.trim();
+    if (!trimmedName) {
+      Alert.alert('Invalid Name', 'Please enter a valid lock name.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await updateLock(lock.id, { name: trimmedName });
+      setShowEditModal(false);
+      Alert.alert('Success', 'Lock name updated successfully!');
+      // Notify parent to refresh data
+      if (onLockUpdated) {
+        onLockUpdated();
+      }
+    } catch (error) {
+      console.error('Failed to update lock name:', error);
+      Alert.alert('Error', 'Failed to update lock name. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Get user-given lock name
+  // Priority: name (if not a model number) > location > 'My Lock'
+  const getLockDisplayName = () => {
+    const name = lock.name;
+
+    // Check if name looks like a TTLock model number
+    // Patterns to detect:
+    // - M201_12345678 (starts with letter(s) + numbers + underscore)
+    // - P6PRO_ABC123 (letters + numbers + underscore)
+    // - S31_ABCD1234 (letter + numbers + underscore)
+    // - LOCK_12345678 (all caps + underscore + alphanumeric)
+    // - Pure alphanumeric codes like "ABC123DEF456"
+    // - MAC address style: AA:BB:CC:DD:EE:FF or AA-BB-CC-DD-EE-FF
+    const modelNumberPatterns = [
+      /^[A-Z]+\d*_/i,                    // M201_, P6PRO_, S31_
+      /^[A-Z0-9]+_[A-Z0-9]+$/i,          // LOCK_12345678
+      /^[A-Z]{1,3}\d+[A-Z]*_/i,          // M201_, S31PRO_
+      /^[A-F0-9]{2}[:\-][A-F0-9]{2}/i,   // MAC address style
+      /^[A-Z0-9]{12,}$/i,                // Long alphanumeric codes
+      /^New Lock$/i,                      // Default name from pairing
+    ];
+
+    const isModelNumber = name && modelNumberPatterns.some(pattern => pattern.test(name));
+
+    if (name && !isModelNumber) {
+      return name;
+    }
+    // Fallback to 'My Lock' (not location, as requested)
+    return 'My Lock';
+  };
+
+  // Get battery color
+  const getBatteryColor = () => {
+    if (batteryLevel <= 0 || batteryLevel > 100) return Colors.subtitlecolor;
+    if (batteryLevel <= 20) return '#FF3B30';
+    if (batteryLevel <= 50) return '#FF9500';
+    return '#34C759';
+  };
+
+  // Prominent card layout (full width, two buttons)
+  if (isProminent) {
+    return (
+      <>
+        {/* Edit Name Modal */}
+        <Modal
+          visible={showEditModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowEditModal(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlay}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Edit Lock Name</Text>
+                <TouchableOpacity
+                  style={styles.modalCloseButton}
+                  onPress={() => setShowEditModal(false)}
+                >
+                  <Ionicons name="close" size={24} color={Colors.subtitlecolor} />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.modalDescription}>
+                Give your lock a custom name that will be displayed throughout the app.
+              </Text>
+
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g., Front Door, Office, Garage"
+                placeholderTextColor={Colors.subtitlecolor}
+                value={editName}
+                onChangeText={setEditName}
+                autoFocus
+                maxLength={50}
+              />
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalCancelButton]}
+                  onPress={() => setShowEditModal(false)}
+                  disabled={isSaving}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalSaveButton, isSaving && styles.modalButtonDisabled]}
+                  onPress={handleSaveName}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <ActivityIndicator size="small" color={Colors.textwhite} />
+                  ) : (
+                    <Text style={styles.modalSaveText}>Save</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        <TouchableOpacity
+          style={styles.prominentCard}
+          onPress={() => onPress(lock)}
+          activeOpacity={0.9}
+        >
+          {/* Edit Button - Top Right */}
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={handleEditPress}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="create-outline" size={20} color={Colors.iconbackground} />
+          </TouchableOpacity>
+
+          {/* Lock Name - Center Top */}
+          <View style={styles.nameContainer}>
+            <Text style={styles.prominentLockName} numberOfLines={1}>
+              {getLockDisplayName()}
+            </Text>
+          </View>
+
+        {/* Center: Lock Icon with Battery */}
+        <View style={styles.centerDisplay}>
+          <View style={styles.lockIconContainer}>
+            <Ionicons name="lock-closed" size={48} color={Colors.iconbackground} />
+          </View>
+          <View style={styles.batteryBadge}>
+            <Ionicons
+              name={batteryLevel <= 25 ? "battery-dead" : batteryLevel <= 50 ? "battery-half" : "battery-full"}
+              size={24}
+              color={getBatteryColor()}
+            />
+            <Text style={[styles.batteryBadgeText, { color: getBatteryColor() }]}>
+              {batteryLevel > 0 && batteryLevel <= 100 ? `${batteryLevel}%` : 'N/A'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Two Control Buttons */}
+        {canControl ? (
+          !scheduleStatus.isWithinSchedule ? (
+            // Schedule restricted - show disabled buttons with message
+            <View style={styles.scheduleRestrictedContainer}>
+              <View style={styles.scheduleRestrictedBadge}>
+                <Ionicons name="time-outline" size={18} color={Colors.subtitlecolor} />
+                <Text style={styles.scheduleRestrictedText}>{scheduleStatus.message}</Text>
+              </View>
+              <View style={styles.controlButtonsRow}>
+                <TouchableOpacity
+                  style={[styles.controlButton, styles.controlButtonScheduleDisabled]}
+                  onPress={handleUnlock}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="lock-open" size={20} color={Colors.subtitlecolor} />
+                  <Text style={styles.controlButtonTextDisabled}>Unlock</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.controlButton, styles.controlButtonScheduleDisabled]}
+                  onPress={handleLock}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="lock-closed" size={20} color={Colors.subtitlecolor} />
+                  <Text style={styles.controlButtonTextDisabled}>Lock</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            // Normal control buttons
+            <View style={styles.controlButtonsRow}>
+              {/* Unlock Button */}
+              <TouchableOpacity
+                style={[
+                  styles.controlButton,
+                  styles.unlockButton,
+                  isUnlocking && styles.controlButtonProcessing,
+                  isLocking && styles.controlButtonDisabled,
+                ]}
+                onPress={handleUnlock}
+                disabled={isProcessing}
+                activeOpacity={0.7}
+              >
+                {isUnlocking ? (
+                  <ActivityIndicator size="small" color={Colors.textwhite} />
+                ) : (
+                  <Ionicons name="lock-open" size={20} color={Colors.textwhite} />
+                )}
+                <Text style={styles.controlButtonText}>
+                  {isUnlocking ? 'Unlocking...' : 'Unlock'}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Lock Button */}
+              <TouchableOpacity
+                style={[
+                  styles.controlButton,
+                  styles.lockButtonStyle,
+                  isLocking && styles.controlButtonProcessing,
+                  isUnlocking && styles.controlButtonDisabled,
+                ]}
+                onPress={handleLock}
+                disabled={isProcessing}
+                activeOpacity={0.7}
+              >
+                {isLocking ? (
+                  <ActivityIndicator size="small" color={Colors.textwhite} />
+                ) : (
+                  <Ionicons name="lock-closed" size={20} color={Colors.textwhite} />
+                )}
+                <Text style={styles.controlButtonText}>
+                  {isLocking ? 'Locking...' : 'Lock'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )
+        ) : (
+          <View style={styles.noControlContainer}>
+            <Ionicons name="alert-circle-outline" size={24} color="#FF3B30" />
+            <Text style={styles.noControlText}>No control method available</Text>
+          </View>
+        )}
+
+          {/* Bottom Row - Settings */}
+          <View style={styles.prominentFooter}>
+            <TouchableOpacity style={styles.settingsButton} onPress={handleSettings}>
+              <Ionicons name="settings-outline" size={20} color={Colors.subtitlecolor} />
+              <Text style={styles.settingsText}>View Details</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </>
+    );
+  }
+
+  // Mini card for lock selector (when multiple locks)
+  return (
+    <TouchableOpacity
+      style={styles.miniCard}
+      onPress={() => onPress(lock)}
+      activeOpacity={0.8}
+    >
+      <View style={[
+        styles.miniLockIcon,
+        { backgroundColor: canControl ? Colors.iconbackground : Colors.subtitlecolor }
+      ]}>
+        <Ionicons
+          name={canControl ? 'lock-closed' : 'alert-circle-outline'}
+          size={24}
+          color={Colors.textwhite}
+        />
+      </View>
+      <Text style={styles.miniLockName} numberOfLines={1}>
+        {getLockDisplayName()}
+      </Text>
+      <Text style={styles.miniBattery}>{batteryLevel}%</Text>
+    </TouchableOpacity>
+  );
+};
+
+const styles = StyleSheet.create({
+  // Prominent Card Styles (Full Width)
+  prominentCard: {
+    backgroundColor: Colors.cardbackground,
+    borderRadius: Theme.radius.xl,
+    padding: Theme.spacing.lg,
+    paddingTop: Theme.spacing.xl,
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    position: 'relative',
+    minHeight: 280,
+  },
+  nameContainer: {
+    alignItems: 'center',
+    marginBottom: Theme.spacing.md,
+  },
+  prominentLockName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: Colors.titlecolor,
+    textAlign: 'center',
+  },
+  centerDisplay: {
+    alignItems: 'center',
+    marginVertical: Theme.spacing.md,
+    gap: Theme.spacing.sm,
+  },
+  lockIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: Colors.backgroundwhite,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  batteryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Theme.spacing.xs,
+    backgroundColor: Colors.backgroundwhite,
+    paddingHorizontal: Theme.spacing.md,
+    paddingVertical: Theme.spacing.sm,
+    borderRadius: Theme.radius.md,
+  },
+  batteryBadgeText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  controlButtonsRow: {
+    flexDirection: 'row',
+    gap: Theme.spacing.md,
+    width: '100%',
+    marginTop: Theme.spacing.md,
+  },
+  controlButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Theme.spacing.sm,
+    paddingVertical: Theme.spacing.md,
+    borderRadius: Theme.radius.md,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  unlockButton: {
+    backgroundColor: '#FF9500',
+  },
+  lockButtonStyle: {
+    backgroundColor: Colors.iconbackground,
+  },
+  controlButtonDisabled: {
+    opacity: 0.5,
+  },
+  controlButtonProcessing: {
+    opacity: 0.8,
+  },
+  controlButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.textwhite,
+  },
+  scheduleRestrictedContainer: {
+    gap: Theme.spacing.sm,
+  },
+  scheduleRestrictedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Theme.spacing.xs,
+    backgroundColor: Colors.cardbackground,
+    paddingVertical: Theme.spacing.sm,
+    paddingHorizontal: Theme.spacing.md,
+    borderRadius: Theme.radius.md,
+    marginBottom: Theme.spacing.sm,
+  },
+  scheduleRestrictedText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.subtitlecolor,
+  },
+  controlButtonScheduleDisabled: {
+    backgroundColor: Colors.cardbackground,
+    borderWidth: 1,
+    borderColor: Colors.bordercolor,
+  },
+  controlButtonTextDisabled: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.subtitlecolor,
+  },
+  noControlContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Theme.spacing.sm,
+    backgroundColor: '#FFEBEE',
+    paddingHorizontal: Theme.spacing.md,
+    paddingVertical: Theme.spacing.sm,
+    borderRadius: Theme.radius.md,
+    marginTop: Theme.spacing.md,
+  },
+  noControlText: {
+    fontSize: 14,
+    color: '#FF3B30',
+    fontWeight: '500',
+  },
+  prominentFooter: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    paddingTop: Theme.spacing.md,
+    marginTop: Theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: Colors.bordercolor,
+  },
+  settingsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: Theme.spacing.sm,
+    paddingHorizontal: Theme.spacing.md,
+  },
+  settingsText: {
+    fontSize: 14,
+    color: Colors.subtitlecolor,
+    fontWeight: '500',
+  },
+
+  // Mini Card Styles (For Lock Selector)
+  miniCard: {
+    backgroundColor: Colors.cardbackground,
+    borderRadius: Theme.radius.lg,
+    padding: Theme.spacing.md,
+    alignItems: 'center',
+    width: 100,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  miniLockIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Theme.spacing.sm,
+  },
+  miniLockName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.titlecolor,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  miniBattery: {
+    fontSize: 11,
+    color: Colors.subtitlecolor,
+  },
+
+  // Edit Button Styles
+  editButton: {
+    position: 'absolute',
+    top: Theme.spacing.md,
+    right: Theme.spacing.md,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.backgroundwhite,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+    zIndex: 10,
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Theme.spacing.lg,
+  },
+  modalContent: {
+    backgroundColor: Colors.backgroundwhite,
+    borderRadius: Theme.radius.xl,
+    padding: Theme.spacing.xl,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Theme.spacing.md,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.titlecolor,
+  },
+  modalCloseButton: {
+    padding: Theme.spacing.xs,
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: Colors.subtitlecolor,
+    marginBottom: Theme.spacing.lg,
+    lineHeight: 20,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: Colors.bordercolor,
+    borderRadius: Theme.radius.md,
+    padding: Theme.spacing.md,
+    fontSize: 16,
+    color: Colors.titlecolor,
+    backgroundColor: Colors.cardbackground,
+    marginBottom: Theme.spacing.lg,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: Theme.spacing.md,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: Theme.spacing.md,
+    borderRadius: Theme.radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelButton: {
+    backgroundColor: Colors.cardbackground,
+    borderWidth: 1,
+    borderColor: Colors.bordercolor,
+  },
+  modalSaveButton: {
+    backgroundColor: Colors.iconbackground,
+  },
+  modalButtonDisabled: {
+    opacity: 0.6,
+  },
+  modalCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.titlecolor,
+  },
+  modalSaveText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.textwhite,
+  },
+});
+
+export default LockCard;

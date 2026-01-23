@@ -1,0 +1,70 @@
+services:
+  # Awakey Smart Lock Backend API
+  - type: web
+    name: awaykey-backend
+    runtime: node
+    region: oregon # Change to your preferred region (oregon, frankfurt, singapore, ohio)
+    plan: free # Options: free, starter, standard, pro
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      # Node Environment
+      - key: NODE_ENV
+        value: production
+
+      # Port (Render provides this automatically)
+      - key: PORT
+        value: 3000
+
+      # Supabase Configuration (Set these in Render Dashboard)
+      - key: SUPABASE_URL
+        sync: false
+
+      - key: SUPABASE_ANON_KEY
+        sync: false
+
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
+      # JWT Configuration
+      - key: JWT_SECRET
+        generateValue: true # Render will auto-generate a secure value
+
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 30d
+
+      # CORS Configuration
+      # Replace with your actual frontend URL after deployment
+      - key: CORS_ORIGIN
+        value: "*" # Update this with your mobile app domain or set in Render dashboard
+
+      # TTLock Configuration (Set these in Render Dashboard)
+      - key: TTLOCK_CLIENT_ID
+        sync: false
+
+      - key: TTLOCK_CLIENT_SECRET
+        sync: false
+
+      - key: TTLOCK_API_BASE_URL
+        value: https://api.sciener.com
+
+      - key: TTLOCK_ENCRYPTION_KEY
+        sync: false
+
+      # Feature Flags
+      - key: ENABLE_REAL_TIME
+        value: true
+
+      - key: ENABLE_NOTIFICATIONS
+        value: true
+
+      - key: ENABLE_SMS
+        value: false
+
+    healthCheckPath: /health
+
+    autoDeploy: true # Auto-deploy when you push to main branch

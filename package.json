@@ -1,0 +1,35 @@
+{
+  "name": "awaykey-smart-lock",
+  "version": "1.0.0",
+  "description": "AwayKey Smart Lock System - Mobile App and Backend",
+  "private": true,
+  "scripts": {
+    "install:all": "cd mobile-app && npm install && cd ../backend && npm install",
+    "start:backend": "cd backend && npm start",
+    "dev:backend": "cd backend && npm run dev",
+    "start:mobile": "cd mobile-app && npm start",
+    "android": "cd mobile-app && npm run android",
+    "ios": "cd mobile-app && npm run ios",
+    "web": "cd mobile-app && npm run web",
+    "clean": "rm -rf node_modules mobile-app/node_modules backend/node_modules",
+    "clean:cache": "cd mobile-app && npm start -- --clear"
+  },
+  "keywords": [
+    "smart-lock",
+    "iot",
+    "react-native",
+    "expo",
+    "supabase"
+  ],
+  "author": "Awakey Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/awaykey2.git"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.90.1",
+    "@tanstack/react-query": "^5.90.17",
+    "react-router-dom": "^7.12.0"
+  }
+}
