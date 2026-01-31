@@ -5,7 +5,8 @@ import AppScreen from '../components/ui/AppScreen';
 import AppCard from '../components/ui/AppCard';
 import Colors from '../constants/Colors';
 import Theme from '../constants/Theme';
-import { getHomeMode, setHomeMode, enableVacationMode } from '../services/api';
+import { getHomeMode, setHomeMode, enableVacationMode, getScheduleSuggestions, activateSchedule, setAutoPilot, saveHomeLocation, getHomeLocation, getUserAISettings } from '../services/api';
+import { requestLocationPermissions, startGeofencing, stopGeofencing, getCurrentPosition } from '../services/geofencingService';
 
 const HomeModeScreen = ({ navigation }) => {
   const [currentMode, setCurrentMode] = useState('home');
@@ -13,6 +14,12 @@ const HomeModeScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [modeData, setModeData] = useState(null);
+  const [scheduleSuggestions, setScheduleSuggestions] = useState([]);
+  const [showSchedulePanel, setShowSchedulePanel] = useState(false);
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [autoPilotEnabled, setAutoPilotEnabled] = useState(false);
+  const [locationEnabled, setLocationEnabled] = useState(false);
+  const [featureProcessing, setFeatureProcessing] = useState(null);
 
   const modes = [
     {
@@ -47,10 +54,18 @@ const HomeModeScreen = ({ navigation }) => {
 
   const loadData = useCallback(async () => {
     try {
-      const response = await getHomeMode();
-      const data = response.data?.data || response.data;
+      const [modeRes, settingsRes] = await Promise.all([
+        getHomeMode(),
+        getUserAISettings().catch(() => ({ data: { data: {} } }))
+      ]);
+
+      const data = modeRes.data?.data || modeRes.data;
       setModeData(data);
       setCurrentMode(data?.mode || 'home');
+
+      const settings = settingsRes.data?.data || {};
+      setAutoPilotEnabled(settings.auto_pilot_enabled || false);
+      setLocationEnabled(settings.location_detection_enabled || false);
     } catch (error) {
       console.error('Failed to load home mode:', error);
     } finally {
@@ -85,6 +100,109 @@ const HomeModeScreen = ({ navigation }) => {
       Alert.alert('Error', 'Failed to change mode. Please try again.');
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const handleLocationToggle = async (value) => {
+    setFeatureProcessing('location');
+    try {
+      if (value) {
+        const perms = await requestLocationPermissions();
+        if (!perms.granted) {
+          Alert.alert('Permission Required', perms.reason);
+          return;
+        }
+
+        const position = await getCurrentPosition();
+        const { latitude, longitude } = position.coords;
+
+        Alert.alert(
+          'Set Home Location',
+          `Use your current location as home?\n(${latitude.toFixed(4)}, ${longitude.toFixed(4)})`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Confirm',
+              onPress: async () => {
+                try {
+                  const location = { latitude, longitude, radius: 100 };
+                  await saveHomeLocation(location);
+                  await startGeofencing(location);
+                  setLocationEnabled(true);
+                  Alert.alert('Success', 'Location detection is now active. Your lock will automatically switch modes when you leave or arrive home.');
+                } catch (err) {
+                  console.error('Failed to save location:', err);
+                  Alert.alert('Error', 'Failed to set up location detection.');
+                }
+              }
+            }
+          ]
+        );
+      } else {
+        await stopGeofencing();
+        await saveHomeLocation({ latitude: 0, longitude: 0, radius: 0, enabled: false });
+        setLocationEnabled(false);
+      }
+    } catch (error) {
+      console.error('Location toggle error:', error);
+      Alert.alert('Error', 'Failed to update location detection.');
+    } finally {
+      setFeatureProcessing(null);
+    }
+  };
+
+  const handleScheduleToggle = async (value) => {
+    if (value) {
+      setFeatureProcessing('schedule');
+      try {
+        const res = await getScheduleSuggestions();
+        const suggestions = res.data?.data?.suggestions || [];
+        setScheduleSuggestions(suggestions);
+        setShowSchedulePanel(true);
+        setScheduleEnabled(true);
+      } catch (error) {
+        console.error('Failed to load schedule suggestions:', error);
+        Alert.alert('Error', 'Failed to load schedule suggestions.');
+      } finally {
+        setFeatureProcessing(null);
+      }
+    } else {
+      setShowSchedulePanel(false);
+      setScheduleEnabled(false);
+      setScheduleSuggestions([]);
+    }
+  };
+
+  const handleAcceptSchedule = async (schedule) => {
+    setFeatureProcessing('schedule');
+    try {
+      await activateSchedule(schedule);
+      Alert.alert('Success', `Schedule "${schedule.name || schedule.mode}" has been activated.`);
+      setScheduleSuggestions(prev => prev.filter(s => s !== schedule));
+    } catch (error) {
+      console.error('Failed to activate schedule:', error);
+      Alert.alert('Error', 'Failed to activate schedule.');
+    } finally {
+      setFeatureProcessing(null);
+    }
+  };
+
+  const handleAutoPilotToggle = async (value) => {
+    setFeatureProcessing('autopilot');
+    try {
+      await setAutoPilot(value);
+      setAutoPilotEnabled(value);
+      if (value) {
+        Alert.alert(
+          'AI Auto-Pilot Enabled',
+          'The AI will now learn your usage patterns and automatically switch modes based on your schedule and behavior. It checks every 30 minutes.'
+        );
+      }
+    } catch (error) {
+      console.error('Failed to toggle auto-pilot:', error);
+      Alert.alert('Error', 'Failed to update auto-pilot setting.');
+    } finally {
+      setFeatureProcessing(null);
     }
   };
 
@@ -189,15 +307,21 @@ const HomeModeScreen = ({ navigation }) => {
                 </View>
                 <View>
                   <Text style={styles.featureTitle}>Auto-detect Location</Text>
-                  <Text style={styles.featureSubtitle}>Switch mode based on your location</Text>
+                  <Text style={styles.featureSubtitle}>
+                    {locationEnabled ? 'Monitoring your home area' : 'Switch mode based on your location'}
+                  </Text>
                 </View>
               </View>
-              <Switch
-                value={modeData?.autoDetectLocation || false}
-                onValueChange={() => Alert.alert('Coming Soon', 'Location-based mode switching will be available soon.')}
-                trackColor={{ false: '#e5e5e5', true: Colors.iconbackground }}
-                thumbColor={Colors.textwhite}
-              />
+              {featureProcessing === 'location' ? (
+                <ActivityIndicator size="small" color={Colors.iconbackground} />
+              ) : (
+                <Switch
+                  value={locationEnabled}
+                  onValueChange={handleLocationToggle}
+                  trackColor={{ false: '#e5e5e5', true: '#10b981' }}
+                  thumbColor={Colors.textwhite}
+                />
+              )}
             </View>
           </AppCard>
 
@@ -209,17 +333,61 @@ const HomeModeScreen = ({ navigation }) => {
                 </View>
                 <View>
                   <Text style={styles.featureTitle}>Schedule Modes</Text>
-                  <Text style={styles.featureSubtitle}>Set modes for specific times</Text>
+                  <Text style={styles.featureSubtitle}>
+                    {scheduleEnabled ? 'Viewing suggested schedules' : 'Set modes for specific times'}
+                  </Text>
                 </View>
               </View>
-              <Switch
-                value={modeData?.scheduledModes || false}
-                onValueChange={() => Alert.alert('Coming Soon', 'Scheduled mode changes will be available soon.')}
-                trackColor={{ false: '#e5e5e5', true: Colors.iconbackground }}
-                thumbColor={Colors.textwhite}
-              />
+              {featureProcessing === 'schedule' ? (
+                <ActivityIndicator size="small" color={Colors.iconbackground} />
+              ) : (
+                <Switch
+                  value={scheduleEnabled}
+                  onValueChange={handleScheduleToggle}
+                  trackColor={{ false: '#e5e5e5', true: '#6366f1' }}
+                  thumbColor={Colors.textwhite}
+                />
+              )}
             </View>
           </AppCard>
+
+          {showSchedulePanel && (
+            <View style={styles.schedulePanel}>
+              {scheduleSuggestions.length === 0 ? (
+                <AppCard style={styles.emptyScheduleCard}>
+                  <Ionicons name="calendar-outline" size={32} color={Colors.subtitlecolor} />
+                  <Text style={styles.emptyScheduleText}>
+                    No schedule suggestions yet. The AI needs more usage data to recommend schedules.
+                  </Text>
+                </AppCard>
+              ) : (
+                scheduleSuggestions.map((schedule, index) => (
+                  <AppCard key={index} style={styles.scheduleCard}>
+                    <View style={styles.scheduleHeader}>
+                      <Ionicons name="time-outline" size={18} color="#6366f1" />
+                      <Text style={styles.scheduleTitle}>
+                        {schedule.name || `${schedule.mode} mode`}
+                      </Text>
+                    </View>
+                    <Text style={styles.scheduleDesc}>
+                      {schedule.days?.join(', ')} · {schedule.start_hour || '?'}:00 – {schedule.end_hour || '?'}:00
+                    </Text>
+                    {schedule.reason && (
+                      <Text style={styles.scheduleReason}>{schedule.reason}</Text>
+                    )}
+                    <TouchableOpacity
+                      style={styles.scheduleAcceptBtn}
+                      onPress={() => handleAcceptSchedule(schedule)}
+                      disabled={featureProcessing === 'schedule'}
+                    >
+                      <Ionicons name="checkmark" size={16} color={Colors.textwhite} />
+                      <Text style={styles.scheduleAcceptText}>Activate</Text>
+                    </TouchableOpacity>
+                  </AppCard>
+                ))
+              )}
+            </View>
+          )}
 
           <AppCard style={styles.featureCard}>
             <View style={styles.featureRow}>
@@ -229,15 +397,21 @@ const HomeModeScreen = ({ navigation }) => {
                 </View>
                 <View>
                   <Text style={styles.featureTitle}>AI Auto-Pilot</Text>
-                  <Text style={styles.featureSubtitle}>Let AI learn and manage modes</Text>
+                  <Text style={styles.featureSubtitle}>
+                    {autoPilotEnabled ? 'AI is managing your modes' : 'Let AI learn and manage modes'}
+                  </Text>
                 </View>
               </View>
-              <Switch
-                value={modeData?.aiAutoPilot || false}
-                onValueChange={() => Alert.alert('Coming Soon', 'AI Auto-Pilot mode will be available soon.')}
-                trackColor={{ false: '#e5e5e5', true: Colors.iconbackground }}
-                thumbColor={Colors.textwhite}
-              />
+              {featureProcessing === 'autopilot' ? (
+                <ActivityIndicator size="small" color={Colors.iconbackground} />
+              ) : (
+                <Switch
+                  value={autoPilotEnabled}
+                  onValueChange={handleAutoPilotToggle}
+                  trackColor={{ false: '#e5e5e5', true: '#f59e0b' }}
+                  thumbColor={Colors.textwhite}
+                />
+              )}
             </View>
           </AppCard>
         </View>
@@ -467,6 +641,58 @@ const styles = StyleSheet.create({
     color: Colors.textwhite,
     fontSize: 16,
     fontWeight: '500',
+  },
+  schedulePanel: {
+    gap: Theme.spacing.sm,
+  },
+  scheduleCard: {
+    padding: Theme.spacing.md,
+    gap: Theme.spacing.sm,
+  },
+  scheduleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Theme.spacing.sm,
+  },
+  scheduleTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.titlecolor,
+  },
+  scheduleDesc: {
+    fontSize: 13,
+    color: Colors.subtitlecolor,
+  },
+  scheduleReason: {
+    fontSize: 12,
+    color: Colors.subtitlecolor,
+    fontStyle: 'italic',
+  },
+  scheduleAcceptBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#6366f1',
+    paddingVertical: Theme.spacing.sm,
+    borderRadius: Theme.radius.pill,
+    gap: Theme.spacing.xs,
+    marginTop: Theme.spacing.xs,
+  },
+  scheduleAcceptText: {
+    color: Colors.textwhite,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  emptyScheduleCard: {
+    padding: Theme.spacing.lg,
+    alignItems: 'center',
+    gap: Theme.spacing.sm,
+  },
+  emptyScheduleText: {
+    fontSize: 13,
+    color: Colors.subtitlecolor,
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
 

@@ -52,7 +52,8 @@ import {
   createRuleFromSuggestion,
   getActiveRules,
   toggleRule,
-  deleteRule
+  deleteRule,
+  dismissSuggestion
 } from '../services/ai/autoRulesEngine.js';
 
 import {
@@ -60,8 +61,13 @@ import {
   setHomeMode,
   enableVacationMode,
   disableVacationMode,
-  getSuggestedSchedule
+  getSuggestedSchedule,
+  activateSchedule,
+  setAutoPilot,
+  getUserAISettings
 } from '../services/ai/smartScheduling.js';
+
+import { supabase } from '../services/supabase.js';
 
 import {
   triggerBatteryPredictions,
@@ -544,6 +550,31 @@ router.delete('/rules/:ruleId', async (req, res) => {
   }
 });
 
+/**
+ * @route   POST /api/ai/locks/:lockId/rules/dismiss
+ * @desc    Dismiss a rule suggestion so it won't reappear
+ * @access  Private
+ */
+router.post('/locks/:lockId/rules/dismiss', async (req, res) => {
+  try {
+    const { lockId } = req.params;
+    const { suggestion } = req.body;
+    const userId = req.user.id;
+    logger.info('[AI] Request: dismissSuggestion', userId, { lockId, ruleType: suggestion?.type });
+
+    const result = await dismissSuggestion(lockId, suggestion, userId);
+
+    logger.info(`[AI] ✅ Rule suggestion dismissed on lock ${lockId} by user ${userId}`);
+    res.json({ success: result.success, data: result });
+  } catch (error) {
+    logger.error('[AI] ❌ Dismiss suggestion error:', { error: error.message, lockId: req.params.lockId });
+    res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: 'Failed to dismiss suggestion' }
+    });
+  }
+});
+
 // ==========================================
 // Smart Scheduling / Vacation Mode
 // ==========================================
@@ -681,6 +712,139 @@ router.get('/schedule/suggestions', async (req, res) => {
     res.status(500).json({
       success: false,
       error: { code: 'SERVER_ERROR', message: 'Failed to get schedule suggestions' }
+    });
+  }
+});
+
+/**
+ * @route   POST /api/ai/schedule/activate
+ * @desc    Activate a suggested schedule
+ * @access  Private
+ */
+router.post('/schedule/activate', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { schedule } = req.body;
+    logger.info('[AI] Request: activateSchedule', userId, { scheduleType: schedule?.type });
+
+    const result = await activateSchedule(userId, schedule);
+
+    logger.info(`[AI] ✅ Schedule activated for user ${userId} - Type: ${schedule?.type}`);
+    res.json({ success: result.success, data: result });
+  } catch (error) {
+    logger.error('[AI] ❌ Activate schedule error:', { error: error.message, userId: req.user?.id });
+    res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: 'Failed to activate schedule' }
+    });
+  }
+});
+
+/**
+ * @route   PATCH /api/ai/settings/auto-pilot
+ * @desc    Toggle AI auto-pilot mode
+ * @access  Private
+ */
+router.patch('/settings/auto-pilot', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { enabled } = req.body;
+    logger.info('[AI] Request: setAutoPilot', userId, { enabled });
+
+    const result = await setAutoPilot(userId, enabled);
+
+    logger.info(`[AI] ✅ Auto-pilot ${enabled ? 'enabled' : 'disabled'} for user ${userId}`);
+    res.json({ success: result.success, data: result });
+  } catch (error) {
+    logger.error('[AI] ❌ Set auto-pilot error:', { error: error.message, userId: req.user?.id });
+    res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: 'Failed to update auto-pilot' }
+    });
+  }
+});
+
+/**
+ * @route   POST /api/ai/settings/location
+ * @desc    Save home location for geofencing
+ * @access  Private
+ */
+router.post('/settings/location', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { latitude, longitude, radius = 100, address } = req.body;
+    logger.info('[AI] Request: saveLocation', userId, { latitude, longitude, radius });
+
+    const { data, error } = await supabase
+      .from('user_ai_settings')
+      .upsert({
+        user_id: userId,
+        home_location: { latitude, longitude, radius, address },
+        location_detection_enabled: true,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    logger.info(`[AI] ✅ Home location saved for user ${userId}`);
+    res.json({ success: true, data: { location: data.home_location } });
+  } catch (error) {
+    logger.error('[AI] ❌ Save location error:', { error: error.message, userId: req.user?.id });
+    res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: 'Failed to save location' }
+    });
+  }
+});
+
+/**
+ * @route   GET /api/ai/settings/location
+ * @desc    Get saved home location
+ * @access  Private
+ */
+router.get('/settings/location', async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const { data } = await supabase
+      .from('user_ai_settings')
+      .select('home_location, location_detection_enabled')
+      .eq('user_id', userId)
+      .single();
+
+    res.json({
+      success: true,
+      data: {
+        location: data?.home_location || null,
+        enabled: data?.location_detection_enabled || false
+      }
+    });
+  } catch (error) {
+    logger.error('[AI] ❌ Get location error:', { error: error.message, userId: req.user?.id });
+    res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: 'Failed to get location' }
+    });
+  }
+});
+
+/**
+ * @route   GET /api/ai/settings
+ * @desc    Get all user AI settings
+ * @access  Private
+ */
+router.get('/settings', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const settings = await getUserAISettings(userId);
+    res.json({ success: true, data: settings });
+  } catch (error) {
+    logger.error('[AI] ❌ Get AI settings error:', { error: error.message, userId: req.user?.id });
+    res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: 'Failed to get AI settings' }
     });
   }
 });

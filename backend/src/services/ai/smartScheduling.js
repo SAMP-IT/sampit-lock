@@ -527,6 +527,167 @@ export const checkExpiredModes = async () => {
   }
 };
 
+/**
+ * Activate a suggested schedule
+ */
+export const activateSchedule = async (userId, schedule) => {
+  try {
+    const { type, title, schedule: scheduleData } = schedule;
+
+    // Determine mode from schedule type
+    const modeMap = {
+      'away_schedule': HomeMode.AWAY,
+      'night_schedule': HomeMode.NIGHT
+    };
+    const targetMode = modeMap[type] || HomeMode.AWAY;
+
+    const { data, error } = await supabase
+      .from('home_modes')
+      .insert([{
+        user_id: userId,
+        mode: targetMode,
+        is_active: false,
+        settings: JSON.stringify({
+          schedule_enabled: true,
+          schedule_type: type,
+          schedule_title: title,
+          days: scheduleData?.days || [0, 1, 2, 3, 4, 5, 6],
+          start_hour: scheduleData?.start_hour,
+          end_hour: scheduleData?.end_hour,
+          auto_revert_to: 'home'
+        }),
+        created_at: new Date().toISOString()
+      }])
+      .select()
+      .single();
+
+    if (error) return { success: false, error: error.message };
+
+    return {
+      success: true,
+      schedule: {
+        id: data.id,
+        mode: targetMode,
+        ...scheduleData,
+        schedule_type: type
+      }
+    };
+  } catch (error) {
+    console.error('[SmartScheduling] Activate schedule error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Get user AI settings
+ */
+export const getUserAISettings = async (userId) => {
+  try {
+    const { data, error } = await supabase
+      .from('user_ai_settings')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (error || !data) {
+      return { auto_pilot_enabled: false, home_location: null, location_detection_enabled: false };
+    }
+    return data;
+  } catch (error) {
+    return { auto_pilot_enabled: false, home_location: null, location_detection_enabled: false };
+  }
+};
+
+/**
+ * Toggle auto-pilot mode for a user
+ */
+export const setAutoPilot = async (userId, enabled) => {
+  try {
+    const { data, error } = await supabase
+      .from('user_ai_settings')
+      .upsert({
+        user_id: userId,
+        auto_pilot_enabled: enabled,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' })
+      .select()
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, auto_pilot_enabled: data.auto_pilot_enabled };
+  } catch (error) {
+    console.error('[SmartScheduling] Set auto-pilot error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Auto-pilot cron: evaluate and switch modes based on learned schedules
+ */
+export const runAutoPilot = async () => {
+  try {
+    const { data: settings } = await supabase
+      .from('user_ai_settings')
+      .select('user_id')
+      .eq('auto_pilot_enabled', true);
+
+    if (!settings || settings.length === 0) return { processed: 0 };
+
+    let switched = 0;
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentDay = now.getDay();
+
+    for (const setting of settings) {
+      try {
+        // Get saved schedules for this user
+        const { data: schedules } = await supabase
+          .from('home_modes')
+          .select('mode, settings')
+          .eq('user_id', setting.user_id)
+          .eq('is_active', false)
+          .not('settings', 'is', null);
+
+        if (!schedules) continue;
+
+        let matchedMode = null;
+
+        for (const schedule of schedules) {
+          const schedSettings = typeof schedule.settings === 'string'
+            ? JSON.parse(schedule.settings) : schedule.settings;
+
+          if (!schedSettings?.schedule_enabled) continue;
+
+          const { start_hour, end_hour, days } = schedSettings;
+
+          // Check if current time falls within schedule
+          if ((!days || days.includes(currentDay)) &&
+              currentHour >= start_hour && currentHour < end_hour) {
+            matchedMode = schedule.mode;
+            break;
+          }
+        }
+
+        // Get current active mode
+        const current = await getCurrentMode(setting.user_id);
+        const targetMode = matchedMode || HomeMode.HOME;
+
+        if (current.mode !== targetMode) {
+          await setHomeMode(setting.user_id, targetMode, {});
+          switched++;
+        }
+      } catch (userError) {
+        console.error(`[SmartScheduling] Auto-pilot error for user ${setting.user_id}:`, userError.message);
+      }
+    }
+
+    return { processed: settings.length, switched };
+  } catch (error) {
+    console.error('[SmartScheduling] Auto-pilot error:', error);
+    return { processed: 0, error: error.message };
+  }
+};
+
 export default {
   getCurrentMode,
   setHomeMode,
@@ -534,5 +695,9 @@ export default {
   disableVacationMode,
   getSuggestedSchedule,
   checkExpiredModes,
+  activateSchedule,
+  getUserAISettings,
+  setAutoPilot,
+  runAutoPilot,
   HomeMode
 };

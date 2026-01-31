@@ -1335,6 +1335,30 @@ export const getScheduleSuggestions = () => {
   return backendApi.get('/ai/schedule/suggestions');
 };
 
+export const activateSchedule = (schedule) => {
+  return backendApi.post('/ai/schedule/activate', { schedule });
+};
+
+export const setAutoPilot = (enabled) => {
+  return backendApi.patch('/ai/settings/auto-pilot', { enabled });
+};
+
+export const saveHomeLocation = (location) => {
+  return backendApi.post('/ai/settings/location', location);
+};
+
+export const getHomeLocation = () => {
+  return backendApi.get('/ai/settings/location');
+};
+
+export const getUserAISettings = () => {
+  return backendApi.get('/ai/settings');
+};
+
+export const dismissRuleSuggestion = (lockId, suggestion) => {
+  return backendApi.post(`/ai/locks/${lockId}/rules/dismiss`, { suggestion });
+};
+
 // ==========================================
 // eKey Management (New API - uses stored TTLock tokens)
 // ==========================================

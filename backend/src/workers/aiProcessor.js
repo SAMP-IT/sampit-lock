@@ -6,6 +6,7 @@ import riskScorer from '../services/ai/riskScorer.js';
 import accessRecommendations from '../services/ai/accessRecommendations.js';
 import autoRulesEngine from '../services/ai/autoRulesEngine.js';
 import smartNotifications from '../services/ai/smartNotifications.js';
+import smartScheduling from '../services/ai/smartScheduling.js';
 import { decrypt } from '../utils/ttlockCrypto.js';
 
 const TTLOCK_CLIENT_ID = process.env.TTLOCK_CLIENT_ID;
@@ -117,6 +118,18 @@ function initWorker(supabaseClient) {
       }
     } catch (error) {
       console.error('[AI Worker] Notification queue processing failed:', error.message);
+    }
+  });
+
+  // Every 30 minutes: auto-pilot mode evaluation
+  cron.schedule('*/30 * * * *', async () => {
+    try {
+      const result = await smartScheduling.runAutoPilot();
+      if (result.switched > 0) {
+        console.log(`[AI Worker] Auto-pilot: switched ${result.switched} user modes`);
+      }
+    } catch (error) {
+      console.error('[AI Worker] Auto-pilot job failed:', error.message);
     }
   });
 

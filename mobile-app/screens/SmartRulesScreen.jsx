@@ -5,7 +5,7 @@ import AppScreen from '../components/ui/AppScreen';
 import AppCard from '../components/ui/AppCard';
 import Colors from '../constants/Colors';
 import Theme from '../constants/Theme';
-import { getRuleSuggestions, getActiveRules, createRule, toggleRule, deleteRule } from '../services/api';
+import { getRuleSuggestions, getActiveRules, createRule, toggleRule, deleteRule, dismissRuleSuggestion } from '../services/api';
 
 const SmartRulesScreen = ({ navigation, route }) => {
   const { lockId, lockName } = route.params || {};
@@ -50,6 +50,21 @@ const SmartRulesScreen = ({ navigation, route }) => {
     } catch (error) {
       console.error('Failed to create rule:', error);
       Alert.alert('Error', 'Failed to create rule. Please try again.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleDismissSuggestion = async (suggestion) => {
+    setProcessingId(suggestion.id || suggestion.type);
+    try {
+      await dismissRuleSuggestion(lockId, suggestion);
+      setSuggestions(prev => prev.filter(s =>
+        (s.id || s.type) !== (suggestion.id || suggestion.type)
+      ));
+    } catch (error) {
+      console.error('Failed to dismiss suggestion:', error);
+      Alert.alert('Error', 'Failed to dismiss suggestion. Please try again.');
     } finally {
       setProcessingId(null);
     }
@@ -198,7 +213,11 @@ const SmartRulesScreen = ({ navigation, route }) => {
                       </>
                     )}
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.dismissButton}>
+                  <TouchableOpacity
+                    style={styles.dismissButton}
+                    onPress={() => handleDismissSuggestion(suggestion)}
+                    disabled={processingId === (suggestion.id || suggestion.type)}
+                  >
                     <Text style={styles.dismissButtonText}>Dismiss</Text>
                   </TouchableOpacity>
                 </View>
