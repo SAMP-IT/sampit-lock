@@ -9,6 +9,7 @@ import { UsersPage } from '@/pages/users'
 import { LocksPage } from '@/pages/locks'
 import { ActivityPage } from '@/pages/activity'
 import { AccessCodesPage } from '@/pages/access-codes'
+import { LockDetailPage } from '@/pages/lock-detail'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,6 +32,7 @@ function App() {
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/locks" element={<LocksPage />} />
+                <Route path="/locks/:lockId" element={<LockDetailPage />} />
                 <Route path="/activity" element={<ActivityPage />} />
                 <Route path="/access-codes" element={<AccessCodesPage />} />
               </Route>

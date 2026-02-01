@@ -28,6 +28,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setLoading(false)
       }
+    }).catch(() => {
+      setLoading(false)
     })
 
     // Listen for auth changes
@@ -35,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (_event, session) => {
         setSession(session)
         if (session?.user) {
+          setLoading(true)
           await fetchUserProfile(session.user.id)
         } else {
           setUser(null)

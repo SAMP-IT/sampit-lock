@@ -57,7 +57,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    isActive={location.pathname === item.url}
+                    isActive={item.url === '/' ? location.pathname === '/' : location.pathname.startsWith(item.url)}
                   >
                     <Link to={item.url}>
                       <item.icon className="h-4 w-4" />

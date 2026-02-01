@@ -11,6 +11,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Types based on database schema
 export type UserRole = 'owner' | 'family' | 'guest' | 'service' | 'enterprise'
+export type UserLockRole = 'owner' | 'admin' | 'family' | 'scheduled' | 'guest_otp' | 'guest_longterm'
 export type LockAction = 'unlocked' | 'locked' | 'failed_attempt' | 'auto_lock' | 'passage_mode' | 'battery_warning' | 'offline' | 'tamper_detected'
 export type AccessMethodType = 'fingerprint' | 'pin' | 'phone' | 'card' | 'remote' | 'auto'
 export type CodeType = 'permanent' | 'temporary' | 'one_time'
@@ -50,23 +51,48 @@ export interface Lock {
   paired_at: string
   created_at: string
   updated_at: string
+  // TTLock fields
+  ttlock_lock_id?: number
+  ttlock_mac?: string
+  ttlock_lock_name?: string
+  has_gateway?: boolean
+  lock_alias?: string
+  is_bluetooth_paired?: boolean
+  lock_state?: string
 }
 
 export interface UserLock {
   id: string
   user_id: string
   lock_id: string
-  role: string
+  role: UserLockRole
+  // Core permissions
   can_unlock: boolean
   can_lock: boolean
   can_view_logs: boolean
   can_manage_users: boolean
   can_modify_settings: boolean
   remote_unlock_enabled: boolean
+  // Extended permissions
+  can_view_all_logs: boolean
+  // Time restrictions
   time_restricted: boolean
+  time_restriction_start?: string
+  time_restriction_end?: string
+  days_of_week: number[]
+  // Access validity
+  access_valid_from?: string
+  access_valid_until?: string
+  // Status
   is_active: boolean
+  vacation_disabled: boolean
+  notes?: string
+  // Timestamps
   created_at: string
   updated_at: string
+  // Joined fields
+  users?: Pick<User, 'id' | 'first_name' | 'last_name' | 'email' | 'phone' | 'avatar_url'>
+  locks?: Pick<Lock, 'id' | 'name' | 'location'>
 }
 
 export interface ActivityLog {
@@ -82,6 +108,7 @@ export interface ActivityLog {
   created_at: string
   // Joined fields
   user?: User
+  users?: Pick<User, 'first_name' | 'last_name'>
   lock?: Lock
 }
 
@@ -101,6 +128,80 @@ export interface AccessCode {
   updated_at: string
   // Joined fields
   lock?: Lock
+}
+
+export interface Fingerprint {
+  id: string
+  lock_id: string
+  user_id?: string
+  ttlock_fingerprint_id?: number
+  fingerprint_number: string
+  fingerprint_name?: string
+  fingerprint_type: number // 1=Normal, 4=Cyclic
+  start_date?: string
+  end_date?: string
+  cyclic_config?: Record<string, unknown>[]
+  status: number // 1=Normal, 2=Invalid, 3=Pending, 4=Adding, 5=Add Failed, 6=Modifying, 7=Modify Failed, 8=Deleting, 9=Delete Failed
+  is_active?: boolean
+  valid_from?: string
+  valid_until?: string
+  created_at: string
+  updated_at: string
+  // Joined fields
+  users?: Pick<User, 'first_name' | 'last_name'>
+}
+
+export interface ICCard {
+  id: string
+  lock_id: string
+  user_id?: string
+  ttlock_card_id?: number
+  card_number: string
+  card_name?: string
+  start_date?: string
+  end_date?: string
+  status: number
+  is_active?: boolean
+  valid_from?: string
+  valid_until?: string
+  created_at: string
+  updated_at: string
+  // Joined fields
+  users?: Pick<User, 'first_name' | 'last_name'>
+}
+
+export interface Passcode {
+  id: string
+  lock_id: string
+  code: string
+  code_type: string
+  valid_from?: string
+  valid_until?: string
+  is_active: boolean
+  created_by?: string
+  name?: string
+  assigned_to_user_id?: string
+  created_at: string
+  updated_at: string
+  // Joined fields
+  users?: Pick<User, 'first_name' | 'last_name'>
+}
+
+export interface LockSettings {
+  id: string
+  lock_id: string
+  auto_lock_enabled: boolean
+  auto_lock_delay: number
+  remote_unlock_enabled: boolean
+  passage_mode_enabled: boolean
+  lock_sound_enabled?: boolean
+  lock_sound_volume?: number
+  tamper_alert_enabled: boolean
+  low_battery_threshold: number
+  offline_alert_enabled?: boolean
+  timezone?: string
+  created_at: string
+  updated_at: string
 }
 
 export interface Notification {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import type { Lock } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,6 +18,7 @@ import {
 import { Search, Lock as LockIcon, Wifi, WifiOff, Battery, LayoutGrid, List } from 'lucide-react'
 
 export function LocksPage() {
+  const navigate = useNavigate()
   const [locks, setLocks] = useState<Lock[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -117,7 +119,7 @@ export function LocksPage() {
           ) : viewMode === 'grid' ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {filteredLocks.map((lock) => (
-                <Card key={lock.id} className="overflow-hidden">
+                <Card key={lock.id} className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/locks/${lock.id}`)}>
                   <div className={`h-2 ${lock.is_online ? 'bg-green-500' : 'bg-gray-300'}`} />
                   <CardContent className="pt-4">
                     <div className="flex items-start justify-between mb-3">
@@ -163,7 +165,7 @@ export function LocksPage() {
               </TableHeader>
               <TableBody>
                 {filteredLocks.map((lock) => (
-                  <TableRow key={lock.id}>
+                  <TableRow key={lock.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/locks/${lock.id}`)}>
                     <TableCell className="font-medium">{lock.name}</TableCell>
                     <TableCell>{lock.location}</TableCell>
                     <TableCell>

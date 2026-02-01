@@ -39,7 +39,7 @@ export function ActivityPage() {
     try {
       const { data, error } = await supabase
         .from('activity_logs')
-        .select('*, users(first_name, last_name), locks(name)')
+        .select('*, users:user_id(first_name, last_name), locks(name)')
         .order('created_at', { ascending: false })
         .limit(100)
 
