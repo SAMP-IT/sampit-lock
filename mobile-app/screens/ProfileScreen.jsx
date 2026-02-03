@@ -92,11 +92,19 @@ const ProfileScreen = ({ navigation }) => {
 
     setSaving(true);
     try {
-      await updateProfile({
+      // Prepare profile data - only include phone if it has a value (phone is optional)
+      const profileData = {
         first_name: userData.first_name,
         last_name: userData.last_name,
-        phone: userData.phone,
-      });
+      };
+      
+      // Only include phone field if it has a value (don't send empty phone)
+      const phoneValue = userData.phone?.trim();
+      if (phoneValue && phoneValue.length > 0) {
+        profileData.phone = phoneValue;
+      }
+      
+      await updateProfile(profileData);
 
       // Update local storage
       const storedUser = await AsyncStorage.getItem('user');
@@ -242,7 +250,7 @@ const ProfileScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Phone Number (Optional)</Text>
+            <Text style={styles.label}>Phone Number</Text>
             <View style={styles.inputContainer}>
               <Ionicons name="call-outline" size={20} color={Colors.subtitlecolor} style={styles.inputIcon} />
               <TextInput

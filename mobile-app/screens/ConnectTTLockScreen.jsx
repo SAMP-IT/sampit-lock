@@ -49,8 +49,8 @@ const ConnectTTLockScreen = ({ navigation }) => {
 
   const handleManualSync = async () => {
     setIsSyncing(true);
-    setSyncProgress('Syncing locks from TTLock cloud...');
-    showInfo('Syncing your locks from TTLock cloud...');
+      setSyncProgress('Syncing locks from cloud...');
+    showInfo('Syncing your locks from cloud...');
 
     try {
       const result = await importTTLockLocks();
@@ -62,7 +62,7 @@ const ConnectTTLockScreen = ({ navigation }) => {
       } else if (skipped > 0) {
         showInfo(`All ${skipped} lock${skipped > 1 ? 's are' : ' is'} already synced`);
       } else {
-        showInfo('No locks found in your TTLock cloud account');
+        showInfo('No locks found in your cloud account');
       }
 
       await checkConnectionStatus();
@@ -96,7 +96,7 @@ const ConnectTTLockScreen = ({ navigation }) => {
         >
           <Ionicons name="chevron-back" size={24} color={Colors.titlecolor} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>TTLock Connection</Text>
+        <Text style={styles.headerTitle}>Cloud Connection</Text>
       </View>
 
       <AppCard style={styles.card}>
@@ -108,7 +108,7 @@ const ConnectTTLockScreen = ({ navigation }) => {
 
             <Text style={styles.title}>Account Connected</Text>
             <Text style={styles.subtitle}>
-              Your TTLock account is connected and ready to use
+              Your cloud account is connected and ready to use
             </Text>
           </>
         ) : (
@@ -119,7 +119,7 @@ const ConnectTTLockScreen = ({ navigation }) => {
 
             <Text style={styles.title}>Not Connected</Text>
             <Text style={styles.subtitle}>
-              Connect your TTLock account to enable remote control and sync your locks
+              Connect your cloud account to enable remote control and sync your locks
             </Text>
           </>
         )}
@@ -131,7 +131,7 @@ const ConnectTTLockScreen = ({ navigation }) => {
               <View style={styles.statusInfoText}>
                 <Text style={styles.statusLabel}>Connected Account</Text>
                 <Text style={styles.statusValue}>
-                  {connectionStatus?.ttlock_username || connectionStatus?.email || 'Your TTLock Account'}
+                  {connectionStatus?.ttlock_username || connectionStatus?.email || 'Your Cloud Account'}
                 </Text>
               </View>
             </View>
@@ -174,7 +174,7 @@ const ConnectTTLockScreen = ({ navigation }) => {
             })}
           >
             <Ionicons name="link-outline" size={20} color="#fff" />
-            <Text style={styles.connectButtonText}>Connect TTLock Account</Text>
+            <Text style={styles.connectButtonText}>Connect Cloud Account</Text>
           </TouchableOpacity>
         )}
 
@@ -182,8 +182,8 @@ const ConnectTTLockScreen = ({ navigation }) => {
           <Ionicons name="information-circle-outline" size={18} color={Colors.iconbackground} />
           <Text style={styles.infoText}>
             {isConnected
-              ? 'Use "Sync Locks from Cloud" to import any locks registered in your TTLock app.'
-              : 'Connect your TTLock account to enable remote control and sync your smart locks from the TTLock cloud.'}
+              ? 'Use "Sync Locks from Cloud" to import any locks registered in your lock app.'
+              : 'Connect your cloud account to enable remote control and sync your smart locks from the cloud.'}
           </Text>
         </View>
       </AppCard>

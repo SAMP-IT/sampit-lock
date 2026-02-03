@@ -39,8 +39,8 @@ const BluetoothLockPairingScreen = ({ navigation }) => {
 
       if (!normalizedStatus?.connected) {
         Alert.alert(
-          'TTLock Account Required',
-          'Please connect your TTLock account before pairing a lock.',
+          'Cloud Account Required',
+          'Please connect your cloud account before pairing a lock.',
           [
             {
               text: 'Connect Now',
@@ -61,8 +61,8 @@ const BluetoothLockPairingScreen = ({ navigation }) => {
     } catch (error) {
       console.log('[BluetoothPairing] TTLock status check failed:', error.message);
       Alert.alert(
-        'TTLock Account Required',
-        'Please connect your TTLock account before pairing a lock.',
+        'Cloud Account Required',
+        'Please connect your cloud account before pairing a lock.',
         [
           {
             text: 'Connect Now',
@@ -194,8 +194,8 @@ const BluetoothLockPairingScreen = ({ navigation }) => {
     // Check if TTLock SDK is available
     if (!TTLockService.isAvailable()) {
       Alert.alert(
-        'TTLock SDK Not Available',
-        'The TTLock native module is not properly loaded. This usually happens if:\n\n1. The app needs to be rebuilt\n2. Bluetooth permissions are not granted\n3. The native module failed to initialize\n\nPlease try rebuilding the app or contact support.',
+        'SDK Not Available',
+        'The native module is not properly loaded. This usually happens if:\n\n1. The app needs to be rebuilt\n2. Bluetooth permissions are not granted\n3. The native module failed to initialize\n\nPlease try rebuilding the app or contact support.',
         [{ text: 'OK' }]
       );
       return;
@@ -215,7 +215,7 @@ const BluetoothLockPairingScreen = ({ navigation }) => {
       if (locks.length === 0) {
         Alert.alert(
           'No Locks Found',
-          'No TTLock devices found nearby. Make sure the lock is powered on and within range.\n\nTroubleshooting:\n• Lock is powered on (batteries fresh)\n• Lock is within 2 meters\n• Bluetooth is enabled\n• Location permissions granted',
+          'No devices found nearby. Make sure the lock is powered on and within range.\n\nTroubleshooting:\n• Lock is powered on (batteries fresh)\n• Lock is within 2 meters\n• Bluetooth is enabled\n• Location permissions granted',
           [
             { text: 'Scan Again', onPress: startScanning },
             { text: 'Cancel', style: 'cancel' }
@@ -238,7 +238,7 @@ const BluetoothLockPairingScreen = ({ navigation }) => {
     if (lock.isInitialized) {
       Alert.alert(
         'Lock Already Paired',
-        'This lock is already paired. You can:\n\n1. Add as read-only (view status only)\n2. Reset and pair (full control, removes TTLock app access)',
+        'This lock is already paired. You can:\n\n1. Add as read-only (view status only)\n2. Reset and pair (full control, removes lock app access)',
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -305,7 +305,7 @@ const BluetoothLockPairingScreen = ({ navigation }) => {
       let cloudLockId = null;
       if (ttlockConnected) {
         try {
-          console.log('[BluetoothPairing] Registering lock with TTLock cloud...');
+          console.log('[BluetoothPairing] Registering lock with cloud...');
           const cloudResponse = await initializeTTLock(
             localLockData.lockData,
             localLockData.lockName
@@ -338,7 +338,8 @@ const BluetoothLockPairingScreen = ({ navigation }) => {
         const deletePwd = rawLockData.deletePwd || localLockData.deletePwd || null;
         const noKeyPwd = rawLockData.noKeyPwd || localLockData.noKeyPwd || null;
 
-        console.log('[BluetoothPairing] Recovery keys from SDK:', {
+        // Recovery keys are sent to backend for storage (not stored locally in mobile app)
+        console.log('[BluetoothPairing] Recovery keys from SDK (sending to backend only):', {
           hasAdminPwd: !!adminPwd,
           hasDeletePwd: !!deletePwd,
           hasNoKeyPwd: !!noKeyPwd,

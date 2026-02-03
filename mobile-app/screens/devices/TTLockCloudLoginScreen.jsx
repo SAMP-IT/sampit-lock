@@ -24,12 +24,12 @@ const TTLockCloudLoginScreen = ({ navigation, route }) => {
 
   const handleLogin = async () => {
     if (!username.trim()) {
-      Alert.alert('Required', 'Please enter your TTLock username or email');
+      Alert.alert('Required', 'Please enter your username or email');
       return;
     }
 
     if (!password.trim()) {
-      Alert.alert('Required', 'Please enter your TTLock password');
+      Alert.alert('Required', 'Please enter your password');
       return;
     }
 
@@ -48,7 +48,7 @@ const TTLockCloudLoginScreen = ({ navigation, route }) => {
 
         Alert.alert(
           'Connected!',
-          `Successfully connected to TTLock Cloud.\n\n${response.data.locks_found || 0} locks found.`,
+          `Successfully connected to Cloud.\n\n${response.data.locks_found || 0} locks found.`,
           [
             {
               text: 'OK',
@@ -63,13 +63,13 @@ const TTLockCloudLoginScreen = ({ navigation, route }) => {
           ]
         );
       } else {
-        Alert.alert('Login Failed', response.data.message || 'Failed to connect to TTLock account');
+        Alert.alert('Login Failed', response.data.message || 'Failed to connect to cloud account');
       }
     } catch (error) {
       console.error('🔴 TTLock login failed:', error);
       Alert.alert(
         'Connection Failed',
-        error.response?.data?.error?.message || 'Failed to connect to TTLock Cloud. Please check your credentials.'
+        error.response?.data?.error?.message || 'Failed to connect to Cloud. Please check your credentials.'
       );
     } finally {
       setIsLoading(false);
@@ -93,7 +93,7 @@ const TTLockCloudLoginScreen = ({ navigation, route }) => {
           >
             <Ionicons name="arrow-back" size={24} color={Colors.textcolor} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Connect TTLock Cloud</Text>
+          <Text style={styles.headerTitle}>Connect Cloud</Text>
           <View style={{ width: 24 }} />
         </View>
 
@@ -108,7 +108,7 @@ const TTLockCloudLoginScreen = ({ navigation, route }) => {
         <View style={styles.descriptionContainer}>
           <Text style={styles.title}>Remote Control</Text>
           <Text style={styles.description}>
-            Connect your TTLock account to enable remote control of your locks from anywhere in the world.
+            Connect your cloud account to enable remote control of your locks from anywhere in the world.
           </Text>
 
           <View style={styles.featuresList}>
@@ -118,7 +118,7 @@ const TTLockCloudLoginScreen = ({ navigation, route }) => {
             </View>
             <View style={styles.featureItem}>
               <Ionicons name="checkmark-circle" size={20} color={Colors.iconbackground} />
-              <Text style={styles.featureText}>Sync locks from TTLock app</Text>
+              <Text style={styles.featureText}>Sync locks from lock app</Text>
             </View>
             <View style={styles.featureItem}>
               <Ionicons name="checkmark-circle" size={20} color={Colors.iconbackground} />
@@ -133,7 +133,7 @@ const TTLockCloudLoginScreen = ({ navigation, route }) => {
           <View style={styles.noteContainer}>
             <Ionicons name="information-circle-outline" size={20} color="#FF9500" />
             <Text style={styles.noteText}>
-              For remote control, your locks must have TTLock Gateway connected (~$30-50)
+              For remote control, your locks must have Gateway connected (~$30-50)
             </Text>
           </View>
         </View>
@@ -144,7 +144,7 @@ const TTLockCloudLoginScreen = ({ navigation, route }) => {
             <Ionicons name="person-outline" size={20} color={Colors.subtitlecolor} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="TTLock Username or Email"
+              placeholder="Username or Email"
               placeholderTextColor={Colors.subtitlecolor}
               value={username}
               onChangeText={setUsername}
@@ -158,7 +158,7 @@ const TTLockCloudLoginScreen = ({ navigation, route }) => {
             <Ionicons name="lock-closed-outline" size={20} color={Colors.subtitlecolor} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="TTLock Password"
+              placeholder="Password"
               placeholderTextColor={Colors.subtitlecolor}
               value={password}
               onChangeText={setPassword}
@@ -192,7 +192,7 @@ const TTLockCloudLoginScreen = ({ navigation, route }) => {
           </TouchableOpacity>
 
           <Text style={styles.helpText}>
-            Don't have a TTLock account? Download the TTLock app to create one.
+            Don't have a cloud account? Download the lock app to create one.
           </Text>
         </View>
       </ScrollView>

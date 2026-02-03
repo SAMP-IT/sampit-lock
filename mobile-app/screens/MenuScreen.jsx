@@ -13,7 +13,7 @@ const menuItems = [
   { label: 'Users', icon: 'people-outline', navigateTo: { stack: 'ConsumerTabs', screen: 'UserManagement' } },
   { label: 'History', icon: 'time-outline', navigateTo: { stack: 'ConsumerTabs', screen: 'History' } },
   { label: 'Settings', icon: 'settings-outline', navigateTo: { stack: 'ConsumerTabs', screen: 'Settings' } },
-  { label: 'Add new lock', icon: 'add-circle-outline', navigateTo: { stack: 'AddLockWizard' }, requiresTTLock: true },
+  { label: 'Add new lock', icon: 'add-circle-outline', navigateTo: { stack: 'PairLock' }, requiresTTLock: true },
 ];
 
 const MenuScreen = ({ navigation }) => {
@@ -52,12 +52,12 @@ const MenuScreen = ({ navigation }) => {
     // Check if this item requires TTLock connection
     if (item.requiresTTLock && !ttlockStatus?.connected) {
       Alert.alert(
-        'TTLock Account Required',
-        'To add a lock, you need to connect your TTLock account first.',
+        'Cloud Account Required',
+        'To add a lock, you need to connect your cloud account first.',
         [
           { text: 'Cancel', style: 'cancel' },
           {
-            text: 'Connect TTLock',
+            text: 'Connect Cloud',
             onPress: () => {
               closeMenu();
               setTimeout(() => {

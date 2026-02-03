@@ -114,7 +114,11 @@ export const schemas = {
   updateProfile: Joi.object({
     first_name: Joi.string().min(1).max(100).optional(),
     last_name: Joi.string().min(1).max(100).optional(),
-    phone: Joi.string().optional(),
+    phone: Joi.alternatives().try(
+      Joi.string().min(6).max(20),
+      Joi.string().allow(''),
+      Joi.valid(null)
+    ).optional(),
     simple_mode: Joi.boolean().optional(),
     avatar_url: Joi.string().uri().optional()
   }),

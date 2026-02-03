@@ -235,17 +235,6 @@ const LockPairingScreen = ({ navigation, route }) => {
             </View>
           )}
 
-          {lock.macAddress && (
-            <View style={[styles.infoItem, styles.infoItemLast]}>
-              <View style={styles.infoIcon}>
-                <Ionicons name="bluetooth-outline" size={20} color={Colors.iconbackground} />
-              </View>
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>MAC Address</Text>
-                <Text style={styles.infoValue}>{lock.macAddress}</Text>
-              </View>
-            </View>
-          )}
         </AppCard>
       </Section>
 

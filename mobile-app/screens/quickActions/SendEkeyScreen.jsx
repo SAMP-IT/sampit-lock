@@ -147,7 +147,7 @@ const SendEkeyScreen = ({ navigation, route }) => {
           (ekeyType === 'permanent'
             ? 'This is a permanent eKey with no expiration.'
             : `This eKey is valid for ${validDays} days.`) +
-          '\n\nThe recipient will receive a notification and can use the TTLock app to unlock the door.',
+          '\n\nThe recipient will receive a notification and can use the lock app to unlock the door.',
           [{ text: 'OK', onPress: () => {
             resetForm();
             loadEkeys();
@@ -327,7 +327,7 @@ const SendEkeyScreen = ({ navigation, route }) => {
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Share eKey</Text>
             <Text style={styles.headerSubtitle}>
-              {lock?.name || 'Connect TTLock account'}
+              {lock?.name || 'Connect cloud account'}
             </Text>
           </View>
         </View>
@@ -336,12 +336,12 @@ const SendEkeyScreen = ({ navigation, route }) => {
           <AppCard style={styles.connectCard}>
             <Ionicons name="cloud-offline-outline" size={64} color={Colors.iconbackground} />
             <Text style={styles.connectTitle}>
-              {ttlockStatus?.isExpired ? 'TTLock Session Expired' : 'TTLock Not Connected'}
+              {ttlockStatus?.isExpired ? 'Cloud Session Expired' : 'Cloud Not Connected'}
             </Text>
             <Text style={styles.connectText}>
               {ttlockStatus?.isExpired
-                ? 'Your TTLock session has expired. Please reconnect to continue sharing eKeys.'
-                : 'To share eKeys with others, you need to connect your TTLock account first.'}
+                ? 'Your cloud session has expired. Please reconnect to continue sharing eKeys.'
+                : 'To share eKeys with others, you need to connect your cloud account first.'}
             </Text>
             <TouchableOpacity
               style={styles.connectButton}
@@ -349,7 +349,7 @@ const SendEkeyScreen = ({ navigation, route }) => {
             >
               <Ionicons name="cloud-outline" size={20} color={Colors.textwhite} />
               <Text style={styles.connectButtonText}>
-                {ttlockStatus?.isExpired ? 'Reconnect TTLock' : 'Connect TTLock Account'}
+                {ttlockStatus?.isExpired ? 'Reconnect Cloud' : 'Connect Cloud Account'}
               </Text>
             </TouchableOpacity>
           </AppCard>
@@ -367,7 +367,7 @@ const SendEkeyScreen = ({ navigation, route }) => {
             </View>
             <View style={styles.helpItem}>
               <Ionicons name="phone-portrait-outline" size={20} color={Colors.iconbackground} />
-              <Text style={styles.helpText}>Recipients use the TTLock app to unlock</Text>
+              <Text style={styles.helpText}>Recipients use the lock app to unlock</Text>
             </View>
             <View style={styles.helpItem}>
               <Ionicons name="shield-checkmark-outline" size={20} color={Colors.iconbackground} />
@@ -399,7 +399,7 @@ const SendEkeyScreen = ({ navigation, route }) => {
           <AppCard style={styles.infoCard}>
             <Ionicons name="information-circle-outline" size={24} color={Colors.iconbackground} />
             <Text style={styles.infoText}>
-              Share eKeys with family, friends, or service providers. Recipients need the TTLock app to unlock the door.
+              Share eKeys with family, friends, or service providers. Recipients need the lock app to unlock the door.
             </Text>
           </AppCard>
         </Section>
@@ -600,7 +600,7 @@ const SendEkeyScreen = ({ navigation, route }) => {
             </View>
             <View style={styles.helpItem}>
               <Ionicons name="phone-portrait-outline" size={20} color={Colors.iconbackground} />
-              <Text style={styles.helpText}>Recipient downloads TTLock app and logs in</Text>
+              <Text style={styles.helpText}>Recipient downloads lock app and logs in</Text>
             </View>
             <View style={styles.helpItem}>
               <Ionicons name="key-outline" size={20} color={Colors.iconbackground} />

@@ -11,6 +11,9 @@ import {
   TextInput,
   Animated,
   Easing,
+  Image,
+  ScrollView,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -35,6 +38,20 @@ const FingerprintManagementScreen = ({ route, navigation }) => {
   const [addProgress, setAddProgress] = useState({ current: 0, total: 0 });
   const [isSupported, setIsSupported] = useState(true);
   const [statusMessage, setStatusMessage] = useState('');
+  const [showImageSliderModal, setShowImageSliderModal] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const scrollViewRef = useRef(null);
+  const imageSliderIntervalRef = useRef(null);
+
+  // Finger scan guide images
+  const fingerScanImages = [
+    require('../assets/Finger-scan/Gemini_Generated_Image_49uei549uei549ue.png'),
+    require('../assets/Finger-scan/Gemini_Generated_Image_4mv88i4mv88i4mv8.png'),
+    require('../assets/Finger-scan/Gemini_Generated_Image_jf14k3jf14k3jf14.png'),
+    require('../assets/Finger-scan/Gemini_Generated_Image_tk0dnjtk0dnjtk0d.png'),
+  ];
+
+  const { width: screenWidth } = Dimensions.get('window');
 
   // Fetch fingerprints from backend
   const fetchFingerprints = async () => {
@@ -88,9 +105,18 @@ const FingerprintManagementScreen = ({ route, navigation }) => {
   const getUserFriendlyError = (error) => {
     const errorMsg = error.message?.toLowerCase() || '';
     const errorCode = error.code || '';
+    
+    // Extract error code from message if it's in format "(18)" or "failed (18)"
+    const errorCodeMatch = errorMsg.match(/\((\d+)\)/);
+    const extractedErrorCode = errorCodeMatch ? errorCodeMatch[1] : null;
 
+    // Handle specific error codes (18 = timeout/finger not scanned)
+    if (extractedErrorCode === '18' || errorCode === '18' || errorMsg.includes('(18)')) {
+      return 'Finger not scanned. Please place your finger flat on the sensor and try again.';
+    }
+    
     // TTLock SDK specific error codes
-    if (errorMsg.includes('(-1)') || errorMsg.includes('fail')) {
+    if (errorMsg.includes('(-1)') || (errorMsg.includes('fail') && !errorMsg.includes('(18)'))) {
       return 'The fingerprint scan was not recognized. Please try again with a cleaner, drier finger placed flat on the sensor.';
     }
     if (errorMsg.includes('(-2)') || errorMsg.includes('already exist')) {
@@ -117,7 +143,7 @@ const FingerprintManagementScreen = ({ route, navigation }) => {
     if (errorMsg.includes('power') || errorMsg.includes('battery')) {
       return 'The lock battery is too low to complete this operation. Please replace the batteries first.';
     }
-    // Generic fallback with more helpful message
+    // Generic fallback with more helpful message (hide technical details)
     return 'Could not complete the fingerprint operation. Please make sure you are close to the lock, place your finger flat on the sensor, and try again.';
   };
 
@@ -161,88 +187,176 @@ const FingerprintManagementScreen = ({ route, navigation }) => {
       const startDate = Date.now();
       const endDate = startDate + (365 * 24 * 60 * 60 * 1000);
 
+      // Show image slider modal instead of Alert
+      setShowImageSliderModal(true);
+      setCurrentImageIndex(0);
+    } catch (error) {
+      console.error('Add fingerprint error:', error);
+      // Reset state immediately so button can be re-enabled
+      setAdding(false);
+      globalOperationInProgress = false;
+      
+      // Show user-friendly error message
       Alert.alert(
-        'Add Fingerprint',
-        'When you tap "Start", place your finger on the lock\'s fingerprint sensor.\n\n' +
-        'IMPORTANT: You must scan your finger exactly 4 times.\n\n' +
-        'For best results:\n' +
-        '1. Place finger flat on the sensor\n' +
-        '2. Lift completely between each scan\n' +
-        '3. Tilt finger slightly different each time\n' +
-        '4. Cover different parts of your fingertip\n\n' +
-        'This ensures the lock can recognize your finger from any angle.',
+        'Fingerprint Not Added',
+        getUserFriendlyError(error),
         [
           {
-            text: 'Cancel',
-            style: 'cancel',
+            text: 'OK',
             onPress: () => {
-              setAdding(false);
-              globalOperationInProgress = false;
-            }
-          },
-          {
-            text: 'Start',
-            onPress: async () => {
-              try {
-                // Stop any previous Bluetooth scan to release the connection
-                TTLockService.stopScan();
-
-                // Wait for lock to be ready
-                await waitForLockReady();
-
-                setStatusMessage('Connecting to lock...');
-
-                // Add fingerprint via Bluetooth
-                const result = await TTLockService.addFingerprint(
-                  startDate,
-                  endDate,
-                  lockData,
-                  (current, total) => {
-                    setAddProgress({ current, total });
-                    setStatusMessage(`Place your finger on the sensor (${current}/${total})`);
-                  }
-                );
-
-                setStatusMessage('Saving fingerprint...');
-
-                // Record the operation time
-                lastOperationTime = Date.now();
-
-                // Wait for lock to finish processing before saving to backend
-                await new Promise(resolve => setTimeout(resolve, 2000));
-
-                // Save to backend
-                await backendApi.post(`/locks/${lock.id}/fingerprints`, {
-                  fingerprintNumber: result.fingerprintNumber,
-                  fingerprintName: newFingerprintName.trim(),
-                  startDate: new Date(startDate).toISOString(),
-                  endDate: new Date(endDate).toISOString(),
-                  addType: 1, // Bluetooth enrollment
-                });
-
-                Alert.alert('Fingerprint Added', 'Your fingerprint has been registered successfully. You can now use it to unlock the door.');
-                setShowAddModal(false);
-                setNewFingerprintName('');
-                fetchFingerprints();
-              } catch (error) {
-                console.error('Add fingerprint error:', error);
-                Alert.alert('Could Not Add Fingerprint', getUserFriendlyError(error));
-              } finally {
-                setAdding(false);
-                setAddProgress({ current: 0, total: 0 });
-                setStatusMessage('');
-                globalOperationInProgress = false;
-                lastOperationTime = Date.now();
-              }
+              // Button is already re-enabled via state reset above
+              // User can try again without going back
             }
           }
         ]
       );
+    }
+  };
+
+  // Start fingerprint scanning process
+  const startFingerprintScan = async () => {
+    try {
+      setShowImageSliderModal(false);
+      // Stop auto-scroll when starting scan
+      if (imageSliderIntervalRef.current) {
+        clearInterval(imageSliderIntervalRef.current);
+        imageSliderIntervalRef.current = null;
+      }
+
+      const lockData = extractLockData(lock.ttlock_data);
+      if (!lockData) {
+        throw new Error('Please make sure you are near the lock and try again.');
+      }
+
+      // Set validity period (1 year from now)
+      const startDate = Date.now();
+      const endDate = startDate + (365 * 24 * 60 * 60 * 1000);
+
+      // Stop any previous Bluetooth scan to release the connection
+      TTLockService.stopScan();
+
+      // Wait for lock to be ready
+      await waitForLockReady();
+
+      setStatusMessage('Connecting to lock...');
+
+      // Add fingerprint via Bluetooth
+      const result = await TTLockService.addFingerprint(
+        startDate,
+        endDate,
+        lockData,
+        (current, total) => {
+          setAddProgress({ current, total });
+          setStatusMessage(`Place your finger on the sensor (${current}/${total})`);
+        }
+      );
+
+      setStatusMessage('Saving fingerprint...');
+
+      // Record the operation time
+      lastOperationTime = Date.now();
+
+      // Wait for lock to finish processing before saving to backend
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Save to backend
+      await backendApi.post(`/locks/${lock.id}/fingerprints`, {
+        fingerprintNumber: result.fingerprintNumber,
+        fingerprintName: newFingerprintName.trim(),
+        startDate: new Date(startDate).toISOString(),
+        endDate: new Date(endDate).toISOString(),
+        addType: 1, // Bluetooth enrollment
+      });
+
+      Alert.alert('Fingerprint Added', 'Your fingerprint has been registered successfully. You can now use it to unlock the door.');
+      setShowAddModal(false);
+      setNewFingerprintName('');
+      fetchFingerprints();
     } catch (error) {
       console.error('Add fingerprint error:', error);
-      Alert.alert('Could Not Add Fingerprint', getUserFriendlyError(error));
+      // Reset state immediately so button can be re-enabled
       setAdding(false);
+      setAddProgress({ current: 0, total: 0 });
+      setStatusMessage('');
       globalOperationInProgress = false;
+      lastOperationTime = Date.now();
+      
+      // Show user-friendly error message
+      Alert.alert(
+        'Fingerprint Not Added',
+        getUserFriendlyError(error),
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Button is already re-enabled via state reset above
+              // User can try again without going back
+            }
+          }
+        ]
+      );
+    } finally {
+      // Ensure state is reset even if error handling fails
+      setAdding(false);
+      setAddProgress({ current: 0, total: 0 });
+      setStatusMessage('');
+      globalOperationInProgress = false;
+      lastOperationTime = Date.now();
+    }
+  };
+
+  // Auto-scroll images
+  useEffect(() => {
+    if (showImageSliderModal) {
+      // Calculate actual slide width (modal width minus padding)
+      const slideWidth = screenWidth * 0.9 - 40;
+      
+      // Start auto-scrolling
+      imageSliderIntervalRef.current = setInterval(() => {
+        setCurrentImageIndex((prevIndex) => {
+          const nextIndex = (prevIndex + 1) % fingerScanImages.length;
+          // Scroll to next image using actual slide width
+          if (scrollViewRef.current) {
+            scrollViewRef.current.scrollTo({
+              x: nextIndex * slideWidth,
+              animated: true,
+            });
+          }
+          return nextIndex;
+        });
+      }, 3000); // Change image every 3 seconds
+
+      return () => {
+        if (imageSliderIntervalRef.current) {
+          clearInterval(imageSliderIntervalRef.current);
+          imageSliderIntervalRef.current = null;
+        }
+      };
+    } else {
+      // Clear interval when modal is closed
+      if (imageSliderIntervalRef.current) {
+        clearInterval(imageSliderIntervalRef.current);
+        imageSliderIntervalRef.current = null;
+      }
+    }
+  }, [showImageSliderModal]);
+
+  // Handle scroll to update current index
+  const handleScroll = (event) => {
+    const scrollPosition = event.nativeEvent.contentOffset.x;
+    const slideWidth = screenWidth * 0.9 - 40; // Match the actual slide width
+    const index = Math.round(scrollPosition / slideWidth);
+    setCurrentImageIndex(index);
+  };
+
+  // Cancel fingerprint scan
+  const cancelFingerprintScan = () => {
+    setShowImageSliderModal(false);
+    setAdding(false);
+    globalOperationInProgress = false;
+    if (imageSliderIntervalRef.current) {
+      clearInterval(imageSliderIntervalRef.current);
+      imageSliderIntervalRef.current = null;
     }
   };
 
@@ -510,6 +624,77 @@ const FingerprintManagementScreen = ({ route, navigation }) => {
                 }}
               >
                 <Text style={styles.confirmButtonText}>Continue</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Image Slider Modal for Fingerprint Guide */}
+      <Modal
+        visible={showImageSliderModal}
+        transparent
+        animationType="fade"
+        onRequestClose={cancelFingerprintScan}
+      >
+        <View style={styles.imageSliderModalOverlay}>
+          <View style={styles.imageSliderModalContent}>
+            {/* Image Slider */}
+            <View style={styles.imageSliderWrapper}>
+              <ScrollView
+                ref={scrollViewRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
+                style={styles.imageSliderContainer}
+                contentContainerStyle={styles.imageSliderContent}
+              >
+                {fingerScanImages.map((image, index) => (
+                  <View 
+                    key={index} 
+                    style={[
+                      styles.imageSlide,
+                      { width: screenWidth * 0.9 - 40 } // Match ScrollView container width exactly
+                    ]}
+                  >
+                    <Image
+                      source={image}
+                      style={styles.guideImage}
+                      resizeMode="contain"
+                    />
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* Image Indicators */}
+            <View style={styles.imageIndicators}>
+              {fingerScanImages.map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.indicator,
+                    index === currentImageIndex && styles.indicatorActive
+                  ]}
+                />
+              ))}
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.imageSliderButtons}>
+              <TouchableOpacity
+                style={[styles.imageSliderButton, styles.cancelImageButton]}
+                onPress={cancelFingerprintScan}
+              >
+                <Text style={styles.cancelImageButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.imageSliderButton, styles.startImageButton]}
+                onPress={startFingerprintScan}
+              >
+                <Text style={styles.startImageButtonText}>Start</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -791,6 +976,89 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.textSecondary,
     textAlign: 'center',
+  },
+  // Image Slider Modal Styles
+  imageSliderModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageSliderModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    width: '90%',
+    maxHeight: '80%',
+    padding: 20,
+    alignItems: 'center',
+  },
+  imageSliderWrapper: {
+    width: '100%',
+    marginBottom: 20,
+    overflow: 'hidden',
+  },
+  imageSliderContainer: {
+    width: '100%',
+  },
+  imageSliderContent: {
+    alignItems: 'center',
+  },
+  imageSlide: {
+    height: 350,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 0, // Remove padding to ensure exact width matching
+  },
+  guideImage: {
+    width: '100%',
+    height: '100%',
+    maxWidth: '100%',
+    maxHeight: '100%',
+  },
+  imageIndicators: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 8,
+  },
+  indicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ccc',
+  },
+  indicatorActive: {
+    backgroundColor: Colors.primary,
+    width: 24,
+  },
+  imageSliderButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: 12,
+  },
+  imageSliderButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelImageButton: {
+    backgroundColor: Colors.border,
+  },
+  cancelImageButtonText: {
+    color: Colors.text,
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  startImageButton: {
+    backgroundColor: Colors.primary,
+  },
+  startImageButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
   },
 });
 

@@ -321,127 +321,123 @@ const LockCard = ({
           onPress={() => onPress(lock)}
           activeOpacity={0.9}
         >
-          {/* Edit Button - Top Right */}
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={handleEditPress}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="create-outline" size={20} color={Colors.iconbackground} />
-          </TouchableOpacity>
-
-          {/* Lock Name - Center Top */}
-          <View style={styles.nameContainer}>
-            <Text style={styles.prominentLockName} numberOfLines={1}>
-              {getLockDisplayName()}
-            </Text>
-          </View>
-
-        {/* Center: Lock Icon with Battery */}
-        <View style={styles.centerDisplay}>
-          <View style={styles.lockIconContainer}>
-            <Ionicons name="lock-closed" size={48} color={Colors.iconbackground} />
-          </View>
-          <View style={styles.batteryBadge}>
-            <Ionicons
-              name={batteryLevel <= 25 ? "battery-dead" : batteryLevel <= 50 ? "battery-half" : "battery-full"}
-              size={24}
-              color={getBatteryColor()}
-            />
-            <Text style={[styles.batteryBadgeText, { color: getBatteryColor() }]}>
-              {batteryLevel > 0 && batteryLevel <= 100 ? `${batteryLevel}%` : 'N/A'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Two Control Buttons */}
-        {canControl ? (
-          !scheduleStatus.isWithinSchedule ? (
-            // Schedule restricted - show disabled buttons with message
-            <View style={styles.scheduleRestrictedContainer}>
-              <View style={styles.scheduleRestrictedBadge}>
-                <Ionicons name="time-outline" size={18} color={Colors.subtitlecolor} />
-                <Text style={styles.scheduleRestrictedText}>{scheduleStatus.message}</Text>
-              </View>
-              <View style={styles.controlButtonsRow}>
-                <TouchableOpacity
-                  style={[styles.controlButton, styles.controlButtonScheduleDisabled]}
-                  onPress={handleUnlock}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="lock-open" size={20} color={Colors.subtitlecolor} />
-                  <Text style={styles.controlButtonTextDisabled}>Unlock</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.controlButton, styles.controlButtonScheduleDisabled]}
-                  onPress={handleLock}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="lock-closed" size={20} color={Colors.subtitlecolor} />
-                  <Text style={styles.controlButtonTextDisabled}>Lock</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            // Normal control buttons
-            <View style={styles.controlButtonsRow}>
-              {/* Unlock Button */}
+          {/* Top Row: Edit Icon + Lock Name (Left) | Battery Level (Right) */}
+          <View style={styles.topRow}>
+            <View style={styles.nameWithEditContainer}>
               <TouchableOpacity
-                style={[
-                  styles.controlButton,
-                  styles.unlockButton,
-                  isUnlocking && styles.controlButtonProcessing,
-                  isLocking && styles.controlButtonDisabled,
-                ]}
-                onPress={handleUnlock}
-                disabled={isProcessing}
-                activeOpacity={0.7}
+                style={styles.editButtonInline}
+                onPress={handleEditPress}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                {isUnlocking ? (
-                  <ActivityIndicator size="small" color={Colors.textwhite} />
-                ) : (
-                  <Ionicons name="lock-open" size={20} color={Colors.textwhite} />
-                )}
-                <Text style={styles.controlButtonText}>
-                  {isUnlocking ? 'Unlocking...' : 'Unlock'}
-                </Text>
+                <Ionicons name="create-outline" size={16} color={Colors.iconbackground} />
               </TouchableOpacity>
-
-              {/* Lock Button */}
-              <TouchableOpacity
-                style={[
-                  styles.controlButton,
-                  styles.lockButtonStyle,
-                  isLocking && styles.controlButtonProcessing,
-                  isUnlocking && styles.controlButtonDisabled,
-                ]}
-                onPress={handleLock}
-                disabled={isProcessing}
-                activeOpacity={0.7}
-              >
-                {isLocking ? (
-                  <ActivityIndicator size="small" color={Colors.textwhite} />
-                ) : (
-                  <Ionicons name="lock-closed" size={20} color={Colors.textwhite} />
-                )}
-                <Text style={styles.controlButtonText}>
-                  {isLocking ? 'Locking...' : 'Lock'}
-                </Text>
-              </TouchableOpacity>
+              <Text style={styles.prominentLockName} numberOfLines={1}>
+                {getLockDisplayName()}
+              </Text>
             </View>
-          )
-        ) : (
-          <View style={styles.noControlContainer}>
-            <Ionicons name="alert-circle-outline" size={24} color="#FF3B30" />
-            <Text style={styles.noControlText}>No control method available</Text>
+            <View style={styles.batteryBadgeCompact}>
+              <Ionicons
+                name={batteryLevel <= 25 ? "battery-dead" : batteryLevel <= 50 ? "battery-half" : "battery-full"}
+                size={18}
+                color={getBatteryColor()}
+              />
+              <Text style={[styles.batteryBadgeTextCompact, { color: getBatteryColor() }]}>
+                {batteryLevel > 0 && batteryLevel <= 100 ? `${batteryLevel}%` : 'N/A'}
+              </Text>
+            </View>
           </View>
-        )}
 
-          {/* Bottom Row - Settings */}
+          {/* Second Row: Control Buttons */}
+          <View style={styles.secondRow}>
+            {/* Control Buttons */}
+            {canControl ? (
+              !scheduleStatus.isWithinSchedule ? (
+                // Schedule restricted - show disabled buttons with message
+                <View style={styles.controlButtonsColumn}>
+                  <View style={styles.scheduleRestrictedBadgeCompact}>
+                    <Ionicons name="time-outline" size={14} color={Colors.subtitlecolor} />
+                    <Text style={styles.scheduleRestrictedTextCompact}>{scheduleStatus.message}</Text>
+                  </View>
+                  <View style={styles.controlButtonsRowCompact}>
+                    <TouchableOpacity
+                      style={[styles.controlButtonCompact, styles.controlButtonScheduleDisabled]}
+                      onPress={handleUnlock}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="lock-open" size={16} color={Colors.subtitlecolor} />
+                      <Text style={styles.controlButtonTextDisabledCompact}>Unlock</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.controlButtonCompact, styles.controlButtonScheduleDisabled]}
+                      onPress={handleLock}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="lock-closed" size={16} color={Colors.subtitlecolor} />
+                      <Text style={styles.controlButtonTextDisabledCompact}>Lock</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                // Normal control buttons
+                <View style={styles.controlButtonsRowCompact}>
+                  {/* Unlock Button */}
+                  <TouchableOpacity
+                    style={[
+                      styles.controlButtonCompact,
+                      styles.unlockButton,
+                      isUnlocking && styles.controlButtonProcessing,
+                      isLocking && styles.controlButtonDisabled,
+                    ]}
+                    onPress={handleUnlock}
+                    disabled={isProcessing}
+                    activeOpacity={0.7}
+                  >
+                    {isUnlocking ? (
+                      <ActivityIndicator size="small" color={Colors.textwhite} />
+                    ) : (
+                      <Ionicons name="lock-open" size={16} color={Colors.textwhite} />
+                    )}
+                    <Text style={styles.controlButtonTextCompact}>
+                      {isUnlocking ? '...' : 'Unlock'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Lock Button */}
+                  <TouchableOpacity
+                    style={[
+                      styles.controlButtonCompact,
+                      styles.lockButtonStyle,
+                      isLocking && styles.controlButtonProcessing,
+                      isUnlocking && styles.controlButtonDisabled,
+                    ]}
+                    onPress={handleLock}
+                    disabled={isProcessing}
+                    activeOpacity={0.7}
+                  >
+                    {isLocking ? (
+                      <ActivityIndicator size="small" color={Colors.textwhite} />
+                    ) : (
+                      <Ionicons name="lock-closed" size={16} color={Colors.textwhite} />
+                    )}
+                    <Text style={styles.controlButtonTextCompact}>
+                      {isLocking ? '...' : 'Lock'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )
+            ) : (
+              <View style={styles.noControlContainerCompact}>
+                <Ionicons name="alert-circle-outline" size={18} color="#FF3B30" />
+                <Text style={styles.noControlTextCompact}>No control available</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Bottom Row - Explore More Features */}
           <View style={styles.prominentFooter}>
             <TouchableOpacity style={styles.settingsButton} onPress={handleSettings}>
-              <Ionicons name="settings-outline" size={20} color={Colors.subtitlecolor} />
-              <Text style={styles.settingsText}>View Details</Text>
+              <Ionicons name="settings-outline" size={18} color={Colors.subtitlecolor} />
+              <Text style={styles.settingsText}>Explore More Features</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -475,67 +471,85 @@ const LockCard = ({
 };
 
 const styles = StyleSheet.create({
-  // Prominent Card Styles (Full Width)
+  // Prominent Card Styles (Full Width) - Compact Version
   prominentCard: {
     backgroundColor: Colors.cardbackground,
     borderRadius: Theme.radius.xl,
-    padding: Theme.spacing.lg,
-    paddingTop: Theme.spacing.xl,
-    alignItems: 'center',
+    padding: Theme.spacing.md,
+    paddingTop: Theme.spacing.lg,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
     position: 'relative',
-    minHeight: 280,
+    minHeight: 140,
   },
-  nameContainer: {
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Theme.spacing.md,
   },
-  prominentLockName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: Colors.titlecolor,
-    textAlign: 'center',
-  },
-  centerDisplay: {
+  nameWithEditContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: Theme.spacing.md,
-    gap: Theme.spacing.sm,
+    flex: 1,
+    marginRight: Theme.spacing.sm,
   },
-  lockIconContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+  editButtonInline: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: Colors.backgroundwhite,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: Theme.spacing.sm,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  batteryBadge: {
+  prominentLockName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.titlecolor,
+    flex: 1,
+  },
+  batteryBadgeCompact: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Theme.spacing.xs,
+    gap: 4,
     backgroundColor: Colors.backgroundwhite,
-    paddingHorizontal: Theme.spacing.md,
-    paddingVertical: Theme.spacing.sm,
-    borderRadius: Theme.radius.md,
+    paddingHorizontal: Theme.spacing.sm,
+    paddingVertical: 4,
+    borderRadius: Theme.radius.sm,
   },
-  batteryBadgeText: {
-    fontSize: 16,
-    fontWeight: '700',
+  batteryBadgeTextCompact: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  secondRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginBottom: Theme.spacing.sm,
   },
   controlButtonsRow: {
     flexDirection: 'row',
     gap: Theme.spacing.md,
     width: '100%',
     marginTop: Theme.spacing.md,
+  },
+  controlButtonsRowCompact: {
+    flexDirection: 'row',
+    gap: Theme.spacing.sm,
+    flex: 1,
+  },
+  controlButtonsColumn: {
+    flex: 1,
+    gap: Theme.spacing.xs,
   },
   controlButton: {
     flex: 1,
@@ -544,6 +558,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Theme.spacing.sm,
     paddingVertical: Theme.spacing.md,
+    borderRadius: Theme.radius.md,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  controlButtonCompact: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: Theme.spacing.sm,
+    paddingHorizontal: Theme.spacing.xs,
     borderRadius: Theme.radius.md,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
@@ -568,6 +597,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.textwhite,
   },
+  controlButtonTextCompact: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textwhite,
+  },
   scheduleRestrictedContainer: {
     gap: Theme.spacing.sm,
   },
@@ -582,8 +616,23 @@ const styles = StyleSheet.create({
     borderRadius: Theme.radius.md,
     marginBottom: Theme.spacing.sm,
   },
+  scheduleRestrictedBadgeCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: Colors.cardbackground,
+    paddingVertical: 4,
+    paddingHorizontal: Theme.spacing.sm,
+    borderRadius: Theme.radius.sm,
+  },
   scheduleRestrictedText: {
     fontSize: 13,
+    fontWeight: '600',
+    color: Colors.subtitlecolor,
+  },
+  scheduleRestrictedTextCompact: {
+    fontSize: 11,
     fontWeight: '600',
     color: Colors.subtitlecolor,
   },
@@ -597,6 +646,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.subtitlecolor,
   },
+  controlButtonTextDisabledCompact: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.subtitlecolor,
+  },
   noControlContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -607,8 +661,23 @@ const styles = StyleSheet.create({
     borderRadius: Theme.radius.md,
     marginTop: Theme.spacing.md,
   },
+  noControlContainerCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Theme.spacing.xs,
+    backgroundColor: '#FFEBEE',
+    paddingHorizontal: Theme.spacing.sm,
+    paddingVertical: 4,
+    borderRadius: Theme.radius.sm,
+    flex: 1,
+  },
   noControlText: {
     fontSize: 14,
+    color: '#FF3B30',
+    fontWeight: '500',
+  },
+  noControlTextCompact: {
+    fontSize: 11,
     color: '#FF3B30',
     fontWeight: '500',
   },
@@ -669,23 +738,6 @@ const styles = StyleSheet.create({
   },
 
   // Edit Button Styles
-  editButton: {
-    position: 'absolute',
-    top: Theme.spacing.md,
-    right: Theme.spacing.md,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.backgroundwhite,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    zIndex: 10,
-  },
 
   // Modal Styles
   modalOverlay: {

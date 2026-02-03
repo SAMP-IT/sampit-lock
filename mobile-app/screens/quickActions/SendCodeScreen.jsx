@@ -372,6 +372,52 @@ const SendCodeScreen = ({ navigation, route }) => {
           </AppCard>
         )}
 
+        {/* Code Type and Valid for - Top Section (Outside Card) */}
+        <View style={styles.topSection}>
+          {/* Code Type */}
+          <View style={styles.topSectionItem}>
+            <Text style={styles.topSectionLabel}>Code Type</Text>
+            <View style={styles.typeContainer}>
+              <TouchableOpacity
+                style={[styles.typeButton, codeType === 'permanent' && styles.typeButtonActive]}
+                onPress={() => setCodeType('permanent')}
+              >
+                <Text style={[styles.typeText, codeType === 'permanent' && styles.typeTextActive]}>
+                  Permanent
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.typeButton, codeType === 'temporary' && styles.typeButtonActive]}
+                onPress={() => setCodeType('temporary')}
+              >
+                <Text style={[styles.typeText, codeType === 'temporary' && styles.typeTextActive]}>
+                  Temporary
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Valid for - Only show for temporary codes */}
+          {codeType === 'temporary' && (
+            <View style={styles.topSectionItem}>
+              <Text style={[styles.topSectionLabel, styles.centeredLabel]}>Valid for</Text>
+              <View style={styles.durationButtons}>
+                {[1, 6, 12, 24, 48, 72].map((hours) => (
+                  <TouchableOpacity
+                    key={hours}
+                    style={[styles.durationButton, validHours === hours && styles.durationButtonActive]}
+                    onPress={() => setValidHours(hours)}
+                  >
+                    <Text style={[styles.durationText, validHours === hours && styles.durationTextActive]}>
+                      {hours}h
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
+
         <Section gapless>
           <AppCard style={styles.card}>
             {/* Passcode Input */}
@@ -392,7 +438,7 @@ const SendCodeScreen = ({ navigation, route }) => {
             </View>
 
             {/* Code Name */}
-            <Text style={styles.sectionLabel}>Code Name (Optional)</Text>
+            <Text style={styles.sectionLabel}>Code Name</Text>
             <TextInput
               style={styles.nameInput}
               value={codeName}
@@ -401,55 +447,6 @@ const SendCodeScreen = ({ navigation, route }) => {
               placeholderTextColor={Colors.subtitlecolor}
               maxLength={50}
             />
-
-            {/* Code Type - Fixed single line */}
-            <Text style={styles.sectionLabel}>Code Type</Text>
-            <View style={styles.typeContainer}>
-              <TouchableOpacity
-                style={[styles.typeButton, codeType === 'permanent' && styles.typeButtonActive]}
-                onPress={() => setCodeType('permanent')}
-              >
-                <Text style={[styles.typeText, codeType === 'permanent' && styles.typeTextActive]}>
-                  Permanent
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.typeButton, codeType === 'temporary' && styles.typeButtonActive]}
-                onPress={() => setCodeType('temporary')}
-              >
-                <Text style={[styles.typeText, codeType === 'temporary' && styles.typeTextActive]}>
-                  Temporary
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.typeButton, codeType === 'one_time' && styles.typeButtonActive]}
-                onPress={() => setCodeType('one_time')}
-              >
-                <Text style={[styles.typeText, codeType === 'one_time' && styles.typeTextActive]}>
-                  One-Time
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Duration for temporary codes */}
-            {codeType === 'temporary' && (
-              <View style={styles.durationContainer}>
-                <Text style={styles.sectionLabel}>Valid for</Text>
-                <View style={styles.durationButtons}>
-                  {[1, 6, 12, 24, 48, 72].map((hours) => (
-                    <TouchableOpacity
-                      key={hours}
-                      style={[styles.durationButton, validHours === hours && styles.durationButtonActive]}
-                      onPress={() => setValidHours(hours)}
-                    >
-                      <Text style={[styles.durationText, validHours === hours && styles.durationTextActive]}>
-                        {hours}h
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
 
             {/* Create Button */}
             <TouchableOpacity
@@ -576,6 +573,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#E65100',
   },
+  topSection: {
+    marginBottom: Theme.spacing.lg,
+    gap: Theme.spacing.md,
+  },
+  topSectionItem: {
+    gap: Theme.spacing.sm,
+  },
+  topSectionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.titlecolor,
+  },
+  centeredLabel: {
+    textAlign: 'center',
+  },
   card: {
     gap: Theme.spacing.md,
   },
@@ -648,6 +660,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Theme.spacing.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   durationButton: {
     paddingVertical: Theme.spacing.xs,

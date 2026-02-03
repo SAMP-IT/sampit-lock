@@ -96,7 +96,8 @@ const UserManagementScreen = ({ navigation, route }) => {
 
     // Get dominant role
     const roles = (user.locks || []).map(l => l.role);
-    const dominantRole = roles.includes('admin') ? 'admin' :
+    const dominantRole = roles.includes('owner') ? 'owner' :
+      roles.includes('admin') ? 'admin' :
       roles.includes('family') ? 'family' : 'guest';
 
     const userForEdit = {
@@ -116,6 +117,17 @@ const UserManagementScreen = ({ navigation, route }) => {
   };
 
   const handleRemoveUser = (user) => {
+    // Check if user is an owner of any lock
+    const isOwner = (user.locks || []).some(lock => lock.role === 'owner');
+    if (isOwner) {
+      Alert.alert(
+        'Cannot Remove Owner',
+        'Lock owners cannot be removed. Transfer ownership first if needed.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     const locksToRemove = lockFilter
       ? [{ lock_id: lockFilter, lock_name: locksData.find(l => l.id === lockFilter)?.name }]
       : user.locks;
@@ -135,7 +147,8 @@ const UserManagementScreen = ({ navigation, route }) => {
                 await removeUserFromLock(locksToRemove[0].lock_id, user.id);
                 fetchData(false);
               } catch (err) {
-                Alert.alert('Error', 'Failed to remove user. Please try again.');
+                const errorMsg = err.response?.data?.error?.message || 'Failed to remove user. Please try again.';
+                Alert.alert('Error', errorMsg);
               }
             },
           },
@@ -157,7 +170,8 @@ const UserManagementScreen = ({ navigation, route }) => {
                 await removeUserFromMultipleLocks(user.id, lockIds);
                 fetchData(false);
               } catch (err) {
-                Alert.alert('Error', 'Failed to remove user. Please try again.');
+                const errorMsg = err.response?.data?.error?.message || 'Failed to remove user. Please try again.';
+                Alert.alert('Error', errorMsg);
               }
             },
           },
@@ -168,6 +182,8 @@ const UserManagementScreen = ({ navigation, route }) => {
 
   const getRoleColor = (role) => {
     switch (role) {
+      case 'owner':
+        return '#dc2626'; // Red for owner
       case 'admin':
         return '#7c3aed'; // Purple
       case 'family':
@@ -181,6 +197,8 @@ const UserManagementScreen = ({ navigation, route }) => {
 
   const getRoleLabel = (role) => {
     switch (role) {
+      case 'owner':
+        return 'Owner';
       case 'admin':
         return 'Admin';
       case 'family':
@@ -198,7 +216,8 @@ const UserManagementScreen = ({ navigation, route }) => {
 
     // Get the dominant role (highest permission level)
     const roles = userLocks.map(l => l.role);
-    const dominantRole = roles.includes('admin') ? 'admin' :
+    const dominantRole = roles.includes('owner') ? 'owner' :
+      roles.includes('admin') ? 'admin' :
       roles.includes('family') ? 'family' : 'guest';
 
     return (
@@ -252,7 +271,7 @@ const UserManagementScreen = ({ navigation, route }) => {
               </Text>
             </View>
 
-            {canManageUsers && (
+            {canManageUsers && dominantRole !== 'owner' && (
               <TouchableOpacity
                 style={styles.removeButton}
                 onPress={() => handleRemoveUser(user)}
