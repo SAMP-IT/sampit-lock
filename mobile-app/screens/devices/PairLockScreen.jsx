@@ -172,14 +172,9 @@ const PairLockScreen = ({ navigation }) => {
     if (lock.isInitialized) {
       Alert.alert(
         'Lock Already Paired',
-        'This lock is already paired with another account. You can:\n\n1. Reset the lock and pair it\n2. Cancel and try another lock',
+        'This lock is already paired with another account. Please select a different lock that is available for pairing.',
         [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Reset & Pair',
-            style: 'destructive',
-            onPress: () => resetAndPair(lock)
-          }
+          { text: 'OK', style: 'cancel' }
         ]
       );
       return;
@@ -219,8 +214,8 @@ const PairLockScreen = ({ navigation }) => {
         const deletePwd = rawLockData.deletePwd || lockData.deletePwd || null;
         const noKeyPwd = rawLockData.noKeyPwd || lockData.noKeyPwd || null;
 
-        // Log recovery keys for debugging (remove in production)
-        console.log('[PairLock] Recovery keys from SDK:', {
+        // Recovery keys are sent to backend for storage (not stored locally in mobile app)
+        console.log('[PairLock] Recovery keys from SDK (sending to backend only):', {
           hasAdminPwd: !!adminPwd,
           hasDeletePwd: !!deletePwd,
           hasNoKeyPwd: !!noKeyPwd,
@@ -314,38 +309,88 @@ const PairLockScreen = ({ navigation }) => {
     }
   };
 
-  const renderLockItem = ({ item }) => (
-    <TouchableOpacity
-      style={[
-        styles.lockCard,
-        selectedLock?.lockMac === item.lockMac && styles.lockCardSelected
-      ]}
-      onPress={() => handleSelectLock(item)}
-    >
-      <View style={styles.lockIconContainer}>
-        <Ionicons
-          name={item.isInitialized ? 'lock-closed' : 'lock-open-outline'}
-          size={24}
-          color={item.isInitialized ? Colors.subtitlecolor : Colors.iconbackground}
-        />
-      </View>
-      <View style={styles.lockInfo}>
-        <Text style={styles.lockName}>{item.lockName}</Text>
-        <Text style={styles.lockMac}>{item.lockMac}</Text>
-        <Text style={styles.lockStatus}>
-          {item.isInitialized ? 'Already Paired' : 'Available'}
-        </Text>
-      </View>
-      <View style={styles.signalContainer}>
-        <Ionicons
-          name="bluetooth"
-          size={16}
-          color={item.rssi > -70 ? Colors.iconbackground : Colors.subtitlecolor}
-        />
-        <Text style={styles.signalText}>{item.rssi} dBm</Text>
-      </View>
-    </TouchableOpacity>
-  );
+  const renderLockItem = ({ item, isNearest = false }) => {
+    const isAvailable = !item.isInitialized;
+    
+    return (
+      <TouchableOpacity
+        style={[
+          styles.lockCard,
+          isAvailable && styles.lockCardAvailable,
+          selectedLock?.lockMac === item.lockMac && styles.lockCardSelected,
+          isNearest && isAvailable && styles.lockCardNearest
+        ]}
+        onPress={() => handleSelectLock(item)}
+        activeOpacity={0.7}
+      >
+        <View style={[
+          styles.lockIconContainer,
+          isAvailable && !isNearest && styles.lockIconContainerAvailable,
+          isNearest && isAvailable && styles.lockIconContainerNearest
+        ]}>
+          <Ionicons
+            name={item.isInitialized ? 'lock-closed' : 'lock-open-outline'}
+            size={24}
+            color={item.isInitialized ? Colors.subtitlecolor : Colors.iconbackground}
+          />
+          {isNearest && isAvailable && (
+            <View style={styles.locationPinOverlay}>
+              <Ionicons name="location" size={12} color={Colors.iconbackground} />
+            </View>
+          )}
+        </View>
+        <View style={styles.lockInfo}>
+          <View style={styles.lockNameRow}>
+            <Text style={[
+              styles.lockName,
+              isAvailable && styles.lockNameAvailable
+            ]}>
+              {item.lockName}
+            </Text>
+            {isNearest && isAvailable && (
+              <View style={styles.nearestBadge}>
+                <Ionicons name="star" size={10} color={Colors.textwhite} />
+                <Text style={styles.nearestBadgeText}>NEAREST</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.lockStatusRow}>
+            {isAvailable ? (
+              <>
+                <Ionicons name="checkmark-circle" size={16} color={Colors.iconbackground} />
+                <Text style={styles.lockStatusAvailable}>
+                  Available to Pair
+                </Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="information-circle-outline" size={16} color={Colors.subtitlecolor} />
+                <Text style={styles.lockStatus}>
+                  Already Paired
+                </Text>
+              </>
+            )}
+          </View>
+        </View>
+        <View style={styles.signalContainer}>
+          <Ionicons
+            name="bluetooth"
+            size={18}
+            color={isAvailable ? Colors.iconbackground : Colors.subtitlecolor}
+          />
+          <Text style={[
+            styles.signalText,
+            isAvailable && styles.signalTextAvailable
+          ]}>
+            {item.rssi} dBm
+          </Text>
+          {isAvailable && item.rssi > -70 && (
+            <Text style={styles.signalStrengthLabel}>STRONG</Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderConnectionStatus = () => {
     switch (connectionStatus) {
@@ -381,6 +426,19 @@ const PairLockScreen = ({ navigation }) => {
         );
 
       case 'selecting':
+        // Sort locks: available first, then by signal strength (highest RSSI = nearest)
+        const sortedLocks = [...discoveredLocks].sort((a, b) => {
+          // Available locks first
+          if (!a.isInitialized && b.isInitialized) return -1;
+          if (a.isInitialized && !b.isInitialized) return 1;
+          // Then sort by RSSI (higher = closer)
+          return (b.rssi || -100) - (a.rssi || -100);
+        });
+        
+        // Find the nearest available lock
+        const nearestAvailableLock = sortedLocks.find(lock => !lock.isInitialized);
+        const nearestLockMac = nearestAvailableLock?.lockMac;
+
         return (
           <View style={styles.statusContainer}>
             <View style={styles.successIconWrap}>
@@ -394,8 +452,8 @@ const PairLockScreen = ({ navigation }) => {
             </SimpleModeText>
 
             <FlatList
-              data={discoveredLocks}
-              renderItem={renderLockItem}
+              data={sortedLocks}
+              renderItem={({ item }) => renderLockItem({ item, isNearest: item.lockMac === nearestLockMac })}
               keyExtractor={(item) => item.lockMac}
               style={styles.locksList}
               scrollEnabled={false}
@@ -486,6 +544,15 @@ const PairLockScreen = ({ navigation }) => {
             <SimpleModeText style={styles.statusDescription}>
               Stand near your door. We'll scan for locks automatically.
             </SimpleModeText>
+            
+            <View style={styles.wakeUpReminder}>
+              <View style={styles.wakeUpIconContainer}>
+                <Ionicons name="flash-outline" size={20} color={Colors.iconbackground} />
+              </View>
+              <Text style={styles.wakeUpText}>
+                <Text style={styles.wakeUpTextBold}>Wake up the lock</Text> before Start
+              </Text>
+            </View>
           </View>
         );
     }
@@ -501,7 +568,7 @@ const PairLockScreen = ({ navigation }) => {
           <Ionicons name="chevron-back" size={24} color={Colors.titlecolor} />
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Text style={styles.stepIndicator}>Step 1 of 3</Text>
+          <Text style={styles.stepIndicator}>Step 1 of 2</Text>
           <SimpleModeText variant="heading" style={styles.headerTitle}>
             Pair the lock
           </SimpleModeText>
@@ -512,13 +579,15 @@ const PairLockScreen = ({ navigation }) => {
         {renderConnectionStatus()}
 
         {connectionStatus === 'waiting' && (
-          <SimpleModeButton
-            onPress={handleStartPairing}
-            icon="play-outline"
-            style={styles.startButton}
-          >
-            Start
-          </SimpleModeButton>
+          <>
+            <SimpleModeButton
+              onPress={handleStartPairing}
+              icon="play-outline"
+              style={styles.startButton}
+            >
+              Start
+            </SimpleModeButton>
+          </>
         )}
       </AppCard>
 
@@ -532,6 +601,9 @@ const PairLockScreen = ({ navigation }) => {
           </SimpleModeText>
         </View>
         <View style={styles.helpList}>
+          <SimpleModeText style={styles.helpItem}>
+            • Make sure you wake up the lock by touching the lock keypad before Start
+          </SimpleModeText>
           <SimpleModeText style={styles.helpItem}>
             • Stand within 2 meters of your door
           </SimpleModeText>
@@ -635,6 +707,37 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: 280,
   },
+  wakeUpReminder: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E0F7F5', // Light teal background matching app theme
+    paddingHorizontal: Theme.spacing.md,
+    paddingVertical: Theme.spacing.sm,
+    borderRadius: 12,
+    marginTop: Theme.spacing.md,
+    borderWidth: 2,
+    borderColor: Colors.iconbackground,
+    gap: Theme.spacing.sm,
+    maxWidth: 320,
+  },
+  wakeUpIconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.iconbackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wakeUpText: {
+    fontSize: 14,
+    color: Colors.titlecolor,
+    textAlign: 'center',
+  },
+  wakeUpTextBold: {
+    fontWeight: '700',
+    color: Colors.iconbackground,
+  },
   locksList: {
     width: '100%',
     maxHeight: 300,
@@ -650,9 +753,24 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
   },
+  lockCardAvailable: {
+    backgroundColor: '#f0f9ff', // Light blue background
+    borderColor: '#bae6fd', // Light blue border
+    borderWidth: 2,
+  },
+  lockCardNearest: {
+    backgroundColor: '#f0fdf4', // Light green background
+    borderColor: '#bbf7d0', // Light green border
+    borderWidth: 2.5,
+    shadowColor: Colors.iconbackground,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   lockCardSelected: {
     borderColor: Colors.iconbackground,
-    backgroundColor: `${Colors.iconbackground}10`,
+    backgroundColor: `${Colors.iconbackground}15`,
   },
   lockIconContainer: {
     width: 40,
@@ -662,33 +780,114 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Theme.spacing.sm,
+    position: 'relative',
+  },
+  lockIconContainerAvailable: {
+    backgroundColor: '#dbeafe', // Light blue icon background for available locks
+  },
+  lockIconContainerNearest: {
+    backgroundColor: '#dcfce7', // Light green icon background for nearest lock
+  },
+  locationPinOverlay: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#E0F7F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.iconbackground,
   },
   lockInfo: {
     flex: 1,
+  },
+  lockNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Theme.spacing.xs,
+    marginBottom: 2,
+    flexWrap: 'wrap',
   },
   lockName: {
     fontSize: 15,
     fontWeight: '600',
     color: Colors.titlecolor,
-    marginBottom: 2,
+  },
+  lockNameAvailable: {
+    color: Colors.iconbackground,
+    fontWeight: '700',
   },
   lockMac: {
     fontSize: 12,
     color: Colors.subtitlecolor,
     marginBottom: 2,
   },
+  lockStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
   lockStatus: {
-    fontSize: 11,
+    fontSize: 12,
     color: Colors.subtitlecolor,
     fontStyle: 'italic',
+  },
+  lockStatusAvailable: {
+    fontSize: 12,
+    color: Colors.iconbackground,
+    fontWeight: '600',
+    fontStyle: 'normal',
+  },
+  nearestBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#86efac', // Light green badge for nearest lock
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 4,
+  },
+  availableBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#bfdbfe', // Light blue badge for available locks
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 4,
+  },
+  nearestBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: Colors.textwhite,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   signalContainer: {
     alignItems: 'center',
     gap: 4,
+    minWidth: 60,
   },
   signalText: {
     fontSize: 10,
     color: Colors.subtitlecolor,
+  },
+  signalTextAvailable: {
+    fontSize: 11,
+    color: Colors.iconbackground,
+    fontWeight: '600',
+  },
+  signalStrengthLabel: {
+    fontSize: 9,
+    color: Colors.iconbackground,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 2,
   },
   startButton: {
     minWidth: 120,

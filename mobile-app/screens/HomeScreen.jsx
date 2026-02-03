@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { StyleSheet, View, ScrollView, Alert, Text, TouchableOpacity, ActivityIndicator, RefreshControl } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -52,6 +52,11 @@ const HomeScreen = ({ navigation }) => {
   const [userName, setUserName] = useState('');
   const [isLocking, setIsLocking] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
+
+  // Refs for scrolling
+  const scrollViewRef = useRef(null);
+  const switchLockRef = useRef(null);
+  const [switchLockY, setSwitchLockY] = useState(0);
 
   // Result modal state
   const [resultModal, setResultModal] = useState({
@@ -271,19 +276,25 @@ const HomeScreen = ({ navigation }) => {
   const handleAddLock = () => {
     if (!ttlockStatus?.connected) {
       Alert.alert(
-        'TTLock Account Required',
-        'To add a lock via Bluetooth, you need to connect your TTLock account first. This ensures your lock data is synced to the cloud for remote access.',
+        'Cloud Account Required',
+        'To add a lock via Bluetooth, you need to connect your cloud account first. This ensures your lock data is synced to the cloud for remote access.',
         [
           { text: 'Cancel', style: 'cancel' },
           {
-            text: 'Connect TTLock',
+            text: 'Connect Cloud',
             onPress: () => navigation.navigate('ConnectTTLock')
           }
         ]
       );
       return;
     }
-    navigation.navigate('AddLockWizard');
+    navigation.navigate('PairLock');
+  };
+
+  const handleLockCountPress = () => {
+    if (locks.length > 1 && switchLockY > 0 && scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ y: Math.max(0, switchLockY - 20), animated: true });
+    }
   };
 
   // Empty state for locks
@@ -335,6 +346,7 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <AppScreen
+      ref={scrollViewRef}
       contentContainerStyle={styles.content}
       refreshing={isRefreshing}
       onRefresh={onRefresh}
@@ -355,6 +367,7 @@ const HomeScreen = ({ navigation }) => {
         showNotification={false}
         showLockCount={true}
         lockCount={locks.length}
+        onLockCountPress={locks.length > 1 ? handleLockCountPress : undefined}
       />
 
       {locks.length > 0 ? (
@@ -382,7 +395,24 @@ const HomeScreen = ({ navigation }) => {
 
             {/* Lock Selector - Only show if multiple locks */}
             {locks.length > 1 && (
-              <View style={styles.lockSelectorContainer}>
+              <View 
+                ref={switchLockRef}
+                onLayout={(event) => {
+                  const { y } = event.nativeEvent.layout;
+                  // Get the absolute position relative to the ScrollView
+                  switchLockRef.current?.measureLayout(
+                    scrollViewRef.current,
+                    (x, measuredY) => {
+                      setSwitchLockY(measuredY);
+                    },
+                    () => {
+                      // Fallback: use relative Y position
+                      setSwitchLockY(y);
+                    }
+                  );
+                }}
+                style={styles.lockSelectorContainer}
+              >
                 <Text style={styles.lockSelectorTitle}>Switch Lock</Text>
                 <ScrollView
                   horizontal

@@ -209,7 +209,7 @@ const RecoveryKeysScreen = ({ navigation, route }) => {
           <Ionicons name="key-outline" size={48} color={Colors.subtitlecolor} />
           <Text style={styles.noKeysTitle}>No Recovery Keys</Text>
           <Text style={styles.noKeysText}>
-            Recovery keys are generated when a lock is paired via Bluetooth. If you paired this lock through the TTLock app or cloud, recovery keys may not be available.
+            Recovery keys are generated when a lock is paired via Bluetooth. If you paired this lock through the lock app or cloud, recovery keys may not be available.
           </Text>
         </AppCard>
       ) : (

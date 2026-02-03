@@ -722,7 +722,12 @@ export const refreshToken = async (req, res) => {
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const updates = req.body;
+    const updates = { ...req.body };
+    
+    // Convert empty phone string to null for database (phone is optional)
+    if (updates.phone !== undefined) {
+      updates.phone = updates.phone === '' ? null : updates.phone;
+    }
 
     // Update user in database
     const { data: user, error } = await supabase

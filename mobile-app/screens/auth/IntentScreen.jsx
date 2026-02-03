@@ -10,8 +10,8 @@ const IntentScreen = ({ navigation }) => {
   // TTLock is now the primary auth, so user is already connected after login
 
   const handleSetupNewLock = () => {
-    // User is already authenticated with TTLock, proceed to add lock wizard
-    navigation.navigate('AddLockWizard');
+    // User is already authenticated with TTLock, proceed directly to pair lock
+    navigation.navigate('PairLock');
   };
 
   const handleUseExistingLock = () => {

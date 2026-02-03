@@ -29,6 +29,7 @@ const Header = ({
   onProfilePress,
   showLockCount = false,
   lockCount = 0,
+  onLockCountPress,
 }) => {
   return (
     <View style={styles.header}>
@@ -52,10 +53,15 @@ const Header = ({
 
       <View style={styles.rightSection}>
         {showLockCount && (
-          <View style={styles.lockCountBadge}>
+          <TouchableOpacity 
+            style={styles.lockCountBadge}
+            onPress={onLockCountPress}
+            disabled={!onLockCountPress}
+            activeOpacity={onLockCountPress ? 0.7 : 1}
+          >
             <Ionicons name="lock-closed" size={18} color={Colors.iconbackground} />
             <Text style={styles.lockCountText}>{lockCount}</Text>
-          </View>
+          </TouchableOpacity>
         )}
 
         {showLocation && (

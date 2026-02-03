@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AppScreen from '../../components/ui/AppScreen';
 import AppCard from '../../components/ui/AppCard';
@@ -7,6 +7,7 @@ import Colors from '../../constants/Colors';
 import Theme from '../../constants/Theme';
 import { SimpleModeText, SimpleModeButton } from '../../components/ui/SimpleMode';
 import { updateLock, addLock } from '../../services/api';
+import { useRole } from '../../context/RoleContext';
 
 const NameDoorScreen = ({ navigation, route }) => {
   // Get params - lockId is passed when lock was saved in PairLockScreen
@@ -15,6 +16,7 @@ const NameDoorScreen = ({ navigation, route }) => {
   const [doorName, setDoorName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { inferRole } = useRole();
 
   const suggestionExamples = [
     'Front Door',
@@ -64,11 +66,26 @@ const NameDoorScreen = ({ navigation, route }) => {
           await updateLock(lockId, { name: doorName.trim() });
         }
 
-        // Navigate to safety backup with lockId
-        navigation.navigate('SafetyBackup', {
-          lockId: finalLockId,
-          doorName: doorName.trim()
-        });
+        // Show success popup and automatically redirect to home
+        inferRole({ type: 'lock_added', lockId: finalLockId });
+        
+        Alert.alert(
+          'Lock Connected Successfully',
+          'Your lock has been paired and is ready to use.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Reset navigation stack and go to Home screen
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'ConsumerTabs' }],
+                });
+              }
+            }
+          ],
+          { cancelable: false }
+        );
       } catch (err) {
         console.error('[NameDoor] Error:', err);
         setError(needsSave ? "Failed to save lock." : "Failed to update lock name.");
@@ -92,7 +109,7 @@ const NameDoorScreen = ({ navigation, route }) => {
           <Ionicons name="chevron-back" size={24} color={Colors.titlecolor} />
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Text style={styles.stepIndicator}>Step 2 of 3</Text>
+          <Text style={styles.stepIndicator}>Step 2 of 2</Text>
           <SimpleModeText variant="heading" style={styles.headerTitle}>
             Name your door
           </SimpleModeText>
@@ -121,16 +138,27 @@ const NameDoorScreen = ({ navigation, route }) => {
 
         <View style={styles.inputSection}>
           <Text style={styles.inputLabel}>Door name</Text>
-          <TextInput
-            style={styles.textInput}
-            value={doorName}
-            onChangeText={setDoorName}
-            placeholder="Enter door name"
-            placeholderTextColor={Colors.subtitlecolor}
-            autoCapitalize="words"
-            autoCorrect={false}
-            maxLength={30}
-          />
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.textInput}
+              value={doorName}
+              onChangeText={setDoorName}
+              placeholder="Enter door name"
+              placeholderTextColor={Colors.subtitlecolor}
+              autoCapitalize="words"
+              autoCorrect={false}
+              maxLength={30}
+            />
+            {doorName.length > 0 && (
+              <TouchableOpacity
+                style={styles.clearButton}
+                onPress={() => setDoorName('')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close-circle" size={20} color={Colors.subtitlecolor} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         <SimpleModeButton
@@ -277,16 +305,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.titlecolor,
   },
-  textInput: {
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: Colors.background,
     borderRadius: Theme.radius.md,
+    borderWidth: 2,
+    borderColor: Colors.bordercolor,
+    minHeight: Theme.accessibility.minTouchTarget,
+  },
+  textInput: {
+    flex: 1,
     paddingHorizontal: Theme.spacing.md,
     paddingVertical: Theme.spacing.sm,
     fontSize: 18, // Larger for accessibility
-    color: Colors.titlecolor,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    color: '#000000', // Explicit black color for text visibility
     minHeight: Theme.accessibility.minTouchTarget,
+  },
+  clearButton: {
+    padding: Theme.spacing.xs,
+    marginRight: Theme.spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   continueButton: {
     minWidth: 140,

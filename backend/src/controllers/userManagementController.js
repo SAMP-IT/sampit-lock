@@ -203,10 +203,8 @@ export const getLockUsers = async (req, res) => {
       `)
       .eq('lock_id', lockId);
 
-    // Exclude owner from the list
-    if (lock?.owner_id) {
-      query = query.neq('user_id', lock.owner_id);
-    }
+    // Include owner in the list (no longer excluding)
+    // Owner will have role 'owner' in user_locks table
 
     // Filter by role if specified
     if (role) {
@@ -369,15 +367,15 @@ export const getAllUsersForAllLocks = async (req, res) => {
       });
     }
 
-    // Filter out owners and group users with their locks
+    // Group users with their locks (including owners)
     const userMap = new Map();
 
     (userLocks || []).forEach(ul => {
-      // Skip if user is owner of this lock
-      if (ul.lock?.owner_id === ul.user?.id) return;
-
       const userId = ul.user?.id;
       if (!userId) return;
+      
+      // Mark if user is owner of this lock
+      const isOwner = ul.lock?.owner_id === ul.user?.id;
 
       if (!userMap.has(userId)) {
         userMap.set(userId, {
@@ -395,7 +393,7 @@ export const getAllUsersForAllLocks = async (req, res) => {
         lock_name: ul.lock?.location || ul.lock?.name,  // Use location as user-friendly name, fallback to model name
         lock_model: ul.lock?.name,  // Model number like "M302_48bc98"
         location: ul.lock?.location,  // Location like "Front Door"
-        role: ul.role,
+        role: isOwner ? 'owner' : ul.role,  // Use 'owner' role if user owns the lock
         is_active: ul.is_active,
         notes: ul.notes,
         added_at: ul.created_at
@@ -409,7 +407,8 @@ export const getAllUsersForAllLocks = async (req, res) => {
     const stats = {
       total_users: users.length,
       admins: new Set(allUserLocks.filter(ul => ul.role === 'admin').map(ul => users.find(u => u.locks.includes(ul))?.id)).size,
-      family: new Set(allUserLocks.filter(ul => ul.role === 'family').map(ul => users.find(u => u.locks.includes(ul))?.id)).size
+      family: new Set(allUserLocks.filter(ul => ul.role === 'family').map(ul => users.find(u => u.locks.includes(ul))?.id)).size,
+      owners: new Set(allUserLocks.filter(ul => ul.role === 'owner').map(ul => users.find(u => u.locks.includes(ul))?.id)).size
     };
 
     // Get list of locks for filter dropdown

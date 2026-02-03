@@ -94,7 +94,7 @@ const FactoryResetScreen = ({ navigation, route }) => {
 
   const handleCloudReset = async () => {
     if (!ttlockLockId) {
-      Alert.alert('Not Available', 'Cloud reset requires TTLock connection');
+      Alert.alert('Not Available', 'Cloud reset requires cloud connection');
       return;
     }
 
@@ -264,7 +264,7 @@ const FactoryResetScreen = ({ navigation, route }) => {
             <Text style={styles.optionDescription}>
               {ttlockLockId
                 ? 'Invalidate all shared eKeys via gateway'
-                : 'Lock not connected to TTLock Cloud'}
+                : 'Lock not connected to Cloud'}
             </Text>
           </View>
           {ttlockLockId && (

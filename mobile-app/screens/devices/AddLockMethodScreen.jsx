@@ -41,17 +41,17 @@ const AddLockMethodScreen = ({ navigation }) => {
   const handleBluetoothPairing = async () => {
     // Check if TTLock account is connected
     if (!ttlockStatus?.connected) {
-      Alert.alert(
-        'TTLock Account Required',
-        'To pair a lock via Bluetooth, you need to connect your TTLock account first. This ensures your lock data is synced to the cloud for remote access.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Connect TTLock',
-            onPress: () => navigation.navigate('ConnectTTLock')
-          }
-        ]
-      );
+        Alert.alert(
+          'Cloud Account Required',
+          'To pair a lock via Bluetooth, you need to connect your cloud account first. This ensures your lock data is synced to the cloud for remote access.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Connect Cloud',
+              onPress: () => navigation.navigate('ConnectTTLock')
+            }
+          ]
+        );
       return;
     }
 
@@ -125,12 +125,12 @@ const AddLockMethodScreen = ({ navigation }) => {
             ) : ttlockStatus?.connected ? (
               <View style={[styles.statusContainer, styles.statusConnected]}>
                 <Ionicons name="checkmark-circle" size={16} color="#34C759" />
-                <Text style={[styles.statusText, { color: '#34C759' }]}>TTLock account connected</Text>
+                <Text style={[styles.statusText, { color: '#34C759' }]}>Cloud account connected</Text>
               </View>
             ) : (
               <View style={[styles.statusContainer, styles.statusNotConnected]}>
                 <Ionicons name="alert-circle" size={16} color="#FF9500" />
-                <Text style={[styles.statusText, { color: '#FF9500' }]}>TTLock account required</Text>
+                <Text style={[styles.statusText, { color: '#FF9500' }]}>Cloud account required</Text>
               </View>
             )}
 
@@ -154,9 +154,9 @@ const AddLockMethodScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.optionContent}>
-            <Text style={styles.optionTitle}>Connect TTLock Cloud</Text>
+            <Text style={styles.optionTitle}>Connect Cloud</Text>
             <Text style={styles.optionDescription}>
-              Sync locks from your TTLock account
+              Sync locks from your cloud account
             </Text>
 
             <View style={styles.featuresList}>
@@ -176,12 +176,12 @@ const AddLockMethodScreen = ({ navigation }) => {
 
             <View style={styles.requiresContainer}>
               <Ionicons name="information-circle-outline" size={16} color="#FF9500" />
-              <Text style={styles.requiresText}>Requires TTLock Gateway for remote control</Text>
+              <Text style={styles.requiresText}>Requires Gateway for remote control</Text>
             </View>
 
             <View style={styles.bestForContainer}>
               <Text style={styles.bestForLabel}>Best for:</Text>
-              <Text style={styles.bestForText}>Existing TTLock users, remote control</Text>
+              <Text style={styles.bestForText}>Existing users, remote control</Text>
             </View>
           </View>
 

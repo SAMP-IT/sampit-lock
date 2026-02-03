@@ -9,6 +9,13 @@ import { useRole } from '../../context/RoleContext';
 import { signUp } from '../../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import secureStorage from '../../services/secureStorage';
+import {
+  validateEmail,
+  validatePassword,
+  validatePasswordMatch,
+  validateName,
+  sanitizeInput
+} from '../../utils/validation';
 
 const SignUpScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
@@ -23,46 +30,143 @@ const SignUpScreen = ({ navigation }) => {
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    firstName: '',
+    lastName: '',
+  });
+  const [touchedFields, setTouchedFields] = useState({
+    email: false,
+    password: false,
+    confirmPassword: false,
+    firstName: false,
+    lastName: false,
+  });
   const { setRole } = useRole();
 
   const updateFormData = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    // Sanitize input based on field type
+    let sanitizedValue = value;
+    
+    if (field === 'email') {
+      // For email, allow email-valid characters
+      sanitizedValue = sanitizeInput(value, { allowSpecialChars: true, trim: false });
+    } else if (field === 'firstName' || field === 'lastName') {
+      // For names, allow letters, spaces, hyphens, apostrophes
+      sanitizedValue = sanitizeInput(value, { allowSpaces: true, allowSpecialChars: false, trim: false });
+      // Further sanitize to only allow name-valid characters
+      sanitizedValue = sanitizedValue.replace(/[^a-zA-Z\s'-]/g, '');
+    } else if (field === 'password' || field === 'confirmPassword') {
+      // For passwords, allow most characters but remove SQL injection patterns
+      sanitizedValue = sanitizeInput(value, { allowSpecialChars: true, trim: false });
+    }
+
+    setFormData(prev => ({ ...prev, [field]: sanitizedValue }));
+
+    // Real-time validation
+    if (touchedFields[field] || value.length > 0) {
+      validateField(field, sanitizedValue);
+    }
+  };
+
+  const validateField = (field, value) => {
+    let error = '';
+
+    switch (field) {
+      case 'email':
+        const emailValidation = validateEmail(value);
+        if (!emailValidation.isValid && value.length > 0) {
+          error = emailValidation.message;
+        }
+        break;
+      case 'password':
+        const passwordValidation = validatePassword(value);
+        if (!passwordValidation.isValid && value.length > 0) {
+          error = passwordValidation.message;
+        }
+        break;
+      case 'confirmPassword':
+        if (value.length > 0) {
+          const matchValidation = validatePasswordMatch(formData.password, value);
+          if (!matchValidation.isValid) {
+            error = matchValidation.message;
+          }
+        }
+        break;
+      case 'firstName':
+        const firstNameValidation = validateName(value);
+        if (!firstNameValidation.isValid && value.length > 0) {
+          error = firstNameValidation.message;
+        }
+        break;
+      case 'lastName':
+        const lastNameValidation = validateName(value);
+        if (!lastNameValidation.isValid && value.length > 0) {
+          error = lastNameValidation.message;
+        }
+        break;
+    }
+
+    setFieldErrors(prev => ({ ...prev, [field]: error }));
+  };
+
+  const handleBlur = (field) => {
+    setTouchedFields(prev => ({ ...prev, [field]: true }));
+    validateField(field, formData[field]);
   };
 
   const handleSignUp = async () => {
     setIsLoading(true);
     setError(null);
 
-    // Validate email
-    if (!formData.email || !formData.email.includes('@')) {
-      setError("Please enter a valid email address.");
+    // Mark all fields as touched
+    const allFields = ['email', 'firstName', 'lastName', 'password', 'confirmPassword'];
+    allFields.forEach(field => {
+      setTouchedFields(prev => ({ ...prev, [field]: true }));
+      validateField(field, formData[field]);
+    });
+
+    // Validate all fields
+    const emailValidation = validateEmail(formData.email);
+    const firstNameValidation = validateName(formData.firstName);
+    const lastNameValidation = validateName(formData.lastName);
+    const passwordValidation = validatePassword(formData.password);
+    const passwordMatchValidation = validatePasswordMatch(formData.password, formData.confirmPassword);
+
+    // Check if any validation failed
+    if (!emailValidation.isValid) {
+      setFieldErrors(prev => ({ ...prev, email: emailValidation.message }));
+      setError(emailValidation.message);
       setIsLoading(false);
       return;
     }
 
-    // Validate first name
-    if (!formData.firstName.trim()) {
-      setError("Please enter your first name.");
+    if (!firstNameValidation.isValid) {
+      setFieldErrors(prev => ({ ...prev, firstName: firstNameValidation.message }));
+      setError(firstNameValidation.message);
       setIsLoading(false);
       return;
     }
 
-    // Validate last name
-    if (!formData.lastName.trim()) {
-      setError("Please enter your last name.");
+    if (!lastNameValidation.isValid) {
+      setFieldErrors(prev => ({ ...prev, lastName: lastNameValidation.message }));
+      setError(lastNameValidation.message);
       setIsLoading(false);
       return;
     }
 
-    // Validate password length
-    if (formData.password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    if (!passwordValidation.isValid) {
+      setFieldErrors(prev => ({ ...prev, password: passwordValidation.message }));
+      setError(passwordValidation.message);
       setIsLoading(false);
       return;
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match.");
+    if (!passwordMatchValidation.isValid) {
+      setFieldErrors(prev => ({ ...prev, confirmPassword: passwordMatchValidation.message }));
+      setError(passwordMatchValidation.message);
       setIsLoading(false);
       return;
     }
@@ -73,13 +177,18 @@ const SignUpScreen = ({ navigation }) => {
       return;
     }
 
+    // Sanitize all inputs before sending
+    const sanitizedEmail = emailValidation.sanitized || sanitizeInput(formData.email.trim().toLowerCase(), { allowSpecialChars: true });
+    const sanitizedFirstName = sanitizeInput(formData.firstName.trim(), { allowSpaces: true, allowSpecialChars: false });
+    const sanitizedLastName = sanitizeInput(formData.lastName.trim(), { allowSpaces: true, allowSpecialChars: false });
+
     try {
-      console.log('🔐 SignUpScreen: Starting registration for:', formData.email);
+      console.log('🔐 SignUpScreen: Starting registration for:', sanitizedEmail);
       const response = await signUp({
-        email: formData.email,
-        password: formData.password,
-        first_name: formData.firstName,
-        last_name: formData.lastName
+        email: sanitizedEmail,
+        password: formData.password, // Password is already validated, no need to sanitize
+        first_name: sanitizedFirstName,
+        last_name: sanitizedLastName
       });
 
       const { token, refresh_token, user } = response.data;
@@ -139,12 +248,21 @@ const SignUpScreen = ({ navigation }) => {
       <AppCard style={styles.authCard}>
         <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>Email</Text>
-          <View style={styles.inputWrapper}>
-            <Ionicons name="mail-outline" size={20} color={Colors.subtitlecolor} style={styles.inputIcon} />
+          <View style={[
+            styles.inputWrapper,
+            touchedFields.email && fieldErrors.email && styles.inputWrapperError
+          ]}>
+            <Ionicons 
+              name="mail-outline" 
+              size={20} 
+              color={touchedFields.email && fieldErrors.email ? '#ef4444' : Colors.subtitlecolor} 
+              style={styles.inputIcon} 
+            />
             <TextInput
               style={styles.textInput}
               value={formData.email}
               onChangeText={(value) => updateFormData('email', value)}
+              onBlur={() => handleBlur('email')}
               placeholder="Enter your email"
               placeholderTextColor={Colors.subtitlecolor}
               keyboardType="email-address"
@@ -152,49 +270,75 @@ const SignUpScreen = ({ navigation }) => {
               autoCorrect={false}
             />
           </View>
+          {touchedFields.email && fieldErrors.email && (
+            <Text style={styles.fieldErrorText}>{fieldErrors.email}</Text>
+          )}
         </View>
 
         <View style={styles.nameRow}>
           <View style={[styles.inputContainer, { flex: 1 }]}>
             <Text style={styles.inputLabel}>First Name</Text>
-            <View style={styles.inputWrapper}>
+            <View style={[
+              styles.inputWrapper,
+              touchedFields.firstName && fieldErrors.firstName && styles.inputWrapperError
+            ]}>
               <TextInput
                 style={styles.textInput}
                 value={formData.firstName}
                 onChangeText={(value) => updateFormData('firstName', value)}
+                onBlur={() => handleBlur('firstName')}
                 placeholder="First name"
                 placeholderTextColor={Colors.subtitlecolor}
                 autoCapitalize="words"
                 autoCorrect={false}
               />
             </View>
+            {touchedFields.firstName && fieldErrors.firstName && (
+              <Text style={styles.fieldErrorText}>{fieldErrors.firstName}</Text>
+            )}
           </View>
           <View style={{ width: 12 }} />
           <View style={[styles.inputContainer, { flex: 1 }]}>
             <Text style={styles.inputLabel}>Last Name</Text>
-            <View style={styles.inputWrapper}>
+            <View style={[
+              styles.inputWrapper,
+              touchedFields.lastName && fieldErrors.lastName && styles.inputWrapperError
+            ]}>
               <TextInput
                 style={styles.textInput}
                 value={formData.lastName}
                 onChangeText={(value) => updateFormData('lastName', value)}
+                onBlur={() => handleBlur('lastName')}
                 placeholder="Last name"
                 placeholderTextColor={Colors.subtitlecolor}
                 autoCapitalize="words"
                 autoCorrect={false}
               />
             </View>
+            {touchedFields.lastName && fieldErrors.lastName && (
+              <Text style={styles.fieldErrorText}>{fieldErrors.lastName}</Text>
+            )}
           </View>
         </View>
 
         <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>Password</Text>
-          <View style={styles.inputWrapper}>
-            <Ionicons name="lock-closed-outline" size={20} color={Colors.subtitlecolor} style={styles.inputIcon} />
+          <View style={[
+            styles.inputWrapper,
+            touchedFields.password && fieldErrors.password && styles.inputWrapperError
+          ]}>
+            <Ionicons 
+              name="lock-closed-outline" 
+              size={20} 
+              color={touchedFields.password && fieldErrors.password ? '#ef4444' : Colors.subtitlecolor} 
+              style={styles.inputIcon} 
+            />
             <TextInput
               style={styles.textInput}
               value={formData.password}
               onChangeText={(value) => updateFormData('password', value)}
-              placeholder="Create a password (min 8 characters)"
+              onBlur={() => handleBlur('password')}
+              placeholder="Create a strong password"
               placeholderTextColor={Colors.subtitlecolor}
               secureTextEntry={!showPassword}
               autoCapitalize="none"
@@ -207,20 +351,39 @@ const SignUpScreen = ({ navigation }) => {
               <Ionicons
                 name={showPassword ? "eye-off-outline" : "eye-outline"}
                 size={20}
-                color={Colors.subtitlecolor}
+                color={touchedFields.password && fieldErrors.password ? '#ef4444' : Colors.subtitlecolor}
               />
             </TouchableOpacity>
           </View>
+          {touchedFields.password && fieldErrors.password && (
+            <Text style={styles.fieldErrorText}>{fieldErrors.password}</Text>
+          )}
+          {formData.password.length > 0 && (
+            <View style={styles.passwordRequirements}>
+              <Text style={styles.passwordRequirementText}>
+                Password must contain: 8+ characters, uppercase, lowercase, number, special character
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>Confirm Password</Text>
-          <View style={styles.inputWrapper}>
-            <Ionicons name="lock-closed-outline" size={20} color={Colors.subtitlecolor} style={styles.inputIcon} />
+          <View style={[
+            styles.inputWrapper,
+            touchedFields.confirmPassword && fieldErrors.confirmPassword && styles.inputWrapperError
+          ]}>
+            <Ionicons 
+              name="lock-closed-outline" 
+              size={20} 
+              color={touchedFields.confirmPassword && fieldErrors.confirmPassword ? '#ef4444' : Colors.subtitlecolor} 
+              style={styles.inputIcon} 
+            />
             <TextInput
               style={styles.textInput}
               value={formData.confirmPassword}
               onChangeText={(value) => updateFormData('confirmPassword', value)}
+              onBlur={() => handleBlur('confirmPassword')}
               placeholder="Confirm your password"
               placeholderTextColor={Colors.subtitlecolor}
               secureTextEntry={!showConfirmPassword}
@@ -234,10 +397,13 @@ const SignUpScreen = ({ navigation }) => {
               <Ionicons
                 name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
                 size={20}
-                color={Colors.subtitlecolor}
+                color={touchedFields.confirmPassword && fieldErrors.confirmPassword ? '#ef4444' : Colors.subtitlecolor}
               />
             </TouchableOpacity>
           </View>
+          {touchedFields.confirmPassword && fieldErrors.confirmPassword && (
+            <Text style={styles.fieldErrorText}>{fieldErrors.confirmPassword}</Text>
+          )}
         </View>
 
         <TouchableOpacity
@@ -369,6 +535,25 @@ const styles = StyleSheet.create({
     paddingVertical: Theme.spacing.sm,
     borderWidth: 1,
     borderColor: 'transparent',
+  },
+  inputWrapperError: {
+    borderColor: '#ef4444',
+    borderWidth: 2,
+  },
+  fieldErrorText: {
+    color: '#ef4444',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: Theme.spacing.xs,
+  },
+  passwordRequirements: {
+    marginTop: Theme.spacing.xs,
+    paddingLeft: Theme.spacing.xs,
+  },
+  passwordRequirementText: {
+    fontSize: 11,
+    color: Colors.subtitlecolor,
+    lineHeight: 16,
   },
   inputIcon: {
     marginRight: Theme.spacing.sm,

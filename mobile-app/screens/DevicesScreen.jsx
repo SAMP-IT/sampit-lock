@@ -35,12 +35,6 @@ const DeviceTile = ({ device, onSettingsPress, onLongPress }) => {
               <Text style={styles.infoText}>{device.location}</Text>
             </View>
           )}
-          {device.ttlock_mac && (
-            <View style={styles.infoItem}>
-              <Ionicons name="bluetooth-outline" size={14} color={Colors.subtitlecolor} />
-              <Text style={styles.infoText}>{device.ttlock_mac}</Text>
-            </View>
-          )}
           {device.created_at && (
             <View style={styles.infoItem}>
               <Ionicons name="calendar-outline" size={14} color={Colors.subtitlecolor} />
@@ -122,12 +116,12 @@ const DevicesScreen = ({ navigation }) => {
     // Check if TTLock account is connected
     if (!ttlockStatus?.connected) {
       Alert.alert(
-        'TTLock Account Required',
-        'To add a lock, you need to connect your TTLock account first.',
+        'Cloud Account Required',
+        'To add a lock, you need to connect your cloud account first.',
         [
           { text: 'Cancel', style: 'cancel' },
           {
-            text: 'Connect TTLock',
+            text: 'Connect Cloud',
             onPress: () => navigation.navigate('ConnectTTLock')
           }
         ]

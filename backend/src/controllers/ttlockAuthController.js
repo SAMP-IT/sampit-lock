@@ -855,7 +855,11 @@ export const updateProfile = async (req, res) => {
     const updates = {};
     if (first_name !== undefined) updates.first_name = first_name;
     if (last_name !== undefined) updates.last_name = last_name;
-    if (phone !== undefined) updates.phone = phone;
+    // Allow phone to be empty string or null (optional field)
+    // Convert empty string to null for database storage
+    if (phone !== undefined) {
+      updates.phone = phone === '' || phone === null ? null : phone;
+    }
     if (simple_mode !== undefined) updates.simple_mode = simple_mode;
     if (avatar_url !== undefined) updates.avatar_url = avatar_url;
     updates.updated_at = new Date().toISOString();

@@ -141,8 +141,8 @@ const OfflinePasscodeScreen = ({ navigation, route }) => {
   const generatePasscode = async (type) => {
     if (!ttlockLockId && !lockInfo?.ttlock_lock_id) {
       Alert.alert(
-        'TTLock Connection Required',
-        'This lock is not connected to TTLock Cloud. Please connect it first to generate offline passcodes.',
+        'Cloud Connection Required',
+        'This lock is not connected to Cloud. Please connect it first to generate offline passcodes.',
         [{ text: 'OK' }]
       );
       return;

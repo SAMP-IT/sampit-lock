@@ -617,7 +617,22 @@ const LockDetailScreen = ({ navigation, route }) => {
 
   const filteredActivity = activities.filter(activity => {
     if (activityFilter === 'All') return true;
-    return activity.action?.toLowerCase().includes(activityFilter.toLowerCase());
+    
+    const action = activity.action?.toLowerCase() || '';
+    
+    // Map filter names to exact action values
+    switch (activityFilter) {
+      case 'Unlocked':
+        return action === 'unlocked';
+      case 'Locked':
+        return action === 'locked';
+      case 'Failed':
+        return action === 'failed_attempt' || 
+               action === 'failed' || 
+               (activity.success === false);
+      default:
+        return false;
+    }
   });
 
   const sortedActivity = [...filteredActivity].sort((a, b) => {

@@ -18,11 +18,6 @@ const steps = [
     description:
       "Give it a name like 'Front Door' or 'Grandma's Room'.",
   },
-  {
-    title: "Safety backup",
-    description:
-      "Save your recovery key to the cloud.",
-  },
 ];
 
 const AddLockWizardScreen = ({ navigation }) => {

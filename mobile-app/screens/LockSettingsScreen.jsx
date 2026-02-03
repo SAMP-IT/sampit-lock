@@ -525,7 +525,7 @@ const LockSettingsScreen = ({ navigation, route }) => {
   // =====================================================
   const handleAntiPeepToggle = async () => {
     if (!currentLock?.ttlock_lock_id) {
-      Alert.alert('Not Available', 'This feature requires TTLock cloud connection');
+      Alert.alert('Not Available', 'This feature requires cloud connection');
       return;
     }
 
@@ -983,124 +983,12 @@ const LockSettingsScreen = ({ navigation, route }) => {
         </AppCard>
       </Section>
 
-      {/* Recovery Keys Section - Only show if user is admin/owner and keys exist */}
-      {isAdminOrOwner && (currentLock?.recovery_key || currentLock?.admin_pwd || currentLock?.delete_pwd || currentLock?.no_key_pwd) && (
-        <Section title="Recovery Keys" subtitle="Emergency access codes for this lock" gapless>
-          <AppCard padding="md">
-            <View style={styles.recoveryKeyContainer}>
-              <View style={styles.recoveryKeyHeader}>
-                <Ionicons name="key-outline" size={24} color={Colors.iconbackground} />
-                <Text style={styles.recoveryKeyTitle}>Your Recovery Keys</Text>
-              </View>
-              <Text style={styles.recoveryKeyDescription}>
-                Store these codes securely. They can be used to regain access if you lose your phone or forget your passcode.
-              </Text>
-
-              {currentLock?.recovery_key && (
-                <View style={styles.recoveryKeyItem}>
-                  <Text style={styles.recoveryKeyLabel}>App Recovery Key</Text>
-                  <View style={styles.recoveryKeyValueRow}>
-                    <Text style={styles.recoveryKeyValue}>{currentLock.recovery_key}</Text>
-                    <TouchableOpacity
-                      onPress={() => {
-                        import('expo-clipboard').then(Clipboard => {
-                          Clipboard.setStringAsync(currentLock.recovery_key);
-                          Alert.alert('Copied!', 'Recovery key copied to clipboard');
-                        });
-                      }}
-                    >
-                      <Ionicons name="copy-outline" size={20} color={Colors.iconbackground} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-
-              {currentLock?.admin_pwd && (
-                <View style={styles.recoveryKeyItem}>
-                  <Text style={styles.recoveryKeyLabel}>Admin Passcode</Text>
-                  <View style={styles.recoveryKeyValueRow}>
-                    <Text style={styles.recoveryKeyValue}>{currentLock.admin_pwd}</Text>
-                    <TouchableOpacity
-                      onPress={() => {
-                        import('expo-clipboard').then(Clipboard => {
-                          Clipboard.setStringAsync(currentLock.admin_pwd);
-                          Alert.alert('Copied!', 'Admin passcode copied to clipboard');
-                        });
-                      }}
-                    >
-                      <Ionicons name="copy-outline" size={20} color={Colors.iconbackground} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-
-              {currentLock?.delete_pwd && (
-                <View style={styles.recoveryKeyItem}>
-                  <Text style={styles.recoveryKeyLabel}>Delete/Reset Passcode</Text>
-                  <View style={styles.recoveryKeyValueRow}>
-                    <Text style={styles.recoveryKeyValue}>{currentLock.delete_pwd}</Text>
-                    <TouchableOpacity
-                      onPress={() => {
-                        import('expo-clipboard').then(Clipboard => {
-                          Clipboard.setStringAsync(currentLock.delete_pwd);
-                          Alert.alert('Copied!', 'Delete passcode copied to clipboard');
-                        });
-                      }}
-                    >
-                      <Ionicons name="copy-outline" size={20} color={Colors.iconbackground} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-
-              {currentLock?.no_key_pwd && (
-                <View style={styles.recoveryKeyItem}>
-                  <Text style={styles.recoveryKeyLabel}>Emergency Unlock Code</Text>
-                  <View style={styles.recoveryKeyValueRow}>
-                    <Text style={styles.recoveryKeyValue}>{currentLock.no_key_pwd}</Text>
-                    <TouchableOpacity
-                      onPress={() => {
-                        import('expo-clipboard').then(Clipboard => {
-                          Clipboard.setStringAsync(currentLock.no_key_pwd);
-                          Alert.alert('Copied!', 'Emergency code copied to clipboard');
-                        });
-                      }}
-                    >
-                      <Ionicons name="copy-outline" size={20} color={Colors.iconbackground} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-
-              <View style={styles.recoveryKeyWarning}>
-                <Ionicons name="warning-outline" size={16} color="#F57C00" />
-                <Text style={styles.recoveryKeyWarningText}>
-                  Never share these codes. They provide full access to your lock.
-                </Text>
-              </View>
-            </View>
-          </AppCard>
-        </Section>
-      )}
+      {/* Recovery Keys Section - Hidden: Recovery keys are stored in backend only, not displayed in mobile app */}
 
       {/* Danger Zone - OWNER ONLY (completely hidden from Admin and others) */}
       {isOwner && (
         <Section title="Danger Zone" gapless>
           <AppCard padding="none">
-            <TouchableOpacity
-              style={styles.settingItem}
-              onPress={handleFactoryResetPress}
-            >
-              <View style={[styles.settingIcon, styles.warningIcon]}>
-                <Ionicons name="refresh-outline" size={20} color="#FF9500" />
-              </View>
-              <View style={styles.settingContent}>
-                <Text style={[styles.settingTitle, styles.warningText]}>Factory Reset</Text>
-                <Text style={styles.settingSubtitle}>Reset lock to factory defaults</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={Colors.subtitlecolor} />
-            </TouchableOpacity>
-
             <TouchableOpacity
               style={[styles.settingItem, styles.settingItemLast]}
               onPress={handleDeleteLockPress}
