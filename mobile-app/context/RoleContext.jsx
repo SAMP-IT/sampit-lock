@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import secureStorage from '../services/secureStorage';
 import { validateAuthToken } from '../services/api';
 
 const RoleContext = createContext({
@@ -29,8 +30,8 @@ export const RoleProvider = ({ children }) => {
     setIsAuthenticating(true);
 
     try {
-      // Check if user has auth token
-      const token = await AsyncStorage.getItem('authToken');
+      // Check if user has auth token (token is in secure storage)
+      const token = await secureStorage.getItem('authToken');
       const user = await AsyncStorage.getItem('user');
 
       if (!token || !user) {
@@ -126,7 +127,9 @@ export const RoleProvider = ({ children }) => {
   const logout = async () => {
     console.log('🚪 RoleContext: Logging out - clearing all auth data');
     try {
-      await AsyncStorage.multiRemove(['authToken', 'refreshToken', 'user', 'userRole']);
+      // Clear tokens from secure storage, user data from AsyncStorage
+      await secureStorage.multiRemove(['authToken', 'refreshToken', 'ttlock_access_token', 'ttlock_refresh_token']);
+      await AsyncStorage.multiRemove(['user', 'userRole']);
       setRole(null);
     } catch (error) {
       console.error('Error during logout:', error);

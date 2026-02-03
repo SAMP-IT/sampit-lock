@@ -45,8 +45,8 @@ async function ensureBluetoothEnabled() {
                     // Try to open Bluetooth settings directly
                     await Linking.sendIntent('android.settings.BLUETOOTH_SETTINGS');
                   } else {
-                    // iOS - open app settings
-                    await Linking.openURL('App-Prefs:Bluetooth');
+                    // iOS - open the app's settings page (App-Prefs: is a private API that causes App Store rejection)
+                    await Linking.openSettings();
                   }
                 } catch (e) {
                   // Fallback to general settings

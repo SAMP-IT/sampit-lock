@@ -12,42 +12,20 @@ import { PermissionsProvider } from './context/PermissionsContext';
 import pushNotificationService from './services/pushNotificationService';
 import logCollector from './utils/LogCollector'; // Initialize log collector
 
-// Suppress specific LogBox warnings that are handled gracefully
-LogBox.ignoreLogs([
-  // Suppress expected 404 API errors (no locks yet, TTLock not connected)
-  'AxiosError: Request failed with status code 404',
-  'Request failed with status code 404',
-  'Request failed with status code 500',
-  'Request failed with status code 401',
-  // Suppress NativeEventEmitter warnings (TTLock SDK limitation)
-  '`new NativeEventEmitter()` was called with a non-null argument',
-  // Suppress navigation warnings
-  'Non-serializable values were found in the navigation state',
-  // Suppress TTLock Bluetooth errors (handled gracefully in UI via toast)
-  'Bluetooth state query failed',
-  'queryLockState failed',
-  'Not administrator',
-  'has no permission',
-  'Lock operation failed',
-  'errorCode',
-  'Bluetooth unlock failed',
-  'Bluetooth lock failed',
-  'Unlock failed',
-  'Lock failed',
-  'lock connect time out',
-  'connection is disconnected',
-  'lock is busy',
-  'Lock toggle error',
-  // Suppress VirtualizedLists warning (FlatList inside ScrollView is intentional)
-  'VirtualizedLists should never be nested',
-  // Suppress other common warnings
-  'Sending `onAnimatedValueUpdate`',
-  'componentWillReceiveProps',
-  'componentWillMount',
-  // Suppress navigation warnings (dev-only)
-  "The action 'GO_BACK' was not handled",
-  "The action 'NAVIGATE' was not handled",
-]);
+// Suppress only unavoidable third-party SDK warnings (not app errors)
+if (__DEV__) {
+  LogBox.ignoreLogs([
+    // TTLock SDK uses deprecated NativeEventEmitter pattern - cannot be fixed in app code
+    '`new NativeEventEmitter()` was called with a non-null argument',
+    // React Navigation serialization warning - passing callbacks in params is intentional
+    'Non-serializable values were found in the navigation state',
+    // FlatList inside ScrollView is used intentionally in some layouts
+    'VirtualizedLists should never be nested',
+    // Deprecated React lifecycle methods used by third-party libraries
+    'componentWillReceiveProps',
+    'componentWillMount',
+  ]);
+}
 
 // Component to initialize toast manager after context is available
 const ToastManagerInitializer = ({ children }) => {

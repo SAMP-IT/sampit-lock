@@ -8,6 +8,7 @@ import Theme from '../../constants/Theme';
 import { useRole } from '../../context/RoleContext';
 import { login } from '../../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import secureStorage from '../../services/secureStorage';
 import pushNotificationService from '../../services/pushNotificationService';
 
 const LoginScreen = ({ navigation }) => {
@@ -33,13 +34,13 @@ const LoginScreen = ({ navigation }) => {
       const userRole = user?.role || 'owner';
       console.log('✅ LoginScreen: Setting role to:', userRole);
 
-      // Store user role and refresh token in AsyncStorage
+      // Store user role in AsyncStorage (non-sensitive)
       await AsyncStorage.setItem('userRole', userRole);
 
-      // Store refresh token for auto token refresh
+      // Store refresh token securely (iOS Keychain)
       if (refresh_token) {
-        await AsyncStorage.setItem('refreshToken', refresh_token);
-        console.log('✅ LoginScreen: Refresh token stored');
+        await secureStorage.setItem('refreshToken', refresh_token);
+        console.log('✅ LoginScreen: Refresh token stored securely');
       }
 
       // Initialize push notifications after successful login

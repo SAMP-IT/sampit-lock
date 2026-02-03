@@ -1,5 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import secureStorage from './secureStorage';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, BACKEND_API_URL } from '@env';
 import { getToastManager } from '../context/ToastContext';
 
@@ -107,11 +108,11 @@ backendApi.interceptors.response.use(
   }
 );
 
-// Interceptor for Supabase REST API (uses JWT token from AsyncStorage)
+// Interceptor for Supabase REST API (uses JWT token from secure storage)
 api.interceptors.request.use(
   async (config) => {
     try {
-      const token = await AsyncStorage.getItem('authToken');
+      const token = await secureStorage.getItem('authToken');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -137,17 +138,17 @@ backendApi.interceptors.request.use(
       return config;
     }
 
-    // Get token from AsyncStorage (TTLock JWT token)
+    // Get token from secure storage (iOS Keychain / Android Keystore)
     try {
-      const token = await AsyncStorage.getItem('authToken');
+      const token = await secureStorage.getItem('authToken');
 
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
-        console.log('🔑 Auth token added from AsyncStorage');
+        console.log('🔑 Auth token added from secure storage');
         return config;
       }
     } catch (error) {
-      console.warn('⚠️ Error reading from AsyncStorage:', error.message);
+      console.warn('⚠️ Error reading from secure storage:', error.message);
     }
 
     console.warn('⚠️ No auth token found - request will be unauthorized');
@@ -250,7 +251,7 @@ const processQueue = (error, token = null) => {
 // Attempt to refresh the auth token
 const refreshAuthToken = async () => {
   try {
-    const refreshToken = await AsyncStorage.getItem('refreshToken');
+    const refreshToken = await secureStorage.getItem('refreshToken');
     if (!refreshToken) {
       throw new Error('No refresh token available');
     }
@@ -263,10 +264,10 @@ const refreshAuthToken = async () => {
 
     const { token, refresh_token: newRefreshToken } = response.data.data;
 
-    // Store new tokens
-    await AsyncStorage.setItem('authToken', token);
+    // Store new tokens securely
+    await secureStorage.setItem('authToken', token);
     if (newRefreshToken) {
-      await AsyncStorage.setItem('refreshToken', newRefreshToken);
+      await secureStorage.setItem('refreshToken', newRefreshToken);
     }
 
     console.log('✅ Token refreshed successfully');
@@ -274,8 +275,8 @@ const refreshAuthToken = async () => {
   } catch (error) {
     console.warn('❌ Token refresh failed:', error.message);
     // Clear tokens on refresh failure
-    await AsyncStorage.removeItem('authToken');
-    await AsyncStorage.removeItem('refreshToken');
+    await secureStorage.removeItem('authToken');
+    await secureStorage.removeItem('refreshToken');
     throw error;
   }
 };
@@ -407,11 +408,11 @@ export const login = async (email, password) => {
 
     console.log('✅ Login successful:', user?.email);
 
-    // Store auth data
-    await AsyncStorage.setItem('authToken', token);
+    // Store auth data (tokens go to secure storage, user data to AsyncStorage)
+    await secureStorage.setItem('authToken', token);
     await AsyncStorage.setItem('user', JSON.stringify(user));
     if (refresh_token) {
-      await AsyncStorage.setItem('refreshToken', refresh_token);
+      await secureStorage.setItem('refreshToken', refresh_token);
     }
 
     return {
@@ -432,7 +433,7 @@ export const login = async (email, password) => {
 export const validateAuthToken = async () => {
   try {
     console.log('🔍 Validating auth token...');
-    const token = await AsyncStorage.getItem('authToken');
+    const token = await secureStorage.getItem('authToken');
 
     if (!token) {
       console.log('❌ No token found in storage');
@@ -495,11 +496,11 @@ export const signUp = async (userData) => {
 
     console.log('✅ Registration successful:', user?.email);
 
-    // Store auth data
-    await AsyncStorage.setItem('authToken', token);
+    // Store auth data (tokens go to secure storage, user data to AsyncStorage)
+    await secureStorage.setItem('authToken', token);
     await AsyncStorage.setItem('user', JSON.stringify(user));
     if (refresh_token) {
-      await AsyncStorage.setItem('refreshToken', refresh_token);
+      await secureStorage.setItem('refreshToken', refresh_token);
     }
 
     return {
@@ -553,14 +554,12 @@ export const logout = async () => {
   const TTLockCloudService = require('./ttlockCloudService').default;
   await TTLockCloudService.logout();
 
-  // Clear all stored auth data
-  await AsyncStorage.removeItem('authToken');
+  // Clear all stored auth data (tokens from secure storage, other data from AsyncStorage)
+  await secureStorage.multiRemove(['authToken', 'refreshToken', 'ttlock_access_token', 'ttlock_refresh_token']);
   await AsyncStorage.removeItem('user');
   await AsyncStorage.removeItem('userRole');
   await AsyncStorage.removeItem('ttlockUserId');
   await AsyncStorage.removeItem('ttlockEmail');
-  await AsyncStorage.removeItem('ttlock_access_token');
-  await AsyncStorage.removeItem('ttlock_refresh_token');
 
   console.log('✅ Logged out successfully');
 };
@@ -577,12 +576,12 @@ export const connectTTLockAccount = async (credentials) => {
 
     console.log('✅ TTLock account connected successfully');
 
-    // Store TTLock tokens
+    // Store TTLock tokens (secure storage for tokens, AsyncStorage for user ID)
     if (response.data.data.ttlock_access_token) {
-      await AsyncStorage.setItem('ttlock_access_token', response.data.data.ttlock_access_token);
+      await secureStorage.setItem('ttlock_access_token', response.data.data.ttlock_access_token);
     }
     if (response.data.data.ttlock_refresh_token) {
-      await AsyncStorage.setItem('ttlock_refresh_token', response.data.data.ttlock_refresh_token);
+      await secureStorage.setItem('ttlock_refresh_token', response.data.data.ttlock_refresh_token);
     }
     if (response.data.data.ttlock_user_id) {
       await AsyncStorage.setItem('ttlockUserId', response.data.data.ttlock_user_id.toString());

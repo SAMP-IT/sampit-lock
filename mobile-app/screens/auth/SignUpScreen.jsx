@@ -8,6 +8,7 @@ import Theme from '../../constants/Theme';
 import { useRole } from '../../context/RoleContext';
 import { signUp } from '../../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import secureStorage from '../../services/secureStorage';
 
 const SignUpScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
@@ -89,13 +90,13 @@ const SignUpScreen = ({ navigation }) => {
       const userRole = user?.role || 'owner';
       console.log('✅ SignUpScreen: Setting role to:', userRole);
 
-      // Store user role in AsyncStorage
+      // Store user role in AsyncStorage (non-sensitive)
       await AsyncStorage.setItem('userRole', userRole);
 
-      // Store refresh token for auto token refresh
+      // Store refresh token securely (iOS Keychain)
       if (refresh_token) {
-        await AsyncStorage.setItem('refreshToken', refresh_token);
-        console.log('✅ SignUpScreen: Refresh token stored');
+        await secureStorage.setItem('refreshToken', refresh_token);
+        console.log('✅ SignUpScreen: Refresh token stored securely');
       }
 
       // Set role directly to trigger navigation to main app

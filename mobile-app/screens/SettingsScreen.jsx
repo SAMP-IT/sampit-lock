@@ -65,6 +65,7 @@ const SettingsScreen = ({ navigation }) => {
   };
 
   const handleVersionTap = () => {
+    if (!__DEV__) return; // Debug logs only available in development builds
     const newCount = debugTapCount + 1;
     setDebugTapCount(newCount);
 
@@ -173,79 +174,81 @@ const SettingsScreen = ({ navigation }) => {
         </AppCard>
       </Section>
 
-      {/* Development Mode Section */}
-      <Section title="Development" gapless>
-        <AppCard padding="none" elevated={false}>
-          <View style={styles.devModeItem}>
-            <View style={styles.devModeContent}>
-              <View style={styles.settingIcon}>
-                <Ionicons name="code-outline" size={20} color={Colors.iconbackground} />
+      {/* Development Mode Section - only visible in development builds */}
+      {__DEV__ && (
+        <Section title="Development" gapless>
+          <AppCard padding="none" elevated={false}>
+            <View style={styles.devModeItem}>
+              <View style={styles.devModeContent}>
+                <View style={styles.settingIcon}>
+                  <Ionicons name="code-outline" size={20} color={Colors.iconbackground} />
+                </View>
+                <View style={styles.devModeText}>
+                  <Text style={styles.settingTitle}>Development Mode</Text>
+                  <Text style={styles.settingSubtitle}>
+                    {isDevMode ? 'Using local server' : 'Using production server'}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.devModeText}>
-                <Text style={styles.settingTitle}>Development Mode</Text>
-                <Text style={styles.settingSubtitle}>
-                  {isDevMode ? 'Using local server' : 'Using production server'}
+              <Switch
+                value={isDevMode}
+                onValueChange={handleDevModeToggle}
+                trackColor={{ false: Colors.bordercolor, true: Colors.primary }}
+                thumbColor={isDevMode ? '#fff' : '#f4f3f4'}
+              />
+            </View>
+
+            {isDevMode && (
+              <View style={styles.serverUrlContainer}>
+                <View style={styles.serverUrlHeader}>
+                  <Ionicons name="server-outline" size={16} color={Colors.subtitlecolor} />
+                  <Text style={styles.serverUrlLabel}>Local Server URL</Text>
+                </View>
+                {editingServerUrl ? (
+                  <View style={styles.serverUrlInputContainer}>
+                    <TextInput
+                      style={styles.serverUrlInput}
+                      value={serverUrlInput}
+                      onChangeText={setServerUrlInput}
+                      placeholder="http://10.0.2.2:3009/api"
+                      placeholderTextColor={Colors.subtitlecolor}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                    <TouchableOpacity
+                      onPress={handleServerUrlSave}
+                      style={styles.saveButton}
+                    >
+                      <Ionicons name="checkmark" size={20} color={Colors.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setEditingServerUrl(false);
+                        setServerUrlInput(localServerUrl);
+                      }}
+                      style={styles.cancelButton}
+                    >
+                      <Ionicons name="close" size={20} color={Colors.subtitlecolor} />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => setEditingServerUrl(true)}
+                    style={styles.serverUrlDisplay}
+                  >
+                    <Text style={styles.serverUrlText}>{localServerUrl}</Text>
+                    <Ionicons name="pencil" size={16} color={Colors.subtitlecolor} />
+                  </TouchableOpacity>
+                )}
+                <Text style={styles.serverUrlHint}>
+                  For Android emulator: use 10.0.2.2 instead of localhost{'\n'}
+                  For physical device: use your computer's IP address (e.g., 192.168.1.100:3009/api)
                 </Text>
               </View>
-            </View>
-            <Switch
-              value={isDevMode}
-              onValueChange={handleDevModeToggle}
-              trackColor={{ false: Colors.bordercolor, true: Colors.primary }}
-              thumbColor={isDevMode ? '#fff' : '#f4f3f4'}
-            />
-          </View>
-          
-          {isDevMode && (
-            <View style={styles.serverUrlContainer}>
-              <View style={styles.serverUrlHeader}>
-                <Ionicons name="server-outline" size={16} color={Colors.subtitlecolor} />
-                <Text style={styles.serverUrlLabel}>Local Server URL</Text>
-              </View>
-              {editingServerUrl ? (
-                <View style={styles.serverUrlInputContainer}>
-                  <TextInput
-                    style={styles.serverUrlInput}
-                    value={serverUrlInput}
-                    onChangeText={setServerUrlInput}
-                    placeholder="http://10.0.2.2:3009/api"
-                    placeholderTextColor={Colors.subtitlecolor}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                  <TouchableOpacity
-                    onPress={handleServerUrlSave}
-                    style={styles.saveButton}
-                  >
-                    <Ionicons name="checkmark" size={20} color={Colors.primary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setEditingServerUrl(false);
-                      setServerUrlInput(localServerUrl);
-                    }}
-                    style={styles.cancelButton}
-                  >
-                    <Ionicons name="close" size={20} color={Colors.subtitlecolor} />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  onPress={() => setEditingServerUrl(true)}
-                  style={styles.serverUrlDisplay}
-                >
-                  <Text style={styles.serverUrlText}>{localServerUrl}</Text>
-                  <Ionicons name="pencil" size={16} color={Colors.subtitlecolor} />
-                </TouchableOpacity>
-              )}
-              <Text style={styles.serverUrlHint}>
-                For Android emulator: use 10.0.2.2 instead of localhost{'\n'}
-                For physical device: use your computer's IP address (e.g., 192.168.1.100:3009/api)
-              </Text>
-            </View>
-          )}
-        </AppCard>
-      </Section>
+            )}
+          </AppCard>
+        </Section>
+      )}
 
       {/* Hidden debug mode activator - tap 7 times to access logs */}
       <TouchableOpacity
