@@ -83,7 +83,7 @@ const AboutScreen = ({ navigation }) => {
         activeOpacity={0.8}
       >
         <Ionicons name="star" size={20} color={Colors.textwhite} />
-        <Text style={styles.rateButtonText}>Rate Us on App Store</Text>
+        <Text style={styles.rateButtonText}>Rate Us on AppStore</Text>
       </TouchableOpacity>
     </AppScreen>
   );
