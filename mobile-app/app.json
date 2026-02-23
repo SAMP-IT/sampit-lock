@@ -26,12 +26,8 @@
         "UIUserInterfaceStyle": "Light",
         "UIBackgroundModes": [
           "bluetooth-central",
-          "location",
-          "remote-notification"
+          "location"
         ]
-      },
-      "entitlements": {
-        "aps-environment": "production"
       },
       "privacyManifests": {
         "NSPrivacyAccessedAPITypes": [
