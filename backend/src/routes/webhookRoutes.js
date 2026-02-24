@@ -19,7 +19,7 @@ const router = express.Router();
  */
 router.post('/ttlock', async (req, res) => {
   try {
-    console.log('ðŸ“¨ TTLock Webhook received:', JSON.stringify(req.body, null, 2));
+    console.log('[WEBHOOK] TTLock event received:', req.body?.eventType || req.body?.recordType, 'lockId:', req.body?.lockId);
 
     const payload = req.body;
 
@@ -186,7 +186,7 @@ router.post('/ttlock', async (req, res) => {
  */
 router.post('/ttlock/gateway', async (req, res) => {
   try {
-    console.log('ðŸ“¨ TTLock Gateway Webhook:', JSON.stringify(req.body, null, 2));
+    console.log('[WEBHOOK] TTLock Gateway event:', req.body?.isOnline ? 'online' : 'offline', 'gatewayId:', req.body?.gatewayId);
 
     const { gatewayId, isOnline, lockIds } = req.body;
 
@@ -251,12 +251,11 @@ router.get('/health', (req, res) => {
  */
 router.post('/test', async (req, res) => {
   try {
-    console.log('Test webhook received:', req.body);
+    console.log('[WEBHOOK] Test webhook received');
 
     res.json({
       success: true,
-      message: 'Test webhook received successfully',
-      receivedPayload: req.body
+      message: 'Test webhook received successfully'
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

@@ -105,19 +105,38 @@ export function UsersPage() {
     )
   })
 
-  const getRoleBadgeVariant = (role: string) => {
+  const getRoleBadgeVariant = (role: string): 'default' | 'secondary' | 'outline' | 'destructive' => {
     switch (role) {
       case 'owner':
-        return 'default'
+      case 'admin':
       case 'enterprise':
         return 'default'
       case 'family':
         return 'secondary'
+      case 'scheduled':
+        return 'destructive'
       case 'guest':
-        return 'outline'
+      case 'guest_otp':
+      case 'guest_longterm':
+      case 'service':
       default:
         return 'outline'
     }
+  }
+
+  const getRoleLabel = (role: string): string => {
+    const labels: Record<string, string> = {
+      owner: 'Owner',
+      admin: 'Admin',
+      family: 'Family',
+      scheduled: 'Scheduled',
+      guest_otp: 'Guest (OTP)',
+      guest_longterm: 'Guest (Long Term)',
+      guest: 'Guest',
+      service: 'Service',
+      enterprise: 'Enterprise',
+    }
+    return labels[role] || role
   }
 
   if (loading) {
@@ -195,8 +214,8 @@ export function UsersPage() {
                       </TableCell>
                       <TableCell>{user.email}</TableCell>
                       <TableCell>
-                        <Badge variant={getRoleBadgeVariant(user.role)} className="capitalize">
-                          {user.role}
+                        <Badge variant={getRoleBadgeVariant(user.role)}>
+                          {getRoleLabel(user.role)}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -207,7 +226,7 @@ export function UsersPage() {
                                 variant="outline"
                                 className="text-xs cursor-pointer hover:bg-accent transition-colors"
                               >
-                                {ul.lock_name} ({ul.role})
+                                {ul.lock_name} ({getRoleLabel(ul.role)})
                               </Badge>
                             </Link>
                           ))}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { StyleSheet, View, TouchableOpacity, ScrollView, Text, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -6,11 +6,10 @@ import Header from "../components/Header";
 import ActivityItem from "../components/ActivityItem";
 import Colors from "../constants/Colors";
 import Theme from "../constants/Theme";
-import { getAllActivity, getLocks } from "../services/api";
-import { unwrapResponseArray } from "../utils/apiResponse";
 import AppScreen from "../components/ui/AppScreen";
 import Section from "../components/ui/Section";
 import AppCard from "../components/ui/AppCard";
+import { useActivities, useLocks } from "../hooks/useQueryHooks";
 
 // Action type filters
 const actionFilters = [
@@ -46,13 +45,6 @@ const HistoryScreen = ({ navigation }) => {
   const [datePreset, setDatePreset] = useState("all");
   const [sortNewest, setSortNewest] = useState(true);
 
-  // Data states
-  const [activities, setActivities] = useState([]);
-  const [locks, setLocks] = useState([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-
   // Modal states
   const [showFiltersModal, setShowFiltersModal] = useState(false);
 
@@ -79,70 +71,33 @@ const HistoryScreen = ({ navigation }) => {
         start.setMonth(now.getMonth() - 3);
         break;
       default:
-        // "all" - no date filter
         return { start: null, end: null };
     }
 
     return { start, end };
   }, []);
 
-  // Fetch activities with current filters
-  const fetchActivities = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // Build filter params for API
-      const dateRange = getDateRange(datePreset);
-      const filters = {
-        limit: 200,
-        action: actionFilter,
-        access_method: accessMethodFilter,
-        sort_by: 'created_at',
-        sort_order: sortNewest ? 'desc' : 'asc',
-      };
-
-      if (dateRange.start) {
-        filters.start_date = dateRange.start.toISOString();
-      }
-      if (dateRange.end) {
-        filters.end_date = dateRange.end.toISOString();
-      }
-
-      console.log('[HistoryScreen] Fetching with filters:', JSON.stringify(filters));
-
-      // Fetch activities and locks in parallel
-      const [activityResponse, locksResponse] = await Promise.all([
-        getAllActivity(filters),
-        getLocks()
-      ]);
-
-      // Handle activity response - new API format with pagination
-      const responseData = activityResponse?.data?.data ?? activityResponse?.data ?? {};
-      const activityData = responseData.activities ?? responseData ?? [];
-      const pagination = responseData.pagination ?? {};
-
-      console.log(`[HistoryScreen] Loaded ${Array.isArray(activityData) ? activityData.length : 0} activities`);
-      setActivities(Array.isArray(activityData) ? activityData : []);
-      setTotalCount(pagination.total || (Array.isArray(activityData) ? activityData.length : 0));
-
-      // Handle locks response
-      const normalizedLocks = unwrapResponseArray(locksResponse);
-      setLocks(normalizedLocks);
-    } catch (err) {
-      console.error('[HistoryScreen] Failed to load data:', err);
-      console.error('[HistoryScreen] Error details:', err.response?.data || err.message);
-      setError("Failed to load history.");
-      setActivities([]);
-    } finally {
-      setIsLoading(false);
-    }
+  // Build filter params for React Query
+  const filters = useMemo(() => {
+    const dateRange = getDateRange(datePreset);
+    const f = {
+      limit: 200,
+      action: actionFilter,
+      access_method: accessMethodFilter,
+      sort_by: 'created_at',
+      sort_order: sortNewest ? 'desc' : 'asc',
+    };
+    if (dateRange.start) f.start_date = dateRange.start.toISOString();
+    if (dateRange.end) f.end_date = dateRange.end.toISOString();
+    return f;
   }, [actionFilter, accessMethodFilter, datePreset, sortNewest, getDateRange]);
 
-  // Fetch on mount and when filters change
-  useEffect(() => {
-    fetchActivities();
-  }, [fetchActivities]);
+  // React Query hooks
+  const { data: activityData, isLoading, error } = useActivities(filters);
+  const { data: locks = [] } = useLocks();
+
+  const activities = activityData?.activities ?? [];
+  const totalCount = activityData?.totalCount ?? 0;
 
   // Create lock name map for resolving user-friendly names
   const lockNameMap = useMemo(() => {

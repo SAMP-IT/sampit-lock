@@ -24,8 +24,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Pencil, Trash2, Clock, Crown } from 'lucide-react'
+import { Pencil, Trash2, Clock, Crown, UserPlus } from 'lucide-react'
 import { EditPermissionsSheet } from './edit-permissions-sheet'
+import { AddUserSheet } from './add-user-sheet'
 
 interface LockUsersTabProps {
   lockId: string
@@ -40,9 +41,18 @@ const roleVariants: Record<string, 'default' | 'secondary' | 'outline' | 'destru
   owner: 'default',
   admin: 'default',
   family: 'secondary',
-  guest: 'outline',
-  restricted: 'destructive',
-  long_term_guest: 'outline',
+  scheduled: 'destructive',
+  guest_otp: 'outline',
+  guest_longterm: 'outline',
+}
+
+const roleLabels: Record<string, string> = {
+  owner: 'Owner',
+  admin: 'Admin',
+  family: 'Family',
+  scheduled: 'Scheduled',
+  guest_otp: 'Guest (OTP)',
+  guest_longterm: 'Guest (Long Term)',
 }
 
 export function LockUsersTab({ lockId, ownerId }: LockUsersTabProps) {
@@ -52,6 +62,7 @@ export function LockUsersTab({ lockId, ownerId }: LockUsersTabProps) {
   const [editingUserLock, setEditingUserLock] = useState<UserLockWithUser | null>(null)
   const [userToRemove, setUserToRemove] = useState<UserLockWithUser | null>(null)
   const [removing, setRemoving] = useState(false)
+  const [addUserOpen, setAddUserOpen] = useState(false)
 
   async function fetchUsers() {
     try {
@@ -137,10 +148,14 @@ export function LockUsersTab({ lockId, ownerId }: LockUsersTabProps) {
   return (
     <>
       <Card className="mt-4">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">
             User Management ({userLocks.length + (ownerInUserLocks ? 0 : 1)})
           </CardTitle>
+          <Button size="sm" onClick={() => setAddUserOpen(true)}>
+            <UserPlus className="h-4 w-4 mr-1.5" />
+            Add User
+          </Button>
         </CardHeader>
         <CardContent>
           <Table>
@@ -149,7 +164,8 @@ export function LockUsersTab({ lockId, ownerId }: LockUsersTabProps) {
                 <TableHead>User</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Permissions</TableHead>
-                <TableHead>Time Restrictions</TableHead>
+                <TableHead>Schedule</TableHead>
+                <TableHead>Access Validity</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -186,6 +202,9 @@ export function LockUsersTab({ lockId, ownerId }: LockUsersTabProps) {
                     <span className="text-sm text-muted-foreground">None</span>
                   </TableCell>
                   <TableCell>
+                    <span className="text-sm text-muted-foreground">Permanent</span>
+                  </TableCell>
+                  <TableCell>
                     <Badge variant="default">Active</Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -217,8 +236,8 @@ export function LockUsersTab({ lockId, ownerId }: LockUsersTabProps) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={roleVariants[ul.role] || 'outline'} className="capitalize">
-                        {ul.role.replace('_', ' ')}
+                      <Badge variant={roleVariants[ul.role] || 'outline'}>
+                        {roleLabels[ul.role] || ul.role}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -240,12 +259,46 @@ export function LockUsersTab({ lockId, ownerId }: LockUsersTabProps) {
                     </TableCell>
                     <TableCell>
                       {ul.time_restricted ? (
-                        <div className="flex items-center gap-1 text-sm">
-                          <Clock className="h-3 w-3" />
-                          {ul.time_restriction_start} - {ul.time_restriction_end}
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1 text-sm">
+                            <Clock className="h-3 w-3" />
+                            {ul.time_restriction_start} - {ul.time_restriction_end}
+                          </div>
+                          {ul.days_of_week && ul.days_of_week.length < 7 && (
+                            <div className="flex gap-0.5">
+                              {['S','M','T','W','T','F','S'].map((d, i) => (
+                                <span
+                                  key={i}
+                                  className={`text-[10px] w-4 text-center rounded ${
+                                    ul.days_of_week.includes(i)
+                                      ? 'bg-primary text-primary-foreground'
+                                      : 'text-muted-foreground'
+                                  }`}
+                                >
+                                  {d}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <span className="text-sm text-muted-foreground">None</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {ul.access_valid_from || ul.access_valid_until ? (
+                        <div className="text-xs space-y-0.5">
+                          {ul.access_valid_from && (
+                            <div>From: {new Date(ul.access_valid_from).toLocaleDateString()}</div>
+                          )}
+                          {ul.access_valid_until && (
+                            <div className={new Date(ul.access_valid_until) < new Date() ? 'text-destructive font-medium' : ''}>
+                              Until: {new Date(ul.access_valid_until).toLocaleDateString()}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Permanent</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -284,7 +337,7 @@ export function LockUsersTab({ lockId, ownerId }: LockUsersTabProps) {
 
               {userLocks.length === 0 && !ownerInfo && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     No users have access to this lock
                   </TableCell>
                 </TableRow>
@@ -300,6 +353,15 @@ export function LockUsersTab({ lockId, ownerId }: LockUsersTabProps) {
         onOpenChange={(open) => !open && setEditingUserLock(null)}
         userLock={editingUserLock}
         onSave={handleEditSaved}
+      />
+
+      {/* Add User Sheet */}
+      <AddUserSheet
+        open={addUserOpen}
+        onOpenChange={setAddUserOpen}
+        lockId={lockId}
+        existingUserIds={[ownerId, ...userLocks.map(ul => ul.user_id)]}
+        onSave={() => { setAddUserOpen(false); fetchUsers() }}
       />
 
       {/* Remove Confirmation Dialog */}

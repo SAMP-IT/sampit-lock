@@ -10,10 +10,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Types based on database schema
-export type UserRole = 'owner' | 'family' | 'guest' | 'service' | 'enterprise'
+export type UserRole = 'owner' | 'admin' | 'family' | 'guest' | 'scheduled' | 'guest_otp' | 'guest_longterm' | 'service' | 'enterprise'
 export type UserLockRole = 'owner' | 'admin' | 'family' | 'scheduled' | 'guest_otp' | 'guest_longterm'
-export type LockAction = 'unlocked' | 'locked' | 'failed_attempt' | 'auto_lock' | 'passage_mode' | 'battery_warning' | 'offline' | 'tamper_detected'
-export type AccessMethodType = 'fingerprint' | 'pin' | 'phone' | 'card' | 'remote' | 'auto'
+export type LockAction = 'unlocked' | 'locked' | 'failed_attempt' | 'auto_lock' | 'passage_mode' | 'battery_warning' | 'offline' | 'tamper_detected' | 'otp_verified'
+export type AccessMethodType = 'fingerprint' | 'pin' | 'phone' | 'card' | 'remote' | 'auto' | 'otp'
 export type CodeType = 'permanent' | 'temporary' | 'one_time'
 export type InviteStatus = 'pending' | 'accepted' | 'expired' | 'revoked'
 
@@ -87,6 +87,7 @@ export interface UserLock {
   is_active: boolean
   vacation_disabled: boolean
   notes?: string
+  credentials_cleanup_status?: string | null
   // Timestamps
   created_at: string
   updated_at: string
@@ -130,6 +131,8 @@ export interface AccessCode {
   lock?: Lock
 }
 
+export type SyncStatus = 'synced' | 'pending_add' | 'pending_delete' | 'pending_update' | 'failed' | 'unknown'
+
 export interface Fingerprint {
   id: string
   lock_id: string
@@ -145,6 +148,9 @@ export interface Fingerprint {
   is_active?: boolean
   valid_from?: string
   valid_until?: string
+  sync_status?: SyncStatus
+  sync_error?: string
+  last_synced_at?: string
   created_at: string
   updated_at: string
   // Joined fields
@@ -164,6 +170,9 @@ export interface ICCard {
   is_active?: boolean
   valid_from?: string
   valid_until?: string
+  sync_status?: SyncStatus
+  sync_error?: string
+  last_synced_at?: string
   created_at: string
   updated_at: string
   // Joined fields
@@ -181,6 +190,9 @@ export interface Passcode {
   created_by?: string
   name?: string
   assigned_to_user_id?: string
+  sync_status?: SyncStatus
+  sync_error?: string
+  last_synced_at?: string
   created_at: string
   updated_at: string
   // Joined fields

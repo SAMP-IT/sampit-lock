@@ -328,7 +328,7 @@ export const generateOTP = async (req, res) => {
       .from('guest_access')
       .insert([{
         lock_id: lockId,
-        created_by: creatorId,
+        created_by_user_id: creatorId,
         guest_name,
         access_code: otp_code,
         access_type: 'otp',
@@ -447,7 +447,7 @@ export const verifyOTP = async (req, res) => {
       .from('activity_logs')
       .insert([{
         lock_id: lockId,
-        user_id: guestAccess.created_by,
+        user_id: guestAccess.created_by_user_id,
         action: 'unlocked',
         access_method: 'otp',
         metadata: {
@@ -499,7 +499,7 @@ export const getGuestAccessHistory = async (req, res) => {
         is_active,
         last_used_at,
         created_at,
-        creator:created_by (
+        creator:created_by_user_id (
           first_name,
           last_name
         )

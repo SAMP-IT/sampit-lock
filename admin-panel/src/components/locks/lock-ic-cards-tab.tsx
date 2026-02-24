@@ -41,6 +41,24 @@ const statusVariants: Record<number, 'default' | 'secondary' | 'destructive' | '
   9: 'destructive',
 }
 
+const syncLabels: Record<string, string> = {
+  synced: 'Synced',
+  pending_add: 'Pending Add',
+  pending_delete: 'Pending Delete',
+  pending_update: 'Pending Update',
+  failed: 'Failed',
+  unknown: 'Unknown',
+}
+
+const syncVariants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  synced: 'default',
+  pending_add: 'outline',
+  pending_delete: 'outline',
+  pending_update: 'outline',
+  failed: 'destructive',
+  unknown: 'secondary',
+}
+
 export function LockICCardsTab({ lockId }: LockICCardsTabProps) {
   const [cards, setCards] = useState<ICCard[]>([])
   const [loading, setLoading] = useState(true)
@@ -98,6 +116,7 @@ export function LockICCardsTab({ lockId }: LockICCardsTabProps) {
                 <TableHead>Card Number</TableHead>
                 <TableHead>User</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Sync</TableHead>
                 <TableHead>Valid Period</TableHead>
                 <TableHead>Created</TableHead>
               </TableRow>
@@ -121,6 +140,15 @@ export function LockICCardsTab({ lockId }: LockICCardsTabProps) {
                     <Badge variant={statusVariants[card.status] || 'outline'}>
                       {statusLabels[card.status] || `Unknown (${card.status})`}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {card.sync_status ? (
+                      <Badge variant={syncVariants[card.sync_status] || 'secondary'} className="text-xs">
+                        {syncLabels[card.sync_status] || card.sync_status}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-sm">
                     {card.start_date

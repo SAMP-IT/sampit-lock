@@ -1127,22 +1127,45 @@ export const lockDoor = async (req, res) => {
     const { access_method = 'remote', location } = req.body;
     logger.lock.control(lockId, 'lock', userId, access_method);
 
-    // Check if user has lock permission
+    // Check if user has lock permission with access validity fields
     const { data: access, error: accessError } = await supabase
       .from('user_locks')
-      .select('can_lock')
+      .select('can_lock, access_valid_from, access_valid_until')
       .eq('user_id', userId)
       .eq('lock_id', lockId)
       .eq('is_active', true)
       .single();
 
     if (accessError || !access || !access.can_lock) {
-      logger.security.accessDenied(userId, lockId, 'lock', 'No lock permission');
+      logger.security.failedAttempt(lockId, 'lock', { userId, reason: 'No lock permission' });
       return res.status(403).json({
         success: false,
         error: {
           code: 'FORBIDDEN',
           message: 'You do not have permission to lock this door'
+        }
+      });
+    }
+
+    // Check access date validity (expired users cannot lock either)
+    const now = new Date();
+    if (access.access_valid_from && new Date(access.access_valid_from) > now) {
+      logger.security.failedAttempt(lockId, 'lock', { userId, reason: 'Access not yet valid' });
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'ACCESS_NOT_YET_VALID',
+          message: 'Your access is not yet active'
+        }
+      });
+    }
+    if (access.access_valid_until && new Date(access.access_valid_until) < now) {
+      logger.security.failedAttempt(lockId, 'lock', { userId, reason: 'Access expired' });
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'ACCESS_EXPIRED',
+          message: 'Your access has expired'
         }
       });
     }
@@ -1183,7 +1206,7 @@ export const lockDoor = async (req, res) => {
       metadata: { access_method }
     }).catch(err => console.error('Notification error:', err));
 
-    logger.lock.lock(lockId, userId, true, { access_method });
+    logger.lock.control(lockId, 'lock', access_method, true, { userId });
     res.json({
       success: true,
       data: {
@@ -1239,7 +1262,7 @@ export const unlockDoor = async (req, res) => {
       .single();
 
     if (accessError || !access || !access.can_unlock) {
-      logger.security.accessDenied(userId, lockId, 'unlock', 'No unlock permission');
+      logger.security.failedAttempt(lockId, 'unlock', { userId, reason: 'No unlock permission' });
       return res.status(403).json({
         success: false,
         error: {
@@ -1251,7 +1274,7 @@ export const unlockDoor = async (req, res) => {
 
     // Check if remote unlock is enabled
     if (access_method === 'remote' && !access.remote_unlock_enabled) {
-      logger.security.accessDenied(userId, lockId, 'unlock', 'Remote unlock disabled');
+      logger.security.failedAttempt(lockId, 'unlock', { userId, reason: 'Remote unlock disabled' });
       return res.status(403).json({
         success: false,
         error: {
@@ -1271,7 +1294,7 @@ export const unlockDoor = async (req, res) => {
       const validFrom = new Date(access.access_valid_from);
       if (validFrom > now) {
         const formattedDate = validFrom.toLocaleDateString();
-        logger.security.accessDenied(userId, lockId, 'unlock', `Access starts ${formattedDate}`);
+        logger.security.failedAttempt(lockId, 'unlock', { userId, reason: `Access starts ${formattedDate}` });
         return res.status(403).json({
           success: false,
           error: {
@@ -1291,7 +1314,7 @@ export const unlockDoor = async (req, res) => {
       const validUntil = new Date(access.access_valid_until);
       if (validUntil < now) {
         const formattedDate = validUntil.toLocaleDateString();
-        logger.security.accessDenied(userId, lockId, 'unlock', `Access expired ${formattedDate}`);
+        logger.security.failedAttempt(lockId, 'unlock', { userId, reason: `Access expired ${formattedDate}` });
         return res.status(403).json({
           success: false,
           error: {
@@ -1318,7 +1341,7 @@ export const unlockDoor = async (req, res) => {
       if (allowedDays.length > 0 && !allowedDays.includes(currentDay)) {
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const allowedDayNames = allowedDays.map(d => dayNames[d]).join(', ');
-        logger.security.accessDenied(userId, lockId, 'unlock', `Day restriction: ${dayNames[currentDay]} not in allowed days`);
+        logger.security.failedAttempt(lockId, 'unlock', { userId, reason: `Day restriction: ${dayNames[currentDay]} not in allowed days` });
         return res.status(403).json({
           success: false,
           error: {
@@ -1338,7 +1361,7 @@ export const unlockDoor = async (req, res) => {
         const endTime = access.time_restriction_end.slice(0, 5);
 
         if (currentTime < startTime || currentTime > endTime) {
-          logger.security.accessDenied(userId, lockId, 'unlock', `Time restriction: ${currentTime} outside ${startTime}-${endTime}`);
+          logger.security.failedAttempt(lockId, 'unlock', { userId, reason: `Time restriction: ${currentTime} outside ${startTime}-${endTime}` });
           return res.status(403).json({
             success: false,
             error: {
@@ -1421,7 +1444,7 @@ export const unlockDoor = async (req, res) => {
       metadata: { access_method }
     }).catch(err => console.error('Notification error:', err));
 
-    logger.lock.unlock(lockId, userId, true, { access_method });
+    logger.lock.control(lockId, 'unlock', access_method, true, { userId });
     res.json({
       success: true,
       data: {
@@ -1520,7 +1543,7 @@ export const getBatteryLevel = async (req, res) => {
       battery_status = 'medium';
     }
 
-    logger.lock.battery(lockId, lock.battery_level, battery_status);
+    logger.ai.batteryPrediction(lockId, { currentLevel: lock.battery_level, health: battery_status });
     res.json({
       success: true,
       data: {
@@ -1702,7 +1725,7 @@ export const getRecoveryKeys = async (req, res) => {
       .single();
 
     if (accessError || !userLock || (userLock.role !== 'owner' && userLock.role !== 'admin')) {
-      logger.security.accessDenied(userId, lockId, 'getRecoveryKeys', 'Not lock owner or admin');
+      logger.security.failedAttempt(lockId, 'getRecoveryKeys', { userId, reason: 'Not lock owner or admin' });
       return res.status(403).json({
         success: false,
         error: {

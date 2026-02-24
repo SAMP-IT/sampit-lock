@@ -105,9 +105,8 @@ const registerAndConnectTTLock = async (username, password) => {
       });
     }
 
-    // Step 2: Wait for TTLock to propagate the new user (2 seconds)
-    console.log('⏳ Waiting for TTLock account propagation...');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Step 2: Brief wait for TTLock account propagation
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     // Step 3: Get access token by logging in
     const loginParams = {
@@ -148,8 +147,7 @@ const registerAndConnectTTLock = async (username, password) => {
 
         // If error 10007 (invalid credentials) and we have more attempts, wait and retry
         if (loginResponse.data.errcode === 10007 && loginAttempts < maxAttempts) {
-          console.log('⏳ Got 10007, waiting 2 seconds before retry...');
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise(resolve => setTimeout(resolve, 1000));
         } else {
           break; // Non-retryable error or last attempt
         }
@@ -157,7 +155,7 @@ const registerAndConnectTTLock = async (username, password) => {
         if (loginAttempts >= maxAttempts) {
           throw error;
         }
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
 
@@ -771,7 +769,41 @@ export const deleteAccount = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    console.log(`🗑️ Delete account requested for user ${userId}`);
+    // Fetch user details to get TTLock username before deletion
+    const { data: userData, error: fetchError } = await supabase
+      .from('users')
+      .select('ttlock_username')
+      .eq('id', userId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching user for deletion:', fetchError.message);
+    }
+
+    // Delete TTLock user from TTLock Cloud (best-effort)
+    if (userData?.ttlock_username) {
+      try {
+        const ttlockResponse = await axios.post(
+          `${TTLOCK_API_BASE_URL}/v3/user/delete`,
+          null,
+          {
+            params: {
+              clientId: TTLOCK_CLIENT_ID,
+              clientSecret: TTLOCK_CLIENT_SECRET,
+              username: userData.ttlock_username,
+              date: Date.now()
+            }
+          }
+        );
+
+        if (ttlockResponse.data.errcode && ttlockResponse.data.errcode !== 0) {
+          console.error('TTLock user deletion failed:', ttlockResponse.data.errmsg);
+        }
+      } catch (ttlockError) {
+        console.error('TTLock user deletion error:', ttlockError.message);
+        // Continue with account deletion even if TTLock fails
+      }
+    }
 
     // Delete all user's locks first (cascades to related data)
     const { error: locksError } = await supabase
@@ -780,7 +812,7 @@ export const deleteAccount = async (req, res) => {
       .eq('owner_id', userId);
 
     if (locksError) {
-      console.error('Error deleting user locks:', locksError);
+      console.error('Error deleting user locks:', locksError.message);
     }
 
     // Delete user_locks entries (shared access)
@@ -790,7 +822,24 @@ export const deleteAccount = async (req, res) => {
       .eq('user_id', userId);
 
     if (userLocksError) {
-      console.error('Error deleting user_locks:', userLocksError);
+      console.error('Error deleting user_locks:', userLocksError.message);
+    }
+
+    // Clean up orphaned records in related tables
+    const orphanTables = [
+      { table: 'activity_logs', column: 'user_id' },
+      { table: 'guest_codes', column: 'created_by_user_id' },
+      { table: 'guest_access', column: 'created_by_user_id' },
+      { table: 'notifications', column: 'user_id' },
+      { table: 'access_codes', column: 'created_by_user_id' },
+      { table: 'invite_codes', column: 'created_by_user_id' }
+    ];
+
+    for (const { table, column } of orphanTables) {
+      const { error } = await supabase.from(table).delete().eq(column, userId);
+      if (error) {
+        console.error(`Error cleaning ${table}:`, error.message);
+      }
     }
 
     // Delete user from database
@@ -800,7 +849,7 @@ export const deleteAccount = async (req, res) => {
       .eq('id', userId);
 
     if (dbError) {
-      console.error('Error deleting user from database:', dbError);
+      console.error('Error deleting user from database:', dbError.message);
       return res.status(500).json({
         success: false,
         error: {
@@ -814,18 +863,16 @@ export const deleteAccount = async (req, res) => {
     const { error: authError } = await supabase.auth.admin.deleteUser(userId);
 
     if (authError) {
-      console.error('Error deleting user from Supabase Auth:', authError);
+      console.error('Error deleting user from Supabase Auth:', authError.message);
       // Don't fail here since DB data is already deleted
     }
-
-    console.log(`✅ Account deleted for user ${userId}`);
 
     res.json({
       success: true,
       message: 'Account deleted successfully'
     });
   } catch (error) {
-    console.error('Delete account error:', error);
+    console.error('Delete account error:', error.message);
     res.status(500).json({
       success: false,
       error: {

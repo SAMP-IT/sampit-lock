@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { StyleSheet, View, ScrollView, Alert, Text, TouchableOpacity, ActivityIndicator, RefreshControl } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Header from "../components/Header";
 import AppScreen from "../components/ui/AppScreen";
@@ -12,10 +13,9 @@ import LockResultModal from "../components/ui/LockResultModal";
 import ActivityItem from "../components/ActivityItem";
 import Theme from "../constants/Theme";
 import Colors from "../constants/Colors";
-import { getLocks, getTTLockStatus, getRecentActivity } from "../services/api";
 import LockControlService from "../services/lockControlService";
-import { unwrapResponseArray } from "../utils/apiResponse";
 import { getLockDisplayName } from "../utils/lockDisplayUtils";
+import { useLocks, useRecentActivity, useTTLockStatus } from "../hooks/useQueryHooks";
 
 const ActivityPreview = ({ activities, locks }) => {
   // Create a map of lock_id to user-friendly lock name using shared utility
@@ -42,16 +42,12 @@ const ActivityPreview = ({ activities, locks }) => {
 };
 
 const HomeScreen = ({ navigation }) => {
-  const [locks, setLocks] = useState([]);
+  const queryClient = useQueryClient();
   const [selectedLock, setSelectedLock] = useState(null);
-  const [activities, setActivities] = useState([]);
-  const [ttlockStatus, setTTLockStatus] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState(null);
   const [userName, setUserName] = useState('');
   const [isLocking, setIsLocking] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Refs for scrolling
   const scrollViewRef = useRef(null);
@@ -66,6 +62,27 @@ const HomeScreen = ({ navigation }) => {
     message: '',
     lockName: '',
   });
+
+  // React Query hooks
+  const { data: locks = [], isLoading: locksLoading, error: locksError, refetch: refetchLocks } = useLocks();
+  const { data: activities = [], refetch: refetchActivities } = useRecentActivity();
+  const { data: ttlockStatus = null, refetch: refetchStatus } = useTTLockStatus();
+  const isLoading = locksLoading;
+  const error = locksError;
+
+  // Update selected lock when locks data changes
+  useEffect(() => {
+    if (locks.length > 0 && !selectedLock) {
+      setSelectedLock(locks[0]);
+    } else if (selectedLock) {
+      const updatedSelected = locks.find(l => l.id === selectedLock.id);
+      if (updatedSelected) {
+        setSelectedLock(updatedSelected);
+      } else if (locks.length > 0) {
+        setSelectedLock(locks[0]);
+      }
+    }
+  }, [locks]);
 
   // Load user name from storage
   useEffect(() => {
@@ -86,76 +103,20 @@ const HomeScreen = ({ navigation }) => {
     loadUserName();
   }, []);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const locksResponse = await getLocks();
-      const normalizedLocks = unwrapResponseArray(locksResponse);
-      setLocks(normalizedLocks);
-
-      // Set first lock as selected if none selected
-      if (normalizedLocks.length > 0 && !selectedLock) {
-        setSelectedLock(normalizedLocks[0]);
-      } else if (selectedLock) {
-        // Update selected lock data if it exists
-        const updatedSelected = normalizedLocks.find(l => l.id === selectedLock.id);
-        if (updatedSelected) {
-          setSelectedLock(updatedSelected);
-        } else if (normalizedLocks.length > 0) {
-          setSelectedLock(normalizedLocks[0]);
-        }
-      }
-
-      // Fetch recent activities
-      try {
-        const activityResponse = await getRecentActivity();
-        const activityData = activityResponse?.data?.data ?? activityResponse?.data ?? [];
-        setActivities(Array.isArray(activityData) ? activityData : []);
-      } catch (activityErr) {
-        console.warn('Failed to fetch activities:', activityErr?.message);
-        setActivities([]);
-      }
-
-      // Still fetch TTLock status for Add Lock validation
-      try {
-        const statusResponse = await getTTLockStatus();
-        const statusPayload = statusResponse?.data ?? statusResponse;
-        const normalizedStatus = statusPayload?.data ?? statusPayload;
-        setTTLockStatus(normalizedStatus);
-      } catch (statusErr) {
-        setTTLockStatus(null);
-      }
-
-    } catch (err) {
-      const is404 = err?.response?.status === 404;
-      if (!is404) {
-        console.warn('Failed to fetch locks:', err?.message || err);
-      }
-      setError(null);
-      setLocks([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
+  // Refetch on screen focus
   useFocusEffect(
     useCallback(() => {
-      fetchData();
-    }, [fetchData])
+      refetchLocks();
+      refetchActivities();
+    }, [refetchLocks, refetchActivities])
   );
 
   // Pull-to-refresh handler
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    await fetchData();
+    await Promise.all([refetchLocks(), refetchActivities(), refetchStatus()]);
     setIsRefreshing(false);
-  }, [fetchData]);
+  }, [refetchLocks, refetchActivities, refetchStatus]);
 
   const handleLockPress = (lock) => {
     navigation.navigate('LockDetail', { lockId: lock.id });

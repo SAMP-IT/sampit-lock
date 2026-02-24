@@ -20,6 +20,7 @@ import {
   Lock,
   Activity,
   KeyRound,
+  ShieldCheck,
   LogOut,
 } from 'lucide-react'
 
@@ -29,6 +30,7 @@ const menuItems = [
   { title: 'Locks', url: '/locks', icon: Lock },
   { title: 'Activity', url: '/activity', icon: Activity },
   { title: 'Access Codes', url: '/access-codes', icon: KeyRound },
+  { title: 'Access Review', url: '/access-review', icon: ShieldCheck },
 ]
 
 export function AppSidebar() {

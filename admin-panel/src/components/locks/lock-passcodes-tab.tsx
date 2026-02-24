@@ -53,6 +53,24 @@ export function LockPasscodesTab({ lockId }: LockPasscodesTabProps) {
     )
   })
 
+  const syncLabels: Record<string, string> = {
+    synced: 'Synced',
+    pending_add: 'Pending Add',
+    pending_delete: 'Pending Delete',
+    pending_update: 'Pending Update',
+    failed: 'Failed',
+    unknown: 'Unknown',
+  }
+
+  const syncVariants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+    synced: 'default',
+    pending_add: 'outline',
+    pending_delete: 'outline',
+    pending_update: 'outline',
+    failed: 'destructive',
+    unknown: 'secondary',
+  }
+
   const getTypeVariant = (type: string) => {
     switch (type) {
       case 'permanent': return 'default'
@@ -106,6 +124,7 @@ export function LockPasscodesTab({ lockId }: LockPasscodesTabProps) {
                 <TableHead>Type</TableHead>
                 <TableHead>Valid Period</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Sync</TableHead>
                 <TableHead>Created By</TableHead>
                 <TableHead>Created</TableHead>
               </TableRow>
@@ -133,6 +152,15 @@ export function LockPasscodesTab({ lockId }: LockPasscodesTabProps) {
                     <Badge variant={passcode.is_active ? 'default' : 'secondary'}>
                       {passcode.is_active ? 'Active' : 'Inactive'}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {passcode.sync_status ? (
+                      <Badge variant={syncVariants[passcode.sync_status] || 'secondary'} className="text-xs">
+                        {syncLabels[passcode.sync_status] || passcode.sync_status}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     {passcode.users

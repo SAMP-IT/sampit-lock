@@ -9,7 +9,7 @@ export const getUserNotifications = async (req, res) => {
   try {
     const userId = req.user.id;
     const { is_read, type, limit = 50, offset = 0 } = req.query;
-    logger.notification.request('getUserNotifications', userId, { is_read, type, limit, offset });
+    logger.info('[NOTIFY] getUserNotifications', { userId, is_read, type, limit, offset });
 
     let query = supabase
       .from('notifications')
@@ -92,7 +92,7 @@ export const markNotificationAsRead = async (req, res) => {
   try {
     const { notificationId } = req.params;
     const userId = req.user.id;
-    logger.notification.request('markNotificationAsRead', userId, { notificationId });
+    logger.notification.markRead(notificationId, userId);
 
     const { data: notification, error } = await supabase
       .from('notifications')
@@ -137,7 +137,7 @@ export const markNotificationAsRead = async (req, res) => {
 export const markAllNotificationsAsRead = async (req, res) => {
   try {
     const userId = req.user.id;
-    logger.notification.request('markAllNotificationsAsRead', userId, {});
+    logger.info('[NOTIFY] markAllNotificationsAsRead', { userId });
 
     const { error } = await supabase
       .from('notifications')
@@ -181,7 +181,7 @@ export const deleteNotification = async (req, res) => {
   try {
     const { notificationId } = req.params;
     const userId = req.user.id;
-    logger.notification.request('deleteNotification', userId, { notificationId });
+    logger.info('[NOTIFY] deleteNotification', { userId, notificationId });
 
     const { error } = await supabase
       .from('notifications')
@@ -224,7 +224,7 @@ export const deleteNotification = async (req, res) => {
 export const getNotificationPreferences = async (req, res) => {
   try {
     const userId = req.user.id;
-    logger.notification.request('getNotificationPreferences', userId, {});
+    logger.notification.preferencesGet(userId);
 
     // In a real implementation, this would fetch from a notification_preferences table
     // For now, we'll return default preferences
@@ -274,7 +274,7 @@ export const updateNotificationPreferences = async (req, res) => {
   try {
     const userId = req.user.id;
     const preferences = req.body;
-    logger.notification.request('updateNotificationPreferences', userId, preferences);
+    logger.info('[NOTIFY] updateNotificationPreferences', { userId });
 
     // In a real implementation, this would update a notification_preferences table
     // For now, we'll just return the updated preferences
@@ -303,7 +303,7 @@ export const updateNotificationPreferences = async (req, res) => {
  */
 export const createNotification = async (userId, lockId, type, title, message) => {
   try {
-    logger.notification.send(userId, type, title, { lockId });
+    logger.notification.sent(userId, type, title);
 
     const { data, error } = await supabase
       .from('notifications')

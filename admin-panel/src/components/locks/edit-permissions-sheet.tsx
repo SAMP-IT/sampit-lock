@@ -56,6 +56,54 @@ interface FormState {
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
+const ROLE_DEFAULTS: Record<UserLockRole, Partial<FormState>> = {
+  owner: {
+    can_unlock: true, can_lock: true, remote_unlock_enabled: true,
+    can_view_logs: true, can_view_all_logs: true, can_manage_users: true,
+    can_modify_settings: true, time_restricted: false,
+    days_of_week: [0,1,2,3,4,5,6],
+  },
+  admin: {
+    can_unlock: true, can_lock: true, remote_unlock_enabled: true,
+    can_view_logs: true, can_view_all_logs: true, can_manage_users: true,
+    can_modify_settings: true, time_restricted: false,
+    days_of_week: [0,1,2,3,4,5,6],
+  },
+  family: {
+    can_unlock: true, can_lock: true, remote_unlock_enabled: true,
+    can_view_logs: true, can_view_all_logs: false, can_manage_users: false,
+    can_modify_settings: false, time_restricted: false,
+    days_of_week: [0,1,2,3,4,5,6],
+  },
+  scheduled: {
+    can_unlock: true, can_lock: true, remote_unlock_enabled: false,
+    can_view_logs: false, can_view_all_logs: false, can_manage_users: false,
+    can_modify_settings: false, time_restricted: true,
+    days_of_week: [1,2,3,4,5],
+  },
+  guest_otp: {
+    can_unlock: true, can_lock: false, remote_unlock_enabled: false,
+    can_view_logs: false, can_view_all_logs: false, can_manage_users: false,
+    can_modify_settings: false, time_restricted: false,
+    days_of_week: [0,1,2,3,4,5,6],
+  },
+  guest_longterm: {
+    can_unlock: true, can_lock: true, remote_unlock_enabled: false,
+    can_view_logs: false, can_view_all_logs: false, can_manage_users: false,
+    can_modify_settings: false, time_restricted: false,
+    days_of_week: [0,1,2,3,4,5,6],
+  },
+}
+
+const ROLE_DESCRIPTIONS: Record<UserLockRole, string> = {
+  owner: 'Full control over the lock and all users',
+  admin: 'Full access, can manage users and settings',
+  family: 'Unlock/lock anytime, view own activity',
+  scheduled: 'Access restricted to specific days and time windows',
+  guest_otp: 'One-time access via OTP code',
+  guest_longterm: 'Temporary access with expiry date',
+}
+
 function getInitialFormState(ul: UserLockWithUser | null): FormState {
   if (!ul) {
     return {
@@ -114,6 +162,11 @@ export function EditPermissionsSheet({ open, onOpenChange, userLock, onSave }: E
 
   function updateForm(updates: Partial<FormState>) {
     setForm(prev => ({ ...prev, ...updates }))
+  }
+
+  function handleRoleChange(role: UserLockRole) {
+    const defaults = ROLE_DEFAULTS[role]
+    setForm(prev => ({ ...prev, ...defaults, role }))
   }
 
   function toggleDay(day: number) {
@@ -178,18 +231,19 @@ export function EditPermissionsSheet({ open, onOpenChange, userLock, onSave }: E
           {/* Role */}
           <section className="space-y-3">
             <h3 className="text-sm font-medium">Role</h3>
-            <Select value={form.role} onValueChange={(v) => updateForm({ role: v as UserLockRole })}>
+            <Select value={form.role} onValueChange={(v) => handleRoleChange(v as UserLockRole)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="family">Family</SelectItem>
-                <SelectItem value="scheduled">Scheduled</SelectItem>
-                <SelectItem value="guest_otp">Guest (One-Time)</SelectItem>
+                <SelectItem value="family">Family / Resident</SelectItem>
+                <SelectItem value="scheduled">Scheduled / Restricted</SelectItem>
+                <SelectItem value="guest_otp">Guest (One-Time OTP)</SelectItem>
                 <SelectItem value="guest_longterm">Guest (Long Term)</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">{ROLE_DESCRIPTIONS[form.role]}</p>
           </section>
 
           <Separator />

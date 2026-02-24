@@ -365,7 +365,7 @@ router.get('/locks/:lockId/security/alerts', async (req, res) => {
 
     const result = await getFraudAlerts(lockId, parseInt(days));
 
-    logger.ai.fraudDetection(lockId, result?.alerts?.length || 0, result?.severity || null);
+    logger.ai.fraudAlert(lockId, 'summary', result?.severity || 'info', { alertCount: result?.alerts?.length || 0 });
     res.json({
       success: true,
       data: result
@@ -423,7 +423,7 @@ router.get('/locks/:lockId/rules/suggestions', async (req, res) => {
 
     const result = await generateRuleSuggestions(lockId);
 
-    logger.ai.rulesEngine(lockId, 'suggestions', result?.suggestions?.length || 0);
+    logger.ai.ruleSuggestion(lockId, result?.suggestions?.length || 0);
     res.json({
       success: true,
       data: result
@@ -450,7 +450,7 @@ router.get('/locks/:lockId/rules', async (req, res) => {
 
     const result = await getActiveRules(lockId);
 
-    logger.ai.rulesEngine(lockId, 'list', result?.rules?.length || 0);
+    logger.ai.rulesList(lockId, result?.rules?.length || 0);
     res.json({
       success: true,
       data: result
@@ -479,7 +479,7 @@ router.post('/locks/:lockId/rules', async (req, res) => {
 
     const result = await createRuleFromSuggestion(lockId, suggestion, userId);
 
-    logger.ai.rulesEngine(lockId, 'created', 1);
+    logger.ai.ruleCreated(lockId, result?.ruleId || null, suggestion?.type || 'unknown', userId);
     logger.info(`[AI] ✅ Rule created on lock ${lockId} by user ${userId} - Type: ${suggestion?.type || 'unknown'}`);
     res.json({
       success: result.success,

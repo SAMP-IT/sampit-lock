@@ -28,6 +28,7 @@ import passcodeRoutes from './routes/passcodeRoutes.js';
 
 // Import middleware
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { globalLimiter, authLimiter, apiLimiter } from './middleware/rateLimiter.js';
 
 // Import WebSocket setup
 import { setupWebSocket } from './services/websocket.js';
@@ -45,6 +46,7 @@ const requiredEnvVars = [
   'SUPABASE_SERVICE_ROLE_KEY',
   'SUPABASE_ANON_KEY',
   'TTLOCK_ENCRYPTION_KEY',
+  'JWT_SECRET',
   'PORT'
 ];
 
@@ -61,8 +63,14 @@ const PORT = process.env.PORT || 3000;
 // Create HTTP server
 const httpServer = createServer(app);
 
+// Trust proxy (required for rate limiting behind Render/reverse proxy)
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
+
+// Global rate limiter
+app.use(globalLimiter);
 
 // CORS configuration
 const parseOrigins = (value) =>
@@ -74,6 +82,13 @@ const parseOrigins = (value) =>
 const rawOrigins = process.env.CORS_ORIGIN || process.env.FRONTEND_URL || '';
 const allowedOrigins = parseOrigins(rawOrigins);
 
+// Filter out wildcard - it's incompatible with credentials: true
+const wildcardIndex = allowedOrigins.indexOf('*');
+if (wildcardIndex !== -1) {
+  console.error('CORS: Wildcard (*) origin is not allowed with credentials. Removing it. Set explicit origins in CORS_ORIGIN.');
+  allowedOrigins.splice(wildcardIndex, 1);
+}
+
 if (allowedOrigins.length === 0) {
   console.warn(
     'No explicit CORS origins configured. Defaulting to local development origins. Set CORS_ORIGIN to a comma-separated list for production.'
@@ -83,7 +98,8 @@ if (allowedOrigins.length === 0) {
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+    // Allow requests with no origin (mobile apps, server-to-server)
+    if (!origin || allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
 
@@ -97,8 +113,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // Request logging middleware (simple)
 app.use((req, res, next) => {
@@ -178,6 +194,14 @@ app.get('/health', async (req, res) => {
   const statusCode = healthStatus.status === 'healthy' ? 200 : 503;
   res.status(statusCode).json(healthStatus);
 });
+
+// Auth rate limiting (login, signup, forgot-password)
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/signup', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+
+// API rate limiting for all API routes
+app.use('/api', apiLimiter);
 
 // API routes
 app.use('/api/auth', authRoutes);

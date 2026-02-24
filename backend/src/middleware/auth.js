@@ -1,4 +1,5 @@
 import { supabase } from '../services/supabase.js';
+import logger from '../utils/logger.js';
 
 /**
  * Authentication middleware
@@ -6,13 +7,9 @@ import { supabase } from '../services/supabase.js';
  */
 export const authenticate = async (req, res, next) => {
   try {
-    console.log('🔵 [SUPABASE-AUTH-MIDDLEWARE] Request path:', req.path);
-    console.log('🔵 [SUPABASE-AUTH-MIDDLEWARE] Has authorization header?', !!req.headers.authorization);
-
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('❌ Auth failed: Missing or invalid authorization header');
       return res.status(401).json({
         success: false,
         error: {
@@ -23,14 +20,12 @@ export const authenticate = async (req, res, next) => {
     }
 
     const token = authHeader.substring(7);
-    console.log('🔑 Verifying token:', token.substring(0, 20) + '...');
 
     // Verify token with Supabase
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
-      console.log('❌ Token verification failed:', error?.message || 'User not found');
-      console.log('Error details:', JSON.stringify(error, null, 2));
+      logger.auth.middleware(null, req.path, false);
       return res.status(401).json({
         success: false,
         error: {
@@ -39,8 +34,6 @@ export const authenticate = async (req, res, next) => {
         }
       });
     }
-
-    console.log('✅ Token verified for user:', user.email);
 
     // Fetch full user details from database
     let { data: userDetails, error: dbError } = await supabase
@@ -51,7 +44,7 @@ export const authenticate = async (req, res, next) => {
 
     // If user doesn't exist in database, create them automatically
     if (dbError && dbError.code === 'PGRST116') {
-      console.log('🆕 Creating new user in database:', user.email);
+      logger.info(`[AUTH] Creating new user in database: ${user.email}`);
 
       const newUser = {
         id: user.id,
@@ -72,7 +65,7 @@ export const authenticate = async (req, res, next) => {
         .single();
 
       if (createError) {
-        console.error('❌ Failed to create user:', createError);
+        logger.error('[AUTH] Failed to create user profile', { error: createError.message });
         return res.status(500).json({
           success: false,
           error: {
@@ -83,7 +76,6 @@ export const authenticate = async (req, res, next) => {
       }
 
       userDetails = createdUser;
-      console.log('✅ User created successfully:', user.email);
     } else if (dbError || !userDetails) {
       return res.status(401).json({
         success: false,
@@ -109,9 +101,10 @@ export const authenticate = async (req, res, next) => {
     req.user = userDetails;
     req.token = token;
 
+    logger.auth.middleware(user.id, req.path, true);
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
+    logger.error('[AUTH] Authentication error', { error: error.message });
     return res.status(500).json({
       success: false,
       error: {

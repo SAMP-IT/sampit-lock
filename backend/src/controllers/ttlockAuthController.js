@@ -10,7 +10,10 @@ import { encrypt, decrypt } from '../utils/ttlockCrypto.js';
 const TTLOCK_CLIENT_ID = process.env.TTLOCK_CLIENT_ID;
 const TTLOCK_CLIENT_SECRET = process.env.TTLOCK_CLIENT_SECRET;
 const TTLOCK_API_BASE_URL = process.env.TTLOCK_API_BASE_URL || 'https://api.sciener.com';
-const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
 
 /**
  * Validate TTLock username
@@ -121,14 +124,6 @@ export const register = async (req, res) => {
 
     // Hash password with MD5 and convert to lowercase (TTLock requirement)
     const hashedPassword = md5(password).toLowerCase();
-
-    // Debug: Log password hash for troubleshooting (remove in production)
-    logger.info('[AUTH] 🔑 Registration password hash debug', {
-      passwordLength: password.length,
-      passwordFirstChar: password.charAt(0),
-      passwordLastChar: password.charAt(password.length - 1),
-      hashFull: hashedPassword  // Full hash for comparison
-    });
 
     // Prepare registration request - use generated alphanumeric username for TTLock
     const params = {
@@ -429,14 +424,6 @@ export const login = async (req, res) => {
 
     // Hash password with MD5 and convert to lowercase (TTLock requirement)
     const hashedPassword = md5(password).toLowerCase();
-
-    // Debug: Log password hash for troubleshooting (remove in production)
-    logger.info('[AUTH] 🔑 Password hash debug', {
-      passwordLength: password.length,
-      passwordFirstChar: password.charAt(0),
-      passwordLastChar: password.charAt(password.length - 1),
-      hashFull: hashedPassword  // Full hash for comparison
-    });
 
     // Prepare login request
     const params = {

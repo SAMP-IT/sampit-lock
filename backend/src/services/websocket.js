@@ -7,9 +7,19 @@ let io;
  * Setup WebSocket server
  */
 export const setupWebSocket = (httpServer) => {
+  const rawOrigins = process.env.CORS_ORIGIN || process.env.FRONTEND_URL || '';
+  const wsOrigins = rawOrigins
+    .split(',')
+    .map(o => o.trim())
+    .filter(o => o && o !== '*');
+
+  if (wsOrigins.length === 0) {
+    wsOrigins.push('http://localhost:3000', 'http://localhost:19006');
+  }
+
   io = new Server(httpServer, {
     cors: {
-      origin: process.env.FRONTEND_URL || '*',
+      origin: wsOrigins,
       methods: ['GET', 'POST'],
       credentials: true
     }

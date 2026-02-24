@@ -794,7 +794,7 @@ export const controlLock = async (req, res) => {
         });
       }
 
-      logger.lock.unlock(lockId, userId, true, { method: 'cloud_api', ttlockLockId });
+      logger.lock.control(lockId, action, 'cloud_api', true, { userId, ttlockLockId });
       logger.info(`[TTLOCK] ✅ Lock ${action} successful via Cloud API for lock ${lockId}`);
 
       const eventAction = action === 'unlock' ? EventAction.UNLOCKED : EventAction.LOCKED;

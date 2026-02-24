@@ -1,7 +1,10 @@
 import { supabase } from '../services/supabase.js';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
 
 /**
  * TTLock Authentication middleware
@@ -9,9 +12,6 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key';
  */
 export const authenticateTTLock = async (req, res, next) => {
   try {
-    console.log('🔴 [TTLOCK-JWT-AUTH-MIDDLEWARE] Request path:', req.path);
-    console.log('🔴 [TTLOCK-JWT-AUTH-MIDDLEWARE] This middleware checks for type=ttlock_auth in JWT!');
-
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

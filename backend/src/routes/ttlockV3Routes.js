@@ -73,16 +73,16 @@ router.post('/user/reset-password', resetPassword);
 /**
  * @route   POST /api/ttlock-v3/user/list
  * @desc    Get list of users registered under this app
- * @access  Public (uses clientId/clientSecret)
+ * @access  Private (requires authentication)
  */
-router.post('/user/list', getUserList);
+router.post('/user/list', authenticate, getUserList);
 
 /**
  * @route   POST /api/ttlock-v3/user/delete
  * @desc    Delete a user from TTLock Cloud
- * @access  Public (uses clientId/clientSecret)
+ * @access  Private (requires authentication)
  */
-router.post('/user/delete', deleteUser);
+router.post('/user/delete', authenticate, deleteUser);
 
 /**
  * @route   POST /api/ttlock-v3/lock/initialize

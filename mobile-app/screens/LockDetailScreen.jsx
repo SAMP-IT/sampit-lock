@@ -13,9 +13,7 @@ import { getLockById, getLocks, getActivityByLockId, getAccessRecommendations, a
 import { getLockDisplayName } from '../utils/lockDisplayUtils';
 import { unwrapResponseArray, unwrapResponseData } from '../utils/apiResponse';
 import LockControlService from '../services/lockControlService';
-
-// Simple cache for lock data to avoid reloading on every navigation
-const lockDataCache = new Map();
+import { useLockDetail, useLocks, useLockActivity } from '../hooks/useQueryHooks';
 
 const LockSwitcher = ({ currentLock, locks, onLockChange }) => {
   const [isOpen, setIsOpen] = useState(false);
