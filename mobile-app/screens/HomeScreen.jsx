@@ -347,7 +347,7 @@ const HomeScreen = ({ navigation }) => {
                 onPress={handleLockPress}
                 onLock={handleLock}
                 onUnlock={handleUnlock}
-                onLockUpdated={fetchData}
+                onLockUpdated={refetchLocks}
                 isProminent={true}
                 isLocking={isLocking}
                 isUnlocking={isUnlocking}
