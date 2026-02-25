@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,24 +10,25 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
 import AppScreen from '../components/ui/AppScreen';
 import Section from '../components/ui/Section';
 import AppCard from '../components/ui/AppCard';
 import Colors from '../constants/Colors';
 import Theme from '../constants/Theme';
 import {
-  getAccessCodes,
   createAccessCode,
   updateAccessCode,
   deleteAccessCode,
 } from '../services/api';
+import { useAccessCodes } from '../hooks/useQueryHooks';
 
 const AccessCodeManagementScreen = ({ navigation, route }) => {
   const { lockId, lockName } = route.params;
+  const queryClient = useQueryClient();
 
-  const [loading, setLoading] = useState(true);
+  const { data: accessCodes = [], isLoading: loading } = useAccessCodes(lockId);
   const [saving, setSaving] = useState(false);
-  const [accessCodes, setAccessCodes] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingCode, setEditingCode] = useState(null);
 
@@ -45,21 +46,8 @@ const AccessCodeManagementScreen = ({ navigation, route }) => {
     { value: 'one_time', label: 'One-Time Use', icon: 'key-outline' },
   ];
 
-  useEffect(() => {
-    loadAccessCodes();
-  }, [lockId]);
-
-  const loadAccessCodes = async () => {
-    setLoading(true);
-    try {
-      const response = await getAccessCodes(lockId);
-      setAccessCodes(response.data || []);
-    } catch (error) {
-      console.error('Failed to load access codes:', error);
-      Alert.alert('Error', 'Failed to load access codes');
-    } finally {
-      setLoading(false);
-    }
+  const loadAccessCodes = () => {
+    queryClient.invalidateQueries({ queryKey: ['accessCodes', lockId] });
   };
 
   const generateRandomCode = () => {

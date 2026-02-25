@@ -1,61 +1,31 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
 import AppScreen from '../components/ui/AppScreen';
 import { SimpleModeCard, SimpleModeText, SimpleModeButton, VoiceHelperButton } from '../components/ui/SimpleMode';
 import Colors from '../constants/Colors';
 import Theme from '../constants/Theme';
 import { useRole } from '../context/RoleContext';
-import { getLocks, unlockDoor } from '../services/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { unlockDoor } from '../services/api';
+import { useLocks } from '../hooks/useQueryHooks';
 
 const MinimalHomeScreen = ({ navigation }) => {
   const { role, isSimpleMode, toggleSimpleMode } = useRole();
   const [doorStatus, setDoorStatus] = useState('locked'); // locked, unlocked, unlocking, locking
-  const [primaryLock, setPrimaryLock] = useState(null);
-  const [loading, setLoading] = useState(true);
+
+  const { data: locks = [], isLoading: loading } = useLocks();
+  const primaryLock = locks.length > 0 ? locks[0] : null;
 
   const isOwner = role === 'owner';
   const isFamily = role === 'family';
   const isGuest = role === 'guest';
 
-  // Fetch user's locks
-  const fetchLocks = useCallback(async () => {
-    try {
-      setLoading(true);
-      const token = await AsyncStorage.getItem('userToken');
-      if (!token) {
-        navigation.replace('Login');
-        return;
-      }
-
-      const response = await getLocks();
-      const locks = response.data?.data || [];
-      if (locks.length > 0) {
-        // Use first lock as primary for simple mode
-        const lock = locks[0];
-        setPrimaryLock(lock);
-
-        // Set door status based on lock state
-        setDoorStatus(lock.is_locked === false ? 'unlocked' : 'locked');
-      }
-    } catch (error) {
-      console.error('Failed to fetch locks:', error);
-      if (error.response?.status === 401) {
-        navigation.replace('Login');
-      }
-    } finally {
-      setLoading(false);
+  // Set door status based on lock state
+  useEffect(() => {
+    if (primaryLock) {
+      setDoorStatus(primaryLock.is_locked === false ? 'unlocked' : 'locked');
     }
-  }, [navigation]);
-
-  // Fetch locks on mount and when screen is focused
-  useFocusEffect(
-    useCallback(() => {
-      fetchLocks();
-    }, [fetchLocks])
-  );
+  }, [primaryLock]);
 
   const handleUnlockDoor = async () => {
     if (!primaryLock || doorStatus === 'unlocking') return;

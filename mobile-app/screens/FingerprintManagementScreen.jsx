@@ -16,12 +16,13 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import LottieView from 'lottie-react-native';
 import Colors from '../constants/Colors';
 import { backendApi } from '../services/api';
 import TTLockService from '../services/ttlockService';
 import LockControlService, { extractLockData, ensureBluetoothEnabled } from '../services/lockControlService';
+import { useFingerprints } from '../hooks/useQueryHooks';
 
 // Global operation lock to prevent concurrent operations
 let globalOperationInProgress = false;
@@ -30,8 +31,8 @@ const MIN_OPERATION_INTERVAL = 3000; // Minimum 3 seconds between operations
 
 const FingerprintManagementScreen = ({ route, navigation }) => {
   const { lock } = route.params;
-  const [fingerprints, setFingerprints] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: fingerprints = [], isLoading: loading, refetch: refetchFingerprints } = useFingerprints(lock.id);
   const [adding, setAdding] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newFingerprintName, setNewFingerprintName] = useState('');
@@ -40,6 +41,7 @@ const FingerprintManagementScreen = ({ route, navigation }) => {
   const [statusMessage, setStatusMessage] = useState('');
   const [showImageSliderModal, setShowImageSliderModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [operationLoading, setOperationLoading] = useState(false);
   const scrollViewRef = useRef(null);
   const imageSliderIntervalRef = useRef(null);
 
@@ -53,42 +55,25 @@ const FingerprintManagementScreen = ({ route, navigation }) => {
 
   const { width: screenWidth } = Dimensions.get('window');
 
-  // Fetch fingerprints from backend
-  const fetchFingerprints = async () => {
-    try {
-      setLoading(true);
-      const response = await backendApi.get(`/locks/${lock.id}/fingerprints`);
-      if (response.data.success) {
-        setFingerprints(response.data.data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching fingerprints:', error);
-      // Show empty list if table doesn't exist or other errors
-      setFingerprints([]);
-    } finally {
-      setLoading(false);
-    }
+  const fetchFingerprints = () => {
+    queryClient.invalidateQueries({ queryKey: ['fingerprints', lock.id] });
   };
 
   // Check if lock supports fingerprint
-  const checkFingerprintSupport = async () => {
-    try {
-      const lockData = extractLockData(lock.ttlock_data);
-      if (lockData) {
-        const supported = await TTLockService.supportsFingerprint(lockData);
-        setIsSupported(supported);
+  useEffect(() => {
+    const checkFingerprintSupport = async () => {
+      try {
+        const lockData = extractLockData(lock.ttlock_data);
+        if (lockData) {
+          const supported = await TTLockService.supportsFingerprint(lockData);
+          setIsSupported(supported);
+        }
+      } catch (error) {
+        console.log('Could not check fingerprint support:', error);
       }
-    } catch (error) {
-      console.log('Could not check fingerprint support:', error);
-    }
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchFingerprints();
-      checkFingerprintSupport();
-    }, [lock.id])
-  );
+    };
+    checkFingerprintSupport();
+  }, [lock.id]);
 
   // Check if lock is ready for a new operation
   const waitForLockReady = async () => {
@@ -382,7 +367,7 @@ const FingerprintManagementScreen = ({ route, navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              setLoading(true);
+              setOperationLoading(true);
               globalOperationInProgress = true;
               setStatusMessage('Removing fingerprint...');
 
@@ -422,7 +407,7 @@ const FingerprintManagementScreen = ({ route, navigation }) => {
               fetchFingerprints();
               Alert.alert('Could Not Remove Fingerprint', getUserFriendlyError(error));
             } finally {
-              setLoading(false);
+              setOperationLoading(false);
               setStatusMessage('');
               globalOperationInProgress = false;
               lastOperationTime = Date.now();
@@ -490,7 +475,7 @@ const FingerprintManagementScreen = ({ route, navigation }) => {
       )}
 
       {/* Fingerprint List */}
-      {loading ? (
+      {(loading || operationLoading) ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>

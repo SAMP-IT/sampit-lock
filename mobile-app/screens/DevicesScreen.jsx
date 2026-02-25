@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useQueryClient } from '@tanstack/react-query';
 import AppScreen from "../components/ui/AppScreen";
 import Section from "../components/ui/Section";
 import AppCard from "../components/ui/AppCard";
 import QuickActionButton from "../components/QuickActionButton";
 import Colors from "../constants/Colors";
 import Theme from "../constants/Theme";
-import { getLocks, getTTLockStatus, deleteLock } from "../services/api";
-import { unwrapResponseArray } from "../utils/apiResponse";
+import { deleteLock } from "../services/api";
+import { useLocks, useTTLockStatus } from "../hooks/useQueryHooks";
 
 const DeviceTile = ({ device, onSettingsPress, onLongPress }) => {
   // Get the user-given name as main title, model number as subtitle
@@ -74,43 +75,9 @@ const DeviceTile = ({ device, onSettingsPress, onLongPress }) => {
 };
 
 const DevicesScreen = ({ navigation }) => {
-  const [devices, setDevices] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [ttlockStatus, setTTLockStatus] = useState(null);
-
-  useEffect(() => {
-    fetchLocks();
-    checkTTLockStatus();
-  }, []);
-
-  const checkTTLockStatus = async () => {
-    try {
-      const response = await getTTLockStatus();
-      const statusPayload = response?.data ?? response;
-      const normalizedStatus = statusPayload?.data ?? statusPayload;
-      setTTLockStatus(normalizedStatus);
-    } catch (error) {
-      setTTLockStatus(null);
-    }
-  };
-
-  const fetchLocks = async () => {
-    try {
-      setIsLoading(true);
-      const response = await getLocks();
-      const locks = unwrapResponseArray(response);
-      setDevices(locks);
-    } catch (error) {
-      // 404 means no locks yet - this is normal for new users
-      const is404 = error?.response?.status === 404;
-      if (!is404) {
-        console.warn('Failed to fetch locks:', error?.message || error);
-      }
-      setDevices([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const queryClient = useQueryClient();
+  const { data: devices = [], isLoading } = useLocks();
+  const { data: ttlockStatus = null } = useTTLockStatus();
 
   const handleAddLock = () => {
     // Check if TTLock account is connected
@@ -147,8 +114,7 @@ const DevicesScreen = ({ navigation }) => {
           onPress: async () => {
             try {
               await deleteLock(device.id);
-              // Remove from local state
-              setDevices(prev => prev.filter(d => d.id !== device.id));
+              queryClient.invalidateQueries({ queryKey: ['locks'] });
               Alert.alert('Success', 'Lock deleted successfully');
             } catch (error) {
               console.error('Delete lock error:', error);

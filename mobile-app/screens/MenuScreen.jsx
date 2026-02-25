@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../constants/Colors';
 import Theme from '../constants/Theme';
 import { useRole } from '../context/RoleContext';
-import { logout, getTTLockStatus } from '../services/api';
+import { logout } from '../services/api';
+import { useTTLockStatus } from '../hooks/useQueryHooks';
 
 const menuItems = [
   // Main Navigation
@@ -18,22 +19,7 @@ const menuItems = [
 
 const MenuScreen = ({ navigation }) => {
   const { setRole } = useRole();
-  const [ttlockStatus, setTTLockStatus] = useState(null);
-
-  useEffect(() => {
-    checkTTLockStatus();
-  }, []);
-
-  const checkTTLockStatus = async () => {
-    try {
-      const response = await getTTLockStatus();
-      const statusPayload = response?.data ?? response;
-      const normalizedStatus = statusPayload?.data ?? statusPayload;
-      setTTLockStatus(normalizedStatus);
-    } catch (error) {
-      setTTLockStatus(null);
-    }
-  };
+  const { data: ttlockStatus = null } = useTTLockStatus();
 
   const handleLogout = async () => {
     await logout();

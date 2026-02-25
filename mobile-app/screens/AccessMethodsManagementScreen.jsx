@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,35 +11,24 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
 import Colors from '../constants/Colors';
 import Theme from '../constants/Theme';
-import { getUserAccessMethods, addAccessMethod, deleteAccessMethod } from '../services/api';
+import { addAccessMethod, deleteAccessMethod } from '../services/api';
+import { useAccessMethods } from '../hooks/useQueryHooks';
 
 const AccessMethodsManagementScreen = ({ route, navigation }) => {
   const { lockId, userId, userName, lockName } = route.params;
+  const queryClient = useQueryClient();
 
-  const [loading, setLoading] = useState(true);
-  const [accessMethods, setAccessMethods] = useState([]);
+  const { data: accessMethods = [], isLoading: loading } = useAccessMethods(lockId, userId);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addingMethod, setAddingMethod] = useState(false);
   const [selectedType, setSelectedType] = useState('pin');
   const [pinCode, setPinCode] = useState('');
 
-  useEffect(() => {
-    loadAccessMethods();
-  }, []);
-
-  const loadAccessMethods = async () => {
-    setLoading(true);
-    try {
-      const response = await getUserAccessMethods(lockId, userId);
-      setAccessMethods(response.data || []);
-    } catch (error) {
-      console.error('Failed to load access methods:', error);
-      Alert.alert('Error', 'Failed to load access methods');
-    } finally {
-      setLoading(false);
-    }
+  const loadAccessMethods = () => {
+    queryClient.invalidateQueries({ queryKey: ['accessMethods', lockId, userId] });
   };
 
   const handleAddMethod = async () => {

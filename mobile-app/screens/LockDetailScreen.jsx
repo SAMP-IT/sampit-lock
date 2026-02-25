@@ -15,6 +15,9 @@ import { unwrapResponseArray, unwrapResponseData } from '../utils/apiResponse';
 import LockControlService from '../services/lockControlService';
 import { useLockDetail, useLocks, useLockActivity } from '../hooks/useQueryHooks';
 
+// Module-level cache for lock data to enable instant display on re-navigation
+const lockDataCache = new Map();
+
 const LockSwitcher = ({ currentLock, locks, onLockChange }) => {
   const [isOpen, setIsOpen] = useState(false);
 

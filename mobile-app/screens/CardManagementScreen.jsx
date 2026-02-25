@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,11 +11,12 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import Colors from '../constants/Colors';
 import { backendApi } from '../services/api';
 import TTLockService from '../services/ttlockService';
 import LockControlService, { extractLockData } from '../services/lockControlService';
+import { useCards } from '../hooks/useQueryHooks';
 
 // Global operation lock to prevent concurrent operations
 let globalOperationInProgress = false;
@@ -24,50 +25,34 @@ const MIN_OPERATION_INTERVAL = 3000; // Minimum 3 seconds between operations
 
 const CardManagementScreen = ({ route, navigation }) => {
   const { lock } = route.params;
-  const [cards, setCards] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: cards = [], isLoading: loading } = useCards(lock.id);
   const [adding, setAdding] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newCardName, setNewCardName] = useState('');
   const [isSupported, setIsSupported] = useState(true);
   const [statusMessage, setStatusMessage] = useState('');
+  const [operationLoading, setOperationLoading] = useState(false);
 
-  // Fetch cards from backend
-  const fetchCards = async () => {
-    try {
-      setLoading(true);
-      const response = await backendApi.get(`/locks/${lock.id}/cards`);
-      if (response.data.success) {
-        setCards(response.data.data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching cards:', error);
-      // Show empty list if table doesn't exist or other errors
-      setCards([]);
-    } finally {
-      setLoading(false);
-    }
+  const fetchCards = () => {
+    queryClient.invalidateQueries({ queryKey: ['cards', lock.id] });
   };
 
   // Check if lock supports IC cards
-  const checkCardSupport = async () => {
-    try {
-      const lockData = extractLockData(lock.ttlock_data);
-      if (lockData) {
-        const supported = await TTLockService.supportsCard(lockData);
-        setIsSupported(supported);
+  useEffect(() => {
+    const checkCardSupport = async () => {
+      try {
+        const lockData = extractLockData(lock.ttlock_data);
+        if (lockData) {
+          const supported = await TTLockService.supportsCard(lockData);
+          setIsSupported(supported);
+        }
+      } catch (error) {
+        console.log('Could not check card support:', error);
       }
-    } catch (error) {
-      console.log('Could not check card support:', error);
-    }
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchCards();
-      checkCardSupport();
-    }, [lock.id])
-  );
+    };
+    checkCardSupport();
+  }, [lock.id]);
 
   // Check if lock is ready for a new operation
   const waitForLockReady = async () => {
@@ -231,7 +216,7 @@ const CardManagementScreen = ({ route, navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              setLoading(true);
+              setOperationLoading(true);
               globalOperationInProgress = true;
               setStatusMessage('Removing card...');
 
@@ -271,7 +256,7 @@ const CardManagementScreen = ({ route, navigation }) => {
               fetchCards();
               Alert.alert('Could Not Remove Card', getUserFriendlyError(error));
             } finally {
-              setLoading(false);
+              setOperationLoading(false);
               setStatusMessage('');
               globalOperationInProgress = false;
               lastOperationTime = Date.now();
@@ -339,7 +324,7 @@ const CardManagementScreen = ({ route, navigation }) => {
       )}
 
       {/* Card List */}
-      {loading ? (
+      {(loading || operationLoading) ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>

@@ -1,47 +1,32 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
 import AppScreen from '../components/ui/AppScreen';
 import Section from '../components/ui/Section';
 import AppCard from '../components/ui/AppCard';
 import Colors from '../constants/Colors';
 import Theme from '../constants/Theme';
 import {
-  getNotifications,
   markNotificationAsRead,
   markAllNotificationsAsRead,
   deleteNotification
 } from '../services/api';
+import { useNotifications } from '../hooks/useQueryHooks';
 
 const NotificationsScreen = ({ navigation }) => {
-  const [notifications, setNotifications] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const response = await getNotifications();
-        setNotifications(response.data);
-      } catch (err) {
-        setError("Failed to load notifications.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchNotifications();
-  }, []);
+  const queryClient = useQueryClient();
+  const { data: notifications = [], isLoading, error: queryError } = useNotifications();
+  const error = queryError ? "Failed to load notifications." : null;
 
   const handlePress = async (notification) => {
     // Mark as read
     if (!notification.read) {
       try {
         await markNotificationAsRead(notification.id);
-        setNotifications(notifications.map(n =>
-          n.id === notification.id ? { ...n, read: true } : n
-        ));
+        queryClient.setQueryData(['notifications'], (old) =>
+          (old || []).map(n => n.id === notification.id ? { ...n, read: true } : n)
+        );
       } catch (error) {
         console.error('Failed to mark notification as read:', error);
       }
@@ -78,7 +63,9 @@ const NotificationsScreen = ({ navigation }) => {
           onPress: async () => {
             try {
               await deleteNotification(notificationId);
-              setNotifications(notifications.filter(n => n.id !== notificationId));
+              queryClient.setQueryData(['notifications'], (old) =>
+                (old || []).filter(n => n.id !== notificationId)
+              );
             } catch (error) {
               Alert.alert('Error', 'Failed to delete notification');
             }
@@ -91,7 +78,9 @@ const NotificationsScreen = ({ navigation }) => {
   const handleMarkAllAsRead = async () => {
     try {
       await markAllNotificationsAsRead();
-      setNotifications(notifications.map(n => ({ ...n, read: true })));
+      queryClient.setQueryData(['notifications'], (old) =>
+        (old || []).map(n => ({ ...n, read: true }))
+      );
       Alert.alert('Success', 'All notifications marked as read');
     } catch (error) {
       Alert.alert('Error', 'Failed to mark all as read');

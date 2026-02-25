@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,74 +10,37 @@ import {
   Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import {
-  getAIInsights,
-  getRiskScore,
-  getDailySummary,
   markInsightRead,
   dismissInsight
 } from '../services/api';
+import { useAIInsights, useRiskScore, useDailySummary } from '../hooks/useQueryHooks';
 
 const { width } = Dimensions.get('window');
 
 const AIInsightsScreen = ({ route, navigation }) => {
   const { lockId, lockName } = route.params;
-  const [insights, setInsights] = useState([]);
-  const [riskScore, setRiskScore] = useState(null);
-  const [dailySummary, setDailySummary] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
+  const queryClient = useQueryClient();
 
-  const fetchData = useCallback(async () => {
-    try {
-      setError(null);
+  const { data: insights = [], isLoading: loading, error: queryError, refetch: refetchInsights } = useAIInsights(lockId, { limit: 10 });
+  const { data: riskScore = null, refetch: refetchRisk } = useRiskScore(lockId);
+  const { data: dailySummary = null, refetch: refetchSummary } = useDailySummary(lockId);
 
-      // Fetch all data in parallel
-      const [insightsRes, riskRes, summaryRes] = await Promise.all([
-        getAIInsights(lockId, { limit: 10 }),
-        getRiskScore(lockId),
-        getDailySummary(lockId)
-      ]);
+  const error = queryError ? 'Failed to load AI insights' : null;
 
-      if (insightsRes.data?.success) {
-        setInsights(insightsRes.data.data?.insights || []);
-      }
-
-      if (riskRes.data?.success) {
-        setRiskScore(riskRes.data.data);
-      }
-
-      if (summaryRes.data?.success) {
-        setDailySummary(summaryRes.data.data);
-      }
-    } catch (err) {
-      console.error('Error fetching AI data:', err);
-      setError('Failed to load AI insights');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [lockId]);
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchData();
-    }, [fetchData])
-  );
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchData();
-  };
+  const onRefresh = useCallback(() => {
+    refetchInsights();
+    refetchRisk();
+    refetchSummary();
+  }, [refetchInsights, refetchRisk, refetchSummary]);
 
   const handleInsightPress = async (insight) => {
     if (!insight.is_read) {
       try {
         await markInsightRead(insight.id);
-        setInsights(prev =>
-          prev.map(i => i.id === insight.id ? { ...i, is_read: true } : i)
+        queryClient.setQueryData(['aiInsights', lockId, { limit: 10 }], (old) =>
+          (old || []).map(i => i.id === insight.id ? { ...i, is_read: true } : i)
         );
       } catch (err) {
         console.error('Error marking insight read:', err);
@@ -88,7 +51,9 @@ const AIInsightsScreen = ({ route, navigation }) => {
   const handleDismissInsight = async (insightId) => {
     try {
       await dismissInsight(insightId);
-      setInsights(prev => prev.filter(i => i.id !== insightId));
+      queryClient.setQueryData(['aiInsights', lockId, { limit: 10 }], (old) =>
+        (old || []).filter(i => i.id !== insightId)
+      );
     } catch (err) {
       console.error('Error dismissing insight:', err);
     }
@@ -124,7 +89,7 @@ const AIInsightsScreen = ({ route, navigation }) => {
     <ScrollView
       style={styles.container}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshControl refreshing={loading} onRefresh={onRefresh} />
       }
     >
       {/* Header */}

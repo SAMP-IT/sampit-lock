@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
 import Colors from '../constants/Colors';
 import Theme from '../constants/Theme';
 import AppScreen from '../components/ui/AppScreen';
@@ -17,11 +18,10 @@ import Section from '../components/ui/Section';
 import AppCard from '../components/ui/AppCard';
 import { useRole } from '../context/RoleContext';
 import {
-  getAllUsersForAllLocks,
-  getUsersForLock,
   removeUserFromLock,
   removeUserFromMultipleLocks
 } from '../services/api';
+import { useAllUsersForAllLocks } from '../hooks/useQueryHooks';
 
 const roleFilters = [
   { id: 'all', label: 'All' },
@@ -33,56 +33,30 @@ const roleFilters = [
 const UserManagementScreen = ({ navigation, route }) => {
   const { lockId, lock, refresh } = route.params || {};
   const { role: currentUserRole } = useRole();
+  const queryClient = useQueryClient();
 
-  const [usersData, setUsersData] = useState([]);
-  const [locksData, setLocksData] = useState([]);
-  const [stats, setStats] = useState({ total_users: 0, admins: 0, family: 0 });
   const [roleFilter, setRoleFilter] = useState('all');
   const [lockFilter, setLockFilter] = useState(lockId || null);
-  const [canManageUsers, setCanManageUsers] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState(null);
 
-  const fetchData = useCallback(async (showLoading = true) => {
-    try {
-      if (showLoading) setIsLoading(true);
-      setError(null);
-
-      // Build filters
-      const filters = {};
-      if (roleFilter !== 'all') filters.role = roleFilter;
-      if (lockFilter) filters.lock_id = lockFilter;
-
-      // Use the new API that returns all users across all locks
-      const response = await getAllUsersForAllLocks(filters);
-      const data = response?.data?.data || {};
-
-      setUsersData(data.users || []);
-      setLocksData(data.locks || []);
-      setStats(data.stats || { total_users: 0, admins: 0, family: 0 });
-
-      // User can manage if they have locks in the response
-      setCanManageUsers((data.locks || []).length > 0);
-    } catch (err) {
-      console.error('[UserManagementScreen] Failed to load users:', err);
-      setError('Failed to load users. Please try again.');
-      setUsersData([]);
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
+  // Build filters for the query
+  const filters = useMemo(() => {
+    const f = {};
+    if (roleFilter !== 'all') f.role = roleFilter;
+    if (lockFilter) f.lock_id = lockFilter;
+    return f;
   }, [roleFilter, lockFilter]);
 
-  // Refresh data when coming back from AddUser screen
-  useEffect(() => {
-    fetchData();
-  }, [fetchData, refresh]);
+  const { data, isLoading, error: queryError, refetch } = useAllUsersForAllLocks(filters);
+
+  const usersData = data?.users || [];
+  const locksData = data?.locks || [];
+  const stats = data?.stats || { total_users: 0, admins: 0, family: 0 };
+  const canManageUsers = locksData.length > 0;
+  const error = queryError ? 'Failed to load users. Please try again.' : null;
 
   const onRefresh = useCallback(() => {
-    setIsRefreshing(true);
-    fetchData(false);
-  }, [fetchData]);
+    refetch();
+  }, [refetch]);
 
   const handleAddUser = () => {
     // Navigate to AddUser screen, optionally with pre-selected lock
@@ -145,7 +119,7 @@ const UserManagementScreen = ({ navigation, route }) => {
             onPress: async () => {
               try {
                 await removeUserFromLock(locksToRemove[0].lock_id, user.id);
-                fetchData(false);
+                queryClient.invalidateQueries({ queryKey: ['allUsersForAllLocks'] });
               } catch (err) {
                 const errorMsg = err.response?.data?.error?.message || 'Failed to remove user. Please try again.';
                 Alert.alert('Error', errorMsg);
@@ -168,7 +142,7 @@ const UserManagementScreen = ({ navigation, route }) => {
               try {
                 const lockIds = locksToRemove.map(l => l.lock_id);
                 await removeUserFromMultipleLocks(user.id, lockIds);
-                fetchData(false);
+                queryClient.invalidateQueries({ queryKey: ['allUsersForAllLocks'] });
               } catch (err) {
                 const errorMsg = err.response?.data?.error?.message || 'Failed to remove user. Please try again.';
                 Alert.alert('Error', errorMsg);
@@ -290,7 +264,7 @@ const UserManagementScreen = ({ navigation, route }) => {
       contentContainerStyle={styles.content}
       refreshControl={
         <RefreshControl
-          refreshing={isRefreshing}
+          refreshing={isLoading}
           onRefresh={onRefresh}
           colors={[Colors.iconbackground]}
           tintColor={Colors.iconbackground}
@@ -414,7 +388,7 @@ const UserManagementScreen = ({ navigation, route }) => {
             <View style={styles.errorContainer}>
               <Ionicons name="alert-circle" size={24} color="#dc2626" />
               <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={() => fetchData()}>
+              <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
                 <Text style={styles.retryText}>Retry</Text>
               </TouchableOpacity>
             </View>

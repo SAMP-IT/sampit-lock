@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,19 +11,20 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
 import Colors from '../constants/Colors';
 import Theme from '../constants/Theme';
 import {
-  getLockInvites,
   createInvite,
   revokeInvite,
 } from '../services/api';
+import { useInvites } from '../hooks/useQueryHooks';
 
 const InviteManagementScreen = ({ route, navigation }) => {
   const { lockId, lockName } = route.params;
+  const queryClient = useQueryClient();
 
-  const [loading, setLoading] = useState(true);
-  const [invites, setInvites] = useState([]);
+  const { data: invites = [], isLoading: loading } = useInvites(lockId);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
 
@@ -33,21 +34,8 @@ const InviteManagementScreen = ({ route, navigation }) => {
   const [accessType, setAccessType] = useState('temporary');
   const [expiresAt, setExpiresAt] = useState('');
 
-  useEffect(() => {
-    loadInvites();
-  }, []);
-
-  const loadInvites = async () => {
-    setLoading(true);
-    try {
-      const response = await getLockInvites(lockId);
-      setInvites(response.data || []);
-    } catch (error) {
-      console.error('Failed to load invites:', error);
-      Alert.alert('Error', 'Failed to load guest invites');
-    } finally {
-      setLoading(false);
-    }
+  const loadInvites = () => {
+    queryClient.invalidateQueries({ queryKey: ['invites', lockId] });
   };
 
   const handleCreateInvite = async () => {
