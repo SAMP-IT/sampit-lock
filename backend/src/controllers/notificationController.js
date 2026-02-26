@@ -1,5 +1,6 @@
 import { supabase } from '../services/supabase.js';
 import logger from '../utils/logger.js';
+import { parsePagination } from '../utils/pagination.js';
 
 /**
  * Get User Notifications
@@ -8,7 +9,8 @@ import logger from '../utils/logger.js';
 export const getUserNotifications = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { is_read, type, limit = 50, offset = 0 } = req.query;
+    const { is_read, type } = req.query;
+    const { limit, offset } = parsePagination(req.query);
     logger.info('[NOTIFY] getUserNotifications', { userId, is_read, type, limit, offset });
 
     let query = supabase
@@ -39,7 +41,7 @@ export const getUserNotifications = async (req, res) => {
     }
 
     // Apply pagination
-    query = query.range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+    query = query.range(offset, offset + limit - 1);
 
     const { data: notifications, error } = await query;
 
@@ -67,8 +69,8 @@ export const getUserNotifications = async (req, res) => {
         notifications,
         unread_count: unreadCount || 0,
         pagination: {
-          limit: parseInt(limit),
-          offset: parseInt(offset)
+          limit,
+          offset
         }
       }
     });

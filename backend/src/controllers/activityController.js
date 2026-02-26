@@ -1,4 +1,5 @@
 import { supabase } from '../services/supabase.js';
+import { parsePagination } from '../utils/pagination.js';
 
 /**
  * Role-based log filtering helper
@@ -68,8 +69,6 @@ export const getAllActivities = async (req, res) => {
   try {
     const userId = req.user.id;
     const {
-      limit = 50,
-      offset = 0,
       action,
       access_method,
       user_id,
@@ -78,6 +77,7 @@ export const getAllActivities = async (req, res) => {
       sort_by = 'created_at',
       sort_order = 'desc'
     } = req.query;
+    const { limit, offset } = parsePagination(req.query);
 
     // Get all locks the user has access to WITH their roles
     // Note: can_view_own_logs_only may not exist in older database schemas
@@ -153,8 +153,8 @@ export const getAllActivities = async (req, res) => {
           activities: [],
           pagination: {
             total: 0,
-            limit: parseInt(limit),
-            offset: parseInt(offset),
+            limit,
+            offset,
             has_more: false
           },
           filters: {
@@ -270,7 +270,7 @@ export const getAllActivities = async (req, res) => {
     const { count: totalCount } = await countQuery;
 
     // Apply pagination
-    query = query.range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+    query = query.range(offset, offset + limit - 1);
 
     const { data: activities, error: activitiesError } = await query;
 
@@ -345,9 +345,9 @@ export const getAllActivities = async (req, res) => {
         activities: transformedActivities,
         pagination: {
           total: totalCount || 0,
-          limit: parseInt(limit),
-          offset: parseInt(offset),
-          has_more: (parseInt(offset) + parseInt(limit)) < (totalCount || 0)
+          limit,
+          offset,
+          has_more: (offset + limit) < (totalCount || 0)
         },
         filters: {
           available_actions: availableActions,
@@ -387,7 +387,7 @@ export const getAllActivities = async (req, res) => {
 export const getRecentActivities = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { limit = 10 } = req.query;
+    const { limit } = parsePagination(req.query, { limit: 10 });
 
     // Get all locks the user has access to WITH their roles
     // Note: can_view_own_logs_only may not exist in older database schemas
@@ -496,7 +496,7 @@ export const getRecentActivities = async (req, res) => {
 
     query = query
       .order('created_at', { ascending: false })
-      .limit(parseInt(limit));
+      .limit(limit);
 
     const { data: activities, error: activitiesError } = await query;
 
@@ -552,14 +552,13 @@ export const getActivityLogs = async (req, res) => {
     const { lockId } = req.params;
     const userId = req.user.id;
     const {
-      limit = 50,
-      offset = 0,
       action,
       user_id,
       start_date,
       end_date,
       access_method
     } = req.query;
+    const { limit, offset } = parsePagination(req.query);
 
     // Get user's lock access for role-based filtering
     // req.lockAccess may be provided by middleware, otherwise fetch it
@@ -583,8 +582,8 @@ export const getActivityLogs = async (req, res) => {
           logs: [],
           pagination: {
             total: 0,
-            limit: parseInt(limit),
-            offset: parseInt(offset),
+            limit,
+            offset,
             has_more: false
           },
           visibility_notice: 'Guest users cannot view activity logs'
@@ -638,7 +637,7 @@ export const getActivityLogs = async (req, res) => {
     }
 
     // Apply pagination
-    query = query.range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+    query = query.range(offset, offset + limit - 1);
 
     const { data: logs, error, count } = await query;
 
@@ -670,9 +669,9 @@ export const getActivityLogs = async (req, res) => {
         logs,
         pagination: {
           total: totalCount || 0,
-          limit: parseInt(limit),
-          offset: parseInt(offset),
-          has_more: parseInt(offset) + parseInt(limit) < (totalCount || 0)
+          limit,
+          offset,
+          has_more: offset + limit < (totalCount || 0)
         }
       }
     };
@@ -801,7 +800,8 @@ export const getActivityStats = async (req, res) => {
 export const getUserActivityHistory = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { limit = 50, offset = 0, lock_id } = req.query;
+    const { lock_id } = req.query;
+    const { limit, offset } = parsePagination(req.query);
 
     let query = supabase
       .from('activity_logs')
@@ -828,7 +828,7 @@ export const getUserActivityHistory = async (req, res) => {
     }
 
     // Apply pagination
-    query = query.range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+    query = query.range(offset, offset + limit - 1);
 
     const { data: logs, error } = await query;
 
@@ -854,9 +854,9 @@ export const getUserActivityHistory = async (req, res) => {
         logs,
         pagination: {
           total: totalCount,
-          limit: parseInt(limit),
-          offset: parseInt(offset),
-          has_more: parseInt(offset) + parseInt(limit) < totalCount
+          limit,
+          offset,
+          has_more: offset + limit < totalCount
         }
       }
     });
@@ -989,7 +989,7 @@ export const exportActivityLogs = async (req, res) => {
 export const getFailedAttempts = async (req, res) => {
   try {
     const { lockId } = req.params;
-    const { limit = 20 } = req.query;
+    const { limit } = parsePagination(req.query, { limit: 20 });
 
     const { data: attempts, error } = await supabase
       .from('activity_logs')
@@ -1009,7 +1009,7 @@ export const getFailedAttempts = async (req, res) => {
       .eq('lock_id', lockId)
       .eq('action', 'failed_attempt')
       .order('created_at', { ascending: false })
-      .limit(parseInt(limit));
+      .limit(limit);
 
     if (error) {
       return res.status(500).json({

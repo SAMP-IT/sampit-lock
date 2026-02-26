@@ -9,6 +9,7 @@
  */
 
 import { supabase } from '../../services/supabase.js';
+import { parsePagination } from '../../utils/pagination.js';
 import llmService from '../../services/ai/llmService.js';
 import { calculateRiskScore as calculateRiskScoreService } from '../../services/ai/riskScorer.js';
 import logger from '../../utils/logger.js';
@@ -20,7 +21,7 @@ import logger from '../../utils/logger.js';
 export const getNaturalLanguageActivity = async (req, res) => {
   try {
     const { lockId } = req.params;
-    const { limit = 20, offset = 0 } = req.query;
+    const { limit, offset } = parsePagination(req.query, { limit: 20 });
     const userId = req.user?.id;
     // logger.ai.request('getNaturalLanguageActivity', userId, { lockId, limit, offset });
 
@@ -44,7 +45,7 @@ export const getNaturalLanguageActivity = async (req, res) => {
       `)
       .eq('lock_id', lockId)
       .order('created_at', { ascending: false })
-      .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+      .range(offset, offset + limit - 1);
 
     if (error) {
       return res.status(500).json({
@@ -229,7 +230,8 @@ export const getDailySummary = async (req, res) => {
 export const getInsights = async (req, res) => {
   try {
     const { lockId } = req.params;
-    const { type, severity, limit = 20, include_dismissed = false } = req.query;
+    const { type, severity, include_dismissed = false } = req.query;
+    const { limit } = parsePagination(req.query, { limit: 20 });
     const userId = req.user?.id;
     // logger.ai.request('getInsights', userId, { lockId, type, severity, limit });
 
@@ -238,7 +240,7 @@ export const getInsights = async (req, res) => {
       .select('*')
       .eq('lock_id', lockId)
       .order('created_at', { ascending: false })
-      .limit(parseInt(limit));
+      .limit(limit);
 
     if (type) query = query.eq('insight_type', type);
     if (severity) query = query.eq('severity', severity);

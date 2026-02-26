@@ -7,6 +7,7 @@
 import { supabase } from '../../services/supabase.js';
 import llmService from '../../services/ai/llmService.js';
 import logger from '../../utils/logger.js';
+import { parsePagination } from '../../utils/pagination.js';
 
 /**
  * Send a chat message and get AI response
@@ -200,7 +201,8 @@ export const sendMessage = async (req, res) => {
 export const getConversations = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { lockId, limit = 20 } = req.query;
+    const { lockId } = req.query;
+    const { limit } = parsePagination(req.query, { limit: 20 });
     // logger.ai.request('getConversations', userId, { lockId, limit });
 
     let query = supabase
@@ -217,7 +219,7 @@ export const getConversations = async (req, res) => {
       .eq('user_id', userId)
       .eq('is_archived', false)
       .order('updated_at', { ascending: false })
-      .limit(parseInt(limit));
+      .limit(limit);
 
     if (lockId) {
       query = query.eq('lock_id', lockId);
