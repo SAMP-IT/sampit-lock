@@ -75,7 +75,7 @@ const OfflinePasscodeScreen = ({ navigation, route }) => {
   // Get role-based permissions
   const permissions = useRolePermissions(lock || lockInfo);
   const isFamilyUser = permissions.role === 'family';
-  const isRestrictedUser = permissions.role === 'restricted' || permissions.role === 'long_term_guest';
+  const isRestrictedUser = permissions.role === 'scheduled' || permissions.role === 'guest_longterm';
   const canGeneratePasscodes = permissions.canManageAllCredentials;
 
   useEffect(() => {

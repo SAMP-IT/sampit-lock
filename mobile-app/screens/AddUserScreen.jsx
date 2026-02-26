@@ -47,8 +47,8 @@ const userRoles = [
     ]
   },
   {
-    id: 'restricted',
-    title: 'Restricted / Scheduled',
+    id: 'scheduled',
+    title: 'Scheduled',
     subtitle: 'Staff, drivers, cleaners, office team',
     icon: 'time-outline',
     permissions: [
@@ -59,7 +59,7 @@ const userRoles = [
     requiresSchedule: true
   },
   {
-    id: 'long_term_guest',
+    id: 'guest_longterm',
     title: 'Long Term Guest',
     subtitle: 'Airbnb, rental, tenant',
     icon: 'calendar-outline',
@@ -93,13 +93,13 @@ const AddUserScreen = ({ navigation, route }) => {
   const [error, setError] = useState(null);
   const [availableLocks, setAvailableLocks] = useState([]);
 
-  // Schedule state for 'restricted' role
+  // Schedule state for 'scheduled' role
   const [selectedDays, setSelectedDays] = useState(DEFAULT_DAYS);
   const [startTime, setStartTime] = useState(new Date(2024, 0, 1, 9, 0)); // 9:00 AM
   const [endTime, setEndTime] = useState(new Date(2024, 0, 1, 17, 0)); // 5:00 PM
   const [showTimePicker, setShowTimePicker] = useState(null); // 'start' | 'end' | null
 
-  // Date range state for 'long_term_guest' role
+  // Date range state for 'guest_longterm' role
   const [accessValidFrom, setAccessValidFrom] = useState(new Date());
   const [accessValidUntil, setAccessValidUntil] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(null); // 'from' | 'until' | null

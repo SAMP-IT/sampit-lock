@@ -872,8 +872,8 @@ const LockDetailScreen = ({ navigation, route }) => {
         </Section>
       ))}
 
-      {/* Quick Actions - Hidden for guest, restricted, and long_term_guest roles */}
-      {!['guest', 'restricted', 'long_term_guest'].includes(currentLock.userRole) && (
+      {/* Quick Actions - Hidden for guest, scheduled, and guest_longterm roles */}
+      {!['guest', 'guest_otp', 'scheduled', 'guest_longterm'].includes(currentLock.userRole) && (
         <Section
           title="Quick Actions"
           subtitle="Manage access and settings"
@@ -911,15 +911,15 @@ const LockDetailScreen = ({ navigation, route }) => {
         </Section>
       )}
 
-      {/* Activity Log - Show for all except 'guest', with visibility notice for restricted roles */}
-      {currentLock.userRole !== 'guest' && (
+      {/* Activity Log - Show for all except guest/guest_otp, with visibility notice for limited roles */}
+      {currentLock.userRole !== 'guest' && currentLock.userRole !== 'guest_otp' && (
         <Section
           title="Activity Log"
           subtitle="Filter and sort access history"
         >
         <AppCard padding="none">
-          {/* Notice for restricted visibility */}
-          {['restricted', 'long_term_guest'].includes(currentLock.userRole) && (
+          {/* Notice for limited visibility */}
+          {['scheduled', 'guest_longterm'].includes(currentLock.userRole) && (
             <View style={styles.restrictedNotice}>
               <Ionicons name="information-circle-outline" size={16} color={Colors.subtitlecolor} />
               <Text style={styles.restrictedNoticeText}>Showing your activity only</Text>

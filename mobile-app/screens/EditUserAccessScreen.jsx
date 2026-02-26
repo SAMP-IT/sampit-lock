@@ -48,7 +48,7 @@ const ROLE_DESCRIPTIONS = {
       'Change settings (except factory reset)',
       'Cannot delete lock or transfer ownership'
     ],
-    canChangeTo: ['family', 'restricted', 'long_term_guest']
+    canChangeTo: ['family', 'scheduled', 'guest_longterm']
   },
   family: {
     title: 'Family / Resident',
@@ -63,10 +63,10 @@ const ROLE_DESCRIPTIONS = {
       'Cannot add or remove users',
       'Cannot modify lock settings'
     ],
-    canChangeTo: ['admin', 'restricted', 'long_term_guest']
+    canChangeTo: ['admin', 'scheduled', 'guest_longterm']
   },
-  restricted: {
-    title: 'Restricted / Scheduled',
+  scheduled: {
+    title: 'Scheduled',
     description: 'Staff, drivers, cleaners with time-based access',
     color: '#00BCD4',
     icon: 'time',
@@ -78,9 +78,9 @@ const ROLE_DESCRIPTIONS = {
       'Cannot modify lock settings',
       'Access limited to specific days/times'
     ],
-    canChangeTo: ['admin', 'family', 'long_term_guest']
+    canChangeTo: ['admin', 'family', 'guest_longterm']
   },
-  long_term_guest: {
+  guest_longterm: {
     title: 'Long Term Guest',
     description: 'Airbnb, rental, tenant with auto-expiring access',
     color: '#FF9800',
@@ -93,7 +93,7 @@ const ROLE_DESCRIPTIONS = {
       'Cannot add or remove users',
       'Cannot modify lock settings'
     ],
-    canChangeTo: ['admin', 'family', 'restricted']
+    canChangeTo: ['admin', 'family', 'scheduled']
   },
   guest: {
     title: 'Guest (Legacy)',
@@ -107,7 +107,7 @@ const ROLE_DESCRIPTIONS = {
       'Access can be revoked anytime',
       'May have temporary access period'
     ],
-    canChangeTo: ['admin', 'family', 'restricted', 'long_term_guest']
+    canChangeTo: ['admin', 'family', 'scheduled', 'guest_longterm']
   }
 };
 

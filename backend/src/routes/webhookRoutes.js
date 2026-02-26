@@ -240,6 +240,17 @@ router.post('/ttlock/gateway', authenticateWebhook, async (req, res) => {
 });
 
 /**
+ * TTLock Callback URL Verification
+ * GET /api/webhook/ttlock
+ *
+ * TTLock Open Platform sends a GET request to test the callback URL before saving it.
+ * This handler responds with 200 so the URL validation passes.
+ */
+router.get('/ttlock', webhookHealthOnly, (req, res) => {
+  res.status(200).json({ success: true, message: 'OK' });
+});
+
+/**
  * Health check for webhook endpoint
  * GET /api/webhook/health
  */

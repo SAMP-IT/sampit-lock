@@ -21,12 +21,12 @@ const InviteCodeScreen = ({ navigation }) => {
       const response = await acceptInvite(inviteCode.trim());
       const inviteData = response.data;
 
-      // Infer role based on invite response
-      const inviteScope = inviteData.role === 'guest' ? 'limited' : 'family';
+      // Pass the actual DB role from the invite to inferRole
+      const actualRole = inviteData.role || 'family';
 
-      inferRole({
+      await inferRole({
         type: 'invite_accepted',
-        inviteScope,
+        role: actualRole,
         inviteCode: inviteCode.trim(),
         lockId: inviteData.lock_id
       });
@@ -37,7 +37,10 @@ const InviteCodeScreen = ({ navigation }) => {
         [
           {
             text: 'Continue',
-            onPress: () => navigation.navigate('Consumer')
+            onPress: () => {
+              // RootNavigator will auto-navigate based on the role set by inferRole
+              // No explicit navigation needed — role change triggers re-render
+            }
           }
         ]
       );

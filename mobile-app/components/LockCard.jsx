@@ -98,11 +98,11 @@ const LockCard = ({
   const isProcessing = isLocking || isUnlocking;
   const canControl = controlMethod !== 'none';
 
-  // Schedule status for restricted users
+  // Schedule status for scheduled/time-restricted users
   const scheduleStatus = useMemo(() => {
-    // Only check for restricted role with time restrictions
+    // Only check for scheduled role with time restrictions
     const userRole = lock.userRole || lock.user_role;
-    if (!lock.time_restricted && userRole !== 'restricted') {
+    if (!lock.time_restricted && userRole !== 'scheduled') {
       return { isWithinSchedule: true, message: null };
     }
 

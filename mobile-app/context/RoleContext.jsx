@@ -137,19 +137,34 @@ export const RoleProvider = ({ children }) => {
     }
   };
 
-  const inferRole = (context) => {
+  const inferRole = async (context) => {
+    let newRole = 'auth';
+
     switch (context.type) {
       case 'lock_added':
         // User completed "Add Lock" wizard -> Owner
-        setRole('owner');
+        newRole = 'owner';
         break;
       case 'invite_accepted':
-        // User entered invite code -> Resident/Guest based on invite scope
-        setRole(context.inviteScope === 'limited' ? 'guest' : 'family');
+        // Use the actual DB role from the invite (owner, admin, family, scheduled, guest_otp, guest_longterm)
+        // Falls back to mapping by scope for backwards compatibility
+        if (context.role) {
+          newRole = context.role;
+        } else if (context.inviteScope === 'limited') {
+          newRole = 'guest';
+        } else {
+          newRole = 'family';
+        }
         break;
       default:
-        setRole('auth');
+        newRole = 'auth';
     }
+
+    // Persist to AsyncStorage so it survives app restarts
+    if (newRole && newRole !== 'auth') {
+      await AsyncStorage.setItem('userRole', newRole);
+    }
+    setRole(newRole);
   };
 
   const toggleSimpleMode = () => {

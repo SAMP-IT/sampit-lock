@@ -19,20 +19,25 @@ const ROLE_CONFIG = {
     description: 'Household member with transparency',
     priority: 3
   },
-  restricted: {
-    title: 'Restricted / Scheduled',
+  scheduled: {
+    title: 'Scheduled',
     description: 'Staff, drivers, cleaners with time-based access',
     priority: 4
   },
-  long_term_guest: {
+  guest_longterm: {
     title: 'Long Term Guest',
     description: 'Airbnb, rental, tenant with auto-expiring access',
     priority: 5
   },
+  guest_otp: {
+    title: 'OTP Guest',
+    description: 'One-time passcode visitor access',
+    priority: 6
+  },
   guest: {
     title: 'Guest',
     description: 'Basic short-term access',
-    priority: 6
+    priority: 7
   }
 };
 
@@ -98,13 +103,13 @@ export const useRolePermissions = (lock) => {
     // Extract permission flags with defaults
     const canUnlock = lock.can_unlock !== false;
     const canLock = lock.can_lock !== false;
-    const canViewLogs = lock.can_view_logs !== false && role !== 'guest';
+    const canViewLogs = lock.can_view_logs !== false && role !== 'guest' && role !== 'guest_otp';
     const canManageUsers = lock.can_manage_users === true || ['owner', 'admin'].includes(role);
     const canModifySettings = lock.can_modify_settings === true || ['owner', 'admin'].includes(role);
     const canManageOwnCredentials = lock.can_manage_own_credentials !== false;
     const canViewOwnLogsOnly = lock.can_view_own_logs_only === true ||
-                               ['restricted', 'long_term_guest', 'guest'].includes(role);
-    const isTimeRestricted = lock.time_restricted === true || role === 'restricted';
+                               ['scheduled', 'guest_longterm', 'guest', 'guest_otp'].includes(role);
+    const isTimeRestricted = lock.time_restricted === true || role === 'scheduled';
     const hasAccessExpiry = !!lock.access_valid_until;
 
     return {
@@ -117,7 +122,7 @@ export const useRolePermissions = (lock) => {
       canLock,
 
       // Log visibility
-      canViewLogs: ['owner', 'admin', 'family', 'restricted'].includes(role) || canViewLogs,
+      canViewLogs: ['owner', 'admin', 'family', 'scheduled'].includes(role) || canViewLogs,
       canViewAllLogs: ['owner', 'admin', 'family'].includes(role) && !canViewOwnLogsOnly,
       canViewOwnLogsOnly,
 
@@ -146,11 +151,11 @@ export const useRolePermissions = (lock) => {
       accessValidUntil: lock.access_valid_until,
 
       // UI visibility helpers
-      showQuickActions: !['guest', 'restricted', 'long_term_guest'].includes(role),
+      showQuickActions: !['guest', 'guest_otp', 'scheduled', 'guest_longterm'].includes(role),
       showSettings: ['owner', 'admin'].includes(role) || canModifySettings,
       showUserManagement: canManageUsers,
       showDangerZone: role === 'owner',
-      showActivityLog: role !== 'guest',
+      showActivityLog: role !== 'guest' && role !== 'guest_otp',
       showCredentialManagement: ['owner', 'admin', 'family'].includes(role),
 
       // Role config
@@ -206,7 +211,7 @@ export const getRoleConfig = (role) => ROLE_CONFIG[role] || ROLE_CONFIG.guest;
 export const getAvailableRoles = (includeOwner = false) => {
   return Object.entries(ROLE_CONFIG)
     .filter(([key]) => includeOwner || key !== 'owner')
-    .filter(([key]) => key !== 'guest') // Hide legacy guest role
+    .filter(([key]) => key !== 'guest' && key !== 'guest_otp') // Hide guest roles from selection
     .map(([id, config]) => ({
       id,
       ...config

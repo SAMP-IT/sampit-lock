@@ -49,19 +49,25 @@ const RootNavigator = () => {
   }
 
   // All permissions granted and Bluetooth is ON - show main app
+  // Map all 6 DB roles (owner, admin, family, scheduled, guest_otp, guest_longterm)
+  // to the appropriate navigator
   switch (role) {
     case 'owner':
-      console.log('✅ RootNavigator: Showing ConsumerNavigator for owner');
+    case 'admin':
+      console.log(`✅ RootNavigator: Showing ConsumerNavigator for ${role}`);
       return <ConsumerNavigator />;
     case 'family':
-      console.log('✅ RootNavigator: Showing FamilyNavigator');
+    case 'scheduled':
+    case 'guest_longterm':
+      console.log(`✅ RootNavigator: Showing FamilyNavigator for ${role}`);
       return <FamilyNavigator />;
     case 'guest':
-      console.log('✅ RootNavigator: Showing GuestNavigator');
+    case 'guest_otp':
+      console.log(`✅ RootNavigator: Showing GuestNavigator for ${role}`);
       return <GuestNavigator />;
     default:
-      console.log('✅ RootNavigator: Showing ConsumerNavigator (default)');
-      return <ConsumerNavigator />;
+      console.log(`✅ RootNavigator: Showing FamilyNavigator (default for role: ${role})`);
+      return <FamilyNavigator />;
   }
 };
 
