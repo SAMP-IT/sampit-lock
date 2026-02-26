@@ -8,6 +8,7 @@ import Theme from '../../constants/Theme';
 import { completeProfile } from '../../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import pushNotificationService from '../../services/pushNotificationService';
+import { validateName, validatePhone } from '../../utils/validation';
 
 const CompleteProfileScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
@@ -17,24 +18,55 @@ const CompleteProfileScreen = ({ navigation }) => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({
+    firstName: '',
+    lastName: '',
+    phone: '',
+  });
 
   const updateFormData = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    if (field === 'firstName' || field === 'lastName') {
+      const sanitized = value.replace(/[^a-zA-Z\s'-]/g, '');
+      setFormData(prev => ({ ...prev, [field]: sanitized }));
+      const result = validateName(sanitized);
+      if (!result.isValid && sanitized.length > 0) {
+        setFieldErrors(prev => ({ ...prev, [field]: result.message }));
+      } else {
+        setFieldErrors(prev => ({ ...prev, [field]: '' }));
+      }
+    } else if (field === 'phone') {
+      const sanitized = value.replace(/[^\d\s\-\(\)\+\.]/g, '');
+      setFormData(prev => ({ ...prev, [field]: sanitized }));
+      const result = validatePhone(sanitized);
+      if (!result.isValid) {
+        setFieldErrors(prev => ({ ...prev, phone: result.message }));
+      } else {
+        setFieldErrors(prev => ({ ...prev, phone: '' }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
   };
 
   const handleCompleteProfile = async () => {
     setIsLoading(true);
     setError(null);
 
-    // Validate required fields
-    if (!formData.firstName.trim()) {
-      setError("Please enter your first name.");
-      setIsLoading(false);
-      return;
-    }
+    // Validate required fields with same rules as SignUpScreen
+    const firstNameResult = validateName(formData.firstName);
+    const lastNameResult = validateName(formData.lastName);
+    const phoneResult = validatePhone(formData.phone);
 
-    if (!formData.lastName.trim()) {
-      setError("Please enter your last name.");
+    const newErrors = {
+      firstName: firstNameResult.isValid ? '' : firstNameResult.message,
+      lastName: lastNameResult.isValid ? '' : lastNameResult.message,
+      phone: phoneResult.isValid ? '' : phoneResult.message,
+    };
+    setFieldErrors(newErrors);
+
+    const firstError = newErrors.firstName || newErrors.lastName || newErrors.phone;
+    if (firstError) {
+      setError(firstError);
       setIsLoading(false);
       return;
     }
@@ -102,7 +134,7 @@ const CompleteProfileScreen = ({ navigation }) => {
       <AppCard style={styles.authCard}>
         <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>First Name *</Text>
-          <View style={styles.inputWrapper}>
+          <View style={[styles.inputWrapper, fieldErrors.firstName ? styles.inputWrapperError : null]}>
             <Ionicons name="person-outline" size={20} color={Colors.subtitlecolor} style={styles.inputIcon} />
             <TextInput
               style={styles.textInput}
@@ -114,11 +146,12 @@ const CompleteProfileScreen = ({ navigation }) => {
               autoCorrect={false}
             />
           </View>
+          {fieldErrors.firstName ? <Text style={styles.fieldErrorText}>{fieldErrors.firstName}</Text> : null}
         </View>
 
         <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>Last Name *</Text>
-          <View style={styles.inputWrapper}>
+          <View style={[styles.inputWrapper, fieldErrors.lastName ? styles.inputWrapperError : null]}>
             <Ionicons name="person-outline" size={20} color={Colors.subtitlecolor} style={styles.inputIcon} />
             <TextInput
               style={styles.textInput}
@@ -130,11 +163,12 @@ const CompleteProfileScreen = ({ navigation }) => {
               autoCorrect={false}
             />
           </View>
+          {fieldErrors.lastName ? <Text style={styles.fieldErrorText}>{fieldErrors.lastName}</Text> : null}
         </View>
 
         <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>Phone Number (Optional)</Text>
-          <View style={styles.inputWrapper}>
+          <View style={[styles.inputWrapper, fieldErrors.phone ? styles.inputWrapperError : null]}>
             <Ionicons name="call-outline" size={20} color={Colors.subtitlecolor} style={styles.inputIcon} />
             <TextInput
               style={styles.textInput}
@@ -146,6 +180,7 @@ const CompleteProfileScreen = ({ navigation }) => {
               autoCorrect={false}
             />
           </View>
+          {fieldErrors.phone ? <Text style={styles.fieldErrorText}>{fieldErrors.phone}</Text> : null}
         </View>
 
         <TouchableOpacity
@@ -237,6 +272,14 @@ const styles = StyleSheet.create({
     paddingVertical: Theme.spacing.sm,
     borderWidth: 1,
     borderColor: 'transparent',
+  },
+  inputWrapperError: {
+    borderColor: '#DC2626',
+  },
+  fieldErrorText: {
+    fontSize: 12,
+    color: '#DC2626',
+    marginTop: 2,
   },
   inputIcon: {
     marginRight: Theme.spacing.sm,

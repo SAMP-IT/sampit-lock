@@ -118,7 +118,10 @@ const EditUserAccessScreen = ({ route, navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [notes, setNotes] = useState(user.notes || '');
+  const [originalNotes] = useState(user.notes || '');
   const [error, setError] = useState(null);
+
+  const hasChanges = notes !== originalNotes;
   const [selectedLockIndex, setSelectedLockIndex] = useState(0); // Track selected lock for role display
 
   // Get user display info
@@ -327,14 +330,14 @@ const EditUserAccessScreen = ({ route, navigation }) => {
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
           <TouchableOpacity
-            style={[styles.saveButton, isSaving && styles.buttonDisabled]}
+            style={[styles.saveButton, (isSaving || !hasChanges) && styles.buttonDisabled]}
             onPress={handleSaveChanges}
-            disabled={isSaving || isLoading}
+            disabled={isSaving || isLoading || !hasChanges}
           >
             {isSaving ? (
               <ActivityIndicator color={Colors.textwhite} />
             ) : (
-              <Text style={styles.saveButtonText}>Save Changes</Text>
+              <Text style={styles.saveButtonText}>{hasChanges ? 'Save Changes' : 'No Changes'}</Text>
             )}
           </TouchableOpacity>
 

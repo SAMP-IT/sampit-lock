@@ -301,6 +301,49 @@ export const validatePassword = (password) => {
 };
 
 /**
+ * Validates phone number input
+ * @param {string} phone - Phone number to validate
+ * @returns {object} - { isValid: boolean, message: string }
+ */
+export const validatePhone = (phone) => {
+  if (!phone || typeof phone !== 'string') {
+    return { isValid: true, message: '' }; // Phone is optional
+  }
+
+  const trimmed = phone.trim();
+  if (trimmed.length === 0) {
+    return { isValid: true, message: '' }; // Empty is fine (optional)
+  }
+
+  // Strip formatting characters to count actual digits
+  const digitsOnly = trimmed.replace(/[\s\-\(\)\+\.]/g, '');
+
+  // Must only contain digits after stripping formatting
+  if (!/^\d+$/.test(digitsOnly)) {
+    return {
+      isValid: false,
+      message: 'Phone number can only contain digits, spaces, hyphens, and parentheses'
+    };
+  }
+
+  if (digitsOnly.length < 10) {
+    return {
+      isValid: false,
+      message: 'Phone number must be at least 10 digits'
+    };
+  }
+
+  if (digitsOnly.length > 15) {
+    return {
+      isValid: false,
+      message: 'Phone number must be 15 digits or fewer'
+    };
+  }
+
+  return { isValid: true, message: '' };
+};
+
+/**
  * Validates that passwords match
  * @param {string} password - Original password
  * @param {string} confirmPassword - Confirmation password

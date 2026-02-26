@@ -31,6 +31,7 @@ const AccessCodeManagementScreen = ({ navigation, route }) => {
   const [saving, setSaving] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingCode, setEditingCode] = useState(null);
+  const [originalFormData, setOriginalFormData] = useState(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -39,6 +40,12 @@ const AccessCodeManagementScreen = ({ navigation, route }) => {
     starts_at: null,
     expires_at: null,
   });
+
+  const editHasChanges = !editingCode || !originalFormData ||
+    formData.name !== originalFormData.name ||
+    formData.code !== originalFormData.code ||
+    formData.type !== originalFormData.type ||
+    formData.expires_at !== originalFormData.expires_at;
 
   const codeTypes = [
     { value: 'permanent', label: 'Permanent Code', icon: 'infinite-outline' },
@@ -101,13 +108,15 @@ const AccessCodeManagementScreen = ({ navigation, route }) => {
 
   const handleEditCode = (code) => {
     setEditingCode(code);
-    setFormData({
+    const data = {
       name: code.name,
       code: code.code,
       type: code.type,
       starts_at: code.starts_at,
       expires_at: code.expires_at,
-    });
+    };
+    setFormData(data);
+    setOriginalFormData(data);
     setShowAddForm(true);
   };
 
@@ -146,6 +155,7 @@ const AccessCodeManagementScreen = ({ navigation, route }) => {
       expires_at: null,
     });
     setEditingCode(null);
+    setOriginalFormData(null);
     setShowAddForm(false);
   };
 
@@ -372,15 +382,15 @@ const AccessCodeManagementScreen = ({ navigation, route }) => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+                  style={[styles.saveButton, (saving || (editingCode && !editHasChanges)) && styles.saveButtonDisabled]}
                   onPress={handleSaveCode}
-                  disabled={saving}
+                  disabled={saving || (editingCode && !editHasChanges)}
                 >
                   {saving ? (
                     <ActivityIndicator color={Colors.textwhite} />
                   ) : (
                     <Text style={styles.saveButtonText}>
-                      {editingCode ? 'Update Code' : 'Add Code'}
+                      {editingCode ? (editHasChanges ? 'Update Code' : 'No Changes') : 'Add Code'}
                     </Text>
                   )}
                 </TouchableOpacity>

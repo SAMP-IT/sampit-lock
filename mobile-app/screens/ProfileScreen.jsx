@@ -7,6 +7,7 @@ import { updateProfile, logout, deleteAccount } from '../services/api';
 import { supabase } from '../services/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRole } from '../context/RoleContext';
+import { validateName, validatePhone } from '../utils/validation';
 
 const ProfileScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
@@ -19,10 +20,22 @@ const ProfileScreen = ({ navigation }) => {
     email: '',
     phone: '',
   });
+  const [fieldErrors, setFieldErrors] = useState({
+    first_name: '',
+    last_name: '',
+    phone: '',
+  });
+  const [originalData, setOriginalData] = useState(null);
 
   useEffect(() => {
     loadUserData();
   }, []);
+
+  const hasChanges = originalData && (
+    userData.first_name !== originalData.first_name ||
+    userData.last_name !== originalData.last_name ||
+    userData.phone !== originalData.phone
+  );
 
   const handleLogout = async () => {
     await logout();
@@ -40,12 +53,14 @@ const ProfileScreen = ({ navigation }) => {
         const storedUser = await AsyncStorage.getItem('user');
         if (storedUser) {
           const user = JSON.parse(storedUser);
-          setUserData({
+          const data = {
             first_name: user.user_metadata?.first_name || user.first_name || '',
             last_name: user.user_metadata?.last_name || user.last_name || '',
             email: user.email || '',
             phone: user.user_metadata?.phone || user.phone || '',
-          });
+          };
+          setUserData(data);
+          setOriginalData(data);
         } else {
           // No user data anywhere - force logout
           console.log('No user data found - logging out');
@@ -59,12 +74,14 @@ const ProfileScreen = ({ navigation }) => {
       } else {
         // Got session from Supabase
         const user = session.user;
-        setUserData({
+        const data = {
           first_name: user.user_metadata?.first_name || '',
           last_name: user.user_metadata?.last_name || '',
           email: user.email || '',
           phone: user.user_metadata?.phone || '',
-        });
+        };
+        setUserData(data);
+        setOriginalData(data);
       }
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -72,21 +89,63 @@ const ProfileScreen = ({ navigation }) => {
       const storedUser = await AsyncStorage.getItem('user');
       if (storedUser) {
         const user = JSON.parse(storedUser);
-        setUserData({
+        const data = {
           first_name: user.user_metadata?.first_name || user.first_name || '',
           last_name: user.user_metadata?.last_name || user.last_name || '',
           email: user.email || '',
           phone: user.user_metadata?.phone || user.phone || '',
-        });
+        };
+        setUserData(data);
+        setOriginalData(data);
       }
     } finally {
       setLoading(false);
     }
   };
 
+  const updateField = (field, value) => {
+    if (field === 'first_name' || field === 'last_name') {
+      // Same sanitization as SignUpScreen: letters, spaces, hyphens, apostrophes only
+      const sanitized = value.replace(/[^a-zA-Z\s'-]/g, '');
+      setUserData(prev => ({ ...prev, [field]: sanitized }));
+      // Real-time validation
+      const result = validateName(sanitized);
+      if (!result.isValid && sanitized.length > 0) {
+        setFieldErrors(prev => ({ ...prev, [field]: result.message }));
+      } else {
+        setFieldErrors(prev => ({ ...prev, [field]: '' }));
+      }
+    } else if (field === 'phone') {
+      // Allow digits and common phone formatting chars only
+      const sanitized = value.replace(/[^\d\s\-\(\)\+\.]/g, '');
+      setUserData(prev => ({ ...prev, [field]: sanitized }));
+      const result = validatePhone(sanitized);
+      if (!result.isValid) {
+        setFieldErrors(prev => ({ ...prev, phone: result.message }));
+      } else {
+        setFieldErrors(prev => ({ ...prev, phone: '' }));
+      }
+    } else {
+      setUserData(prev => ({ ...prev, [field]: value }));
+    }
+  };
+
   const handleSaveProfile = async () => {
-    if (!userData.first_name.trim() || !userData.last_name.trim()) {
-      Alert.alert('Error', 'First name and last name are required');
+    // Validate names using the same rules as SignUpScreen
+    const firstNameResult = validateName(userData.first_name);
+    const lastNameResult = validateName(userData.last_name);
+    const phoneResult = validatePhone(userData.phone);
+
+    const newErrors = {
+      first_name: firstNameResult.isValid ? '' : firstNameResult.message,
+      last_name: lastNameResult.isValid ? '' : lastNameResult.message,
+      phone: phoneResult.isValid ? '' : phoneResult.message,
+    };
+    setFieldErrors(newErrors);
+
+    const firstError = newErrors.first_name || newErrors.last_name || newErrors.phone;
+    if (firstError) {
+      Alert.alert('Validation Error', firstError);
       return;
     }
 
@@ -121,6 +180,7 @@ const ProfileScreen = ({ navigation }) => {
         }));
       }
 
+      setOriginalData({ ...userData });
       Alert.alert('Success', 'Profile updated successfully');
     } catch (error) {
       console.error('Save profile error:', error);
@@ -211,32 +271,34 @@ const ProfileScreen = ({ navigation }) => {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>First Name</Text>
-            <View style={styles.inputContainer}>
+            <View style={[styles.inputContainer, fieldErrors.first_name ? styles.inputError : null]}>
               <Ionicons name="person-outline" size={20} color={Colors.subtitlecolor} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="First Name"
                 placeholderTextColor={Colors.subtitlecolor}
                 value={userData.first_name}
-                onChangeText={(text) => setUserData({ ...userData, first_name: text })}
+                onChangeText={(text) => updateField('first_name', text)}
                 autoCapitalize="words"
               />
             </View>
+            {fieldErrors.first_name ? <Text style={styles.errorText}>{fieldErrors.first_name}</Text> : null}
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Last Name</Text>
-            <View style={styles.inputContainer}>
+            <View style={[styles.inputContainer, fieldErrors.last_name ? styles.inputError : null]}>
               <Ionicons name="person-outline" size={20} color={Colors.subtitlecolor} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Last Name"
                 placeholderTextColor={Colors.subtitlecolor}
                 value={userData.last_name}
-                onChangeText={(text) => setUserData({ ...userData, last_name: text })}
+                onChangeText={(text) => updateField('last_name', text)}
                 autoCapitalize="words"
               />
             </View>
+            {fieldErrors.last_name ? <Text style={styles.errorText}>{fieldErrors.last_name}</Text> : null}
           </View>
 
           <View style={styles.inputGroup}>
@@ -251,30 +313,31 @@ const ProfileScreen = ({ navigation }) => {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Phone Number</Text>
-            <View style={styles.inputContainer}>
+            <View style={[styles.inputContainer, fieldErrors.phone ? styles.inputError : null]}>
               <Ionicons name="call-outline" size={20} color={Colors.subtitlecolor} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="+1 (555) 123-4567"
                 placeholderTextColor={Colors.subtitlecolor}
                 value={userData.phone}
-                onChangeText={(text) => setUserData({ ...userData, phone: text })}
+                onChangeText={(text) => updateField('phone', text)}
                 keyboardType="phone-pad"
               />
             </View>
+            {fieldErrors.phone ? <Text style={styles.errorText}>{fieldErrors.phone}</Text> : null}
           </View>
         </View>
 
         {/* Save Button */}
         <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+          style={[styles.saveButton, (saving || !hasChanges) && styles.saveButtonDisabled]}
           onPress={handleSaveProfile}
-          disabled={saving}
+          disabled={saving || !hasChanges}
         >
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.saveButtonText}>Save Changes</Text>
+            <Text style={styles.saveButtonText}>{hasChanges ? 'Save Changes' : 'No Changes'}</Text>
           )}
         </TouchableOpacity>
 
@@ -424,6 +487,15 @@ const styles = StyleSheet.create({
   helperText: {
     fontSize: 12,
     color: Colors.subtitlecolor,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  inputError: {
+    borderColor: '#DC2626',
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#DC2626',
     marginTop: 4,
     marginLeft: 4,
   },

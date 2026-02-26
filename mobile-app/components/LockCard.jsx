@@ -196,6 +196,13 @@ const LockCard = ({
       return;
     }
 
+    // Skip API call if name hasn't changed
+    const currentName = getLockDisplayName();
+    if (trimmedName === currentName) {
+      setShowEditModal(false);
+      return;
+    }
+
     setIsSaving(true);
     try {
       await updateLock(lock.id, { name: trimmedName });
@@ -301,9 +308,9 @@ const LockCard = ({
                   <Text style={styles.modalCancelText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.modalButton, styles.modalSaveButton, isSaving && styles.modalButtonDisabled]}
+                  style={[styles.modalButton, styles.modalSaveButton, (isSaving || !editName.trim()) && styles.modalButtonDisabled]}
                   onPress={handleSaveName}
-                  disabled={isSaving}
+                  disabled={isSaving || !editName.trim()}
                 >
                   {isSaving ? (
                     <ActivityIndicator size="small" color={Colors.textwhite} />

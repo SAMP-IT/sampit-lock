@@ -74,6 +74,10 @@ const NotificationPreferencesScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [preferences, setPreferences] = useState(defaultPreferences);
+  const [originalPreferences, setOriginalPreferences] = useState(null);
+
+  const hasChanges = originalPreferences &&
+    JSON.stringify(preferences) !== JSON.stringify(originalPreferences);
 
   useEffect(() => {
     loadPreferences();
@@ -83,7 +87,9 @@ const NotificationPreferencesScreen = ({ navigation }) => {
     setLoading(true);
     try {
       const response = await getNotificationPreferences();
-      setPreferences(normalizePreferences(response.data));
+      const normalized = normalizePreferences(response.data);
+      setPreferences(normalized);
+      setOriginalPreferences(normalized);
     } catch (error) {
       console.error('Failed to load preferences:', error);
     } finally {
@@ -275,14 +281,14 @@ const NotificationPreferencesScreen = ({ navigation }) => {
         </View>
 
         <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+          style={[styles.saveButton, (saving || !hasChanges) && styles.saveButtonDisabled]}
           onPress={handleSave}
-          disabled={saving}
+          disabled={saving || !hasChanges}
         >
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.saveButtonText}>Save Preferences</Text>
+            <Text style={styles.saveButtonText}>{hasChanges ? 'Save Preferences' : 'No Changes'}</Text>
           )}
         </TouchableOpacity>
 

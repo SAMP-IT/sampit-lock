@@ -1,6 +1,7 @@
 ﻿import express from 'express';
 import { supabase } from '../services/supabase.js';
 import { sendSmartNotification, logEvent, EventAction, AccessMethod } from '../services/ai/index.js';
+import { authenticateWebhook, webhookHealthOnly } from '../middleware/webhookAuth.js';
 
 const router = express.Router();
 
@@ -14,10 +15,13 @@ const router = express.Router();
  * - Tamper alerts
  * - Gateway status
  *
+ * Security: 3-layer webhook authentication (see middleware/webhookAuth.js)
+ *
  * Configure this URL in TTLock Open Platform:
  * https://open.ttlock.com -> Application Settings -> Callback URL
+ * URL format: https://your-domain.com/api/webhook/ttlock?token=YOUR_WEBHOOK_SECRET
  */
-router.post('/ttlock', async (req, res) => {
+router.post('/ttlock', authenticateWebhook, async (req, res) => {
   try {
     console.log('[WEBHOOK] TTLock event received:', req.body?.eventType || req.body?.recordType, 'lockId:', req.body?.lockId);
 
@@ -183,8 +187,10 @@ router.post('/ttlock', async (req, res) => {
 /**
  * Gateway Status Webhook
  * POST /api/webhook/ttlock/gateway
+ *
+ * Security: Same 3-layer webhook authentication
  */
-router.post('/ttlock/gateway', async (req, res) => {
+router.post('/ttlock/gateway', authenticateWebhook, async (req, res) => {
   try {
     console.log('[WEBHOOK] TTLock Gateway event:', req.body?.isOnline ? 'online' : 'offline', 'gatewayId:', req.body?.gatewayId);
 
@@ -237,29 +243,12 @@ router.post('/ttlock/gateway', async (req, res) => {
  * Health check for webhook endpoint
  * GET /api/webhook/health
  */
-router.get('/health', (req, res) => {
+router.get('/health', webhookHealthOnly, (req, res) => {
   res.json({
     success: true,
     message: 'Webhook endpoint is healthy',
     timestamp: new Date().toISOString()
   });
-});
-
-/**
- * Test webhook endpoint (for development)
- * POST /api/webhook/test
- */
-router.post('/test', async (req, res) => {
-  try {
-    console.log('[WEBHOOK] Test webhook received');
-
-    res.json({
-      success: true,
-      message: 'Test webhook received successfully'
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
 });
 
 const parseBatteryLevel = (value) => {
