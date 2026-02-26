@@ -671,6 +671,146 @@ export const controlLock = async (req, res) => {
       });
     }
 
+    // ============================================================
+    // ACCESS CONTROL & TIME RESTRICTION ENFORCEMENT
+    // Same checks as unlockDoor/lockDoor in lockController.js
+    // ============================================================
+    const permissionField = action === 'unlock' ? 'can_unlock' : 'can_lock';
+
+    const { data: access, error: accessError } = await supabase
+      .from('user_locks')
+      .select(`
+        role,
+        can_unlock,
+        can_lock,
+        remote_unlock_enabled,
+        time_restricted,
+        time_restriction_start,
+        time_restriction_end,
+        days_of_week,
+        access_valid_from,
+        access_valid_until,
+        time_restrictions,
+        is_active
+      `)
+      .eq('user_id', userId)
+      .eq('lock_id', lockId)
+      .eq('is_active', true)
+      .single();
+
+    if (accessError || !access || !access[permissionField]) {
+      logger.security.failedAttempt(lockId, action, { userId, reason: `No ${action} permission` });
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: `You do not have permission to ${action} this lock`
+        }
+      });
+    }
+
+    // Remote unlock must be enabled (TTLock cloud control is always remote)
+    if (action === 'unlock' && !access.remote_unlock_enabled) {
+      logger.security.failedAttempt(lockId, 'unlock', { userId, reason: 'Remote unlock disabled' });
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'REMOTE_UNLOCK_DISABLED',
+          message: 'Remote unlock is not enabled for your account'
+        }
+      });
+    }
+
+    const now = new Date();
+
+    // Check access_valid_from
+    if (access.access_valid_from && new Date(access.access_valid_from) > now) {
+      logger.security.failedAttempt(lockId, action, { userId, reason: 'Access not yet valid' });
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'ACCESS_NOT_YET_VALID',
+          message: 'Your access is not yet active',
+          details: { valid_from: access.access_valid_from }
+        }
+      });
+    }
+
+    // Check access_valid_until
+    if (access.access_valid_until && new Date(access.access_valid_until) < now) {
+      logger.security.failedAttempt(lockId, action, { userId, reason: 'Access expired' });
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'ACCESS_EXPIRED',
+          message: 'Your access has expired',
+          details: { expired_at: access.access_valid_until }
+        }
+      });
+    }
+
+    // For unlock: enforce daily time window and day-of-week for restricted users
+    if (action === 'unlock' && (access.time_restricted || access.role === 'restricted')) {
+      const currentDay = now.getDay();
+      const currentHours = now.getHours();
+      const currentMinutes = now.getMinutes();
+      const currentTime = `${currentHours.toString().padStart(2, '0')}:${currentMinutes.toString().padStart(2, '0')}`;
+
+      // Check day of week
+      const allowedDays = access.days_of_week || [0, 1, 2, 3, 4, 5, 6];
+      if (allowedDays.length > 0 && !allowedDays.includes(currentDay)) {
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        logger.security.failedAttempt(lockId, 'unlock', { userId, reason: `Day restriction: ${dayNames[currentDay]}` });
+        return res.status(403).json({
+          success: false,
+          error: {
+            code: 'DAY_RESTRICTION',
+            message: 'Access not allowed on this day',
+            details: { current_day: dayNames[currentDay], allowed_days: allowedDays.map(d => dayNames[d]).join(', ') }
+          }
+        });
+      }
+
+      // Check time window
+      if (access.time_restriction_start && access.time_restriction_end) {
+        const startTime = access.time_restriction_start.slice(0, 5);
+        const endTime = access.time_restriction_end.slice(0, 5);
+        if (currentTime < startTime || currentTime > endTime) {
+          logger.security.failedAttempt(lockId, 'unlock', { userId, reason: `Time restriction: ${currentTime} outside ${startTime}-${endTime}` });
+          return res.status(403).json({
+            success: false,
+            error: {
+              code: 'TIME_RESTRICTION',
+              message: 'Access not allowed at this time',
+              details: { current_time: currentTime, allowed_window: `${startTime} - ${endTime}` }
+            }
+          });
+        }
+      }
+    }
+
+    // Legacy time_restrictions JSON field support
+    if (action === 'unlock' && access.time_restrictions && access.time_restrictions.enabled) {
+      const currentDay = now.getDay();
+      const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      const restrictions = access.time_restrictions;
+
+      if (restrictions.days_of_week && !restrictions.days_of_week.includes(currentDay)) {
+        return res.status(403).json({
+          success: false,
+          error: { code: 'TIME_RESTRICTION', message: 'Access not allowed on this day' }
+        });
+      }
+      if (restrictions.start_time && restrictions.end_time) {
+        if (currentTime < restrictions.start_time || currentTime > restrictions.end_time) {
+          return res.status(403).json({
+            success: false,
+            error: { code: 'TIME_RESTRICTION', message: 'Access not allowed at this time' }
+          });
+        }
+      }
+    }
+
     // Get the lock from database to get the TTLock lock ID
     const { data: lockRecord, error: lockError } = await supabase
       .from('locks')

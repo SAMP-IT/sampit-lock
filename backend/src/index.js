@@ -28,7 +28,7 @@ import passcodeRoutes from './routes/passcodeRoutes.js';
 
 // Import middleware
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
-import { globalLimiter, authLimiter, apiLimiter } from './middleware/rateLimiter.js';
+import { globalLimiter, authLimiter, authEmailLimiter, apiLimiter } from './middleware/rateLimiter.js';
 
 // Import WebSocket setup
 import { setupWebSocket } from './services/websocket.js';
@@ -196,9 +196,11 @@ app.get('/health', async (req, res) => {
 });
 
 // Auth rate limiting (login, signup, forgot-password)
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/signup', authLimiter);
-app.use('/api/auth/forgot-password', authLimiter);
+// Two layers: per-IP (5/15min) catches single-source floods,
+// per-email (10/15min) catches distributed brute-force on one account
+app.use('/api/auth/login', authLimiter, authEmailLimiter);
+app.use('/api/auth/signup', authLimiter, authEmailLimiter);
+app.use('/api/auth/forgot-password', authLimiter, authEmailLimiter);
 
 // API rate limiting for all API routes
 app.use('/api', apiLimiter);
