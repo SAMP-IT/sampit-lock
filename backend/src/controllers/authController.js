@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import axios from 'axios';
 import md5 from 'md5';
 import { encrypt } from '../utils/ttlockCrypto.js';
+import { invalidateAllUserSessions } from '../utils/sessionManager.js';
 
 // TTLock API Configuration
 const TTLOCK_CLIENT_ID = process.env.TTLOCK_CLIENT_ID;
@@ -452,14 +453,15 @@ export const login = async (req, res) => {
  */
 export const logout = async (req, res) => {
   try {
-    const { error } = await supabase.auth.signOut();
+    // Use admin API to sign out the authenticated user's sessions globally
+    const result = await invalidateAllUserSessions(req.user.id, 'user_logout');
 
-    if (error) {
+    if (!result.success) {
       return res.status(500).json({
         success: false,
         error: {
           code: 'LOGOUT_FAILED',
-          message: error.message
+          message: result.error || 'Failed to sign out'
         }
       });
     }
@@ -548,9 +550,12 @@ export const resetPassword = async (req, res) => {
       .update({ password_hash })
       .eq('id', data.user.id);
 
+    // Invalidate ALL sessions so old tokens on compromised devices stop working
+    await invalidateAllUserSessions(data.user.id, 'password_reset');
+
     res.json({
       success: true,
-      message: 'Password reset successful'
+      message: 'Password reset successful. Please sign in with your new password.'
     });
   } catch (error) {
     console.error('Reset password error:', error);
@@ -779,6 +784,9 @@ export const deleteAccount = async (req, res) => {
     if (fetchError) {
       console.error('Error fetching user for deletion:', fetchError.message);
     }
+
+    // Immediately invalidate all sessions before deleting data
+    await invalidateAllUserSessions(userId, 'account_deletion');
 
     // Delete TTLock user from TTLock Cloud (best-effort)
     if (userData?.ttlock_username) {

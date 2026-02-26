@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import axios from 'axios';
 import { logUserEvent, EventAction } from '../services/ai/eventLogger.js';
 import ttlockCrypto from '../utils/ttlockCrypto.js';
+import { invalidateAllUserSessions } from '../utils/sessionManager.js';
 
 // TTLock API configuration
 const TTLOCK_API_BASE_URL = process.env.TTLOCK_API_BASE_URL || 'https://api.sciener.com';
@@ -1003,6 +1004,13 @@ export const updateUserPermissions = async (req, res) => {
       }
     });
 
+    // Invalidate sessions when role changes or user is deactivated
+    // Forces the user to re-authenticate so their client picks up new permissions
+    if (role !== undefined || is_active === false) {
+      const reason = is_active === false ? 'user_deactivated' : 'role_changed';
+      await invalidateAllUserSessions(userId, reason);
+    }
+
     res.json({
       success: true,
       data: userLock
@@ -1139,6 +1147,9 @@ export const removeUserFromLock = async (req, res) => {
         ttlock_ekey_deleted: !!targetUserLock.ttlock_ekey_id
       }
     });
+
+    // Invalidate sessions so the user's client picks up reduced access
+    await invalidateAllUserSessions(targetUserId, 'removed_from_lock');
 
     res.json({
       success: true,
