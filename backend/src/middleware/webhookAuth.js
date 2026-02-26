@@ -14,7 +14,9 @@ import logger from '../utils/logger.js';
  *   1. Set TTLOCK_WEBHOOK_SECRET in your .env (generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
  *   2. Register your callback URL in TTLock Open Platform as:
  *      https://your-domain.com/api/webhook/ttlock?token=YOUR_SECRET
- *   3. That's it — the middleware handles the rest.
+ *      (TTLock requires the token in the URL since it can't send custom headers.
+ *       The middleware scrubs the token from the URL immediately to prevent log leaks.)
+ *   3. For non-TTLock callers, prefer the X-Webhook-Token header instead.
  */
 
 const WEBHOOK_SECRET = process.env.TTLOCK_WEBHOOK_SECRET;
@@ -25,11 +27,14 @@ const MAX_EVENT_AGE_MS = 5 * 60 * 1000;
 /**
  * Layer 1: Secret Token Verification
  *
- * TTLock sends callbacks to the URL you register, including any query params.
- * By appending ?token=<secret> to the callback URL, every legitimate request
- * from TTLock will carry the token. Attackers who don't know the secret get rejected.
+ * Accepts the token via X-Webhook-Token header (preferred) or query param (for TTLock).
  *
- * Also accepts the token via X-Webhook-Token header as a fallback.
+ * TTLock's callback system only supports URL registration — it cannot send custom
+ * headers. So the registered callback URL includes ?token=<secret>. We must accept
+ * this, but we immediately scrub the token from req.query and req.originalUrl to
+ * prevent it leaking into access logs, error reporters, or Referer headers.
+ *
+ * For non-TTLock callers, prefer X-Webhook-Token header.
  */
 const verifyWebhookToken = (req, res, next) => {
   // If no secret is configured, log a warning and allow through (graceful degradation for dev)
@@ -38,7 +43,17 @@ const verifyWebhookToken = (req, res, next) => {
     return next();
   }
 
-  const token = req.query.token || req.headers['x-webhook-token'];
+  // Prefer header over query param
+  const token = req.headers['x-webhook-token'] || req.query.token;
+
+  // Immediately scrub the token from the URL so it never appears in logs
+  if (req.query.token) {
+    delete req.query.token;
+    // Rebuild originalUrl without the token query param
+    const url = new URL(req.originalUrl, `http://${req.headers.host || 'localhost'}`);
+    url.searchParams.delete('token');
+    req.originalUrl = url.pathname + url.search;
+  }
 
   if (!token) {
     logger.warn('[WEBHOOK-AUTH] Rejected: no token provided', {
@@ -60,8 +75,7 @@ const verifyWebhookToken = (req, res, next) => {
   if (tokenBuffer.length !== secretBuffer.length || !crypto.timingSafeEqual(tokenBuffer, secretBuffer)) {
     logger.warn('[WEBHOOK-AUTH] Rejected: invalid token', {
       ip: req.ip,
-      path: req.path,
-      tokenPrefix: token.substring(0, 4) + '...'
+      path: req.path
     });
     return res.status(200).json({
       success: true,
@@ -69,8 +83,6 @@ const verifyWebhookToken = (req, res, next) => {
     });
   }
 
-  // Strip token from query before passing to handler (don't leak it in logs)
-  delete req.query.token;
   next();
 };
 

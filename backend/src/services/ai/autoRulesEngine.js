@@ -424,14 +424,15 @@ export const getActiveRules = async (lockId) => {
 };
 
 /**
- * Toggle rule status
+ * Toggle rule status (scoped to user's rules only)
  */
-export const toggleRule = async (ruleId, isActive) => {
+export const toggleRule = async (ruleId, isActive, userId) => {
   try {
     const { data: rule, error } = await supabase
       .from('notification_rules')
       .update({ is_active: isActive })
       .eq('id', ruleId)
+      .eq('user_id', userId)
       .select()
       .single();
 
@@ -448,14 +449,15 @@ export const toggleRule = async (ruleId, isActive) => {
 };
 
 /**
- * Delete a rule
+ * Delete a rule (scoped to user's rules only)
  */
-export const deleteRule = async (ruleId) => {
+export const deleteRule = async (ruleId, userId) => {
   try {
     const { error } = await supabase
       .from('notification_rules')
       .delete()
-      .eq('id', ruleId);
+      .eq('id', ruleId)
+      .eq('user_id', userId);
 
     if (error) {
       return { success: false, error: error.message };

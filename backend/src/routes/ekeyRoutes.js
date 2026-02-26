@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth.js';
+import { checkLockAccess } from '../middleware/rbac.js';
 import {
   getTTLockStatus,
   sendEkey,
@@ -28,9 +29,9 @@ router.post('/locks/:lockId/ekeys', authenticate, sendEkey);
 /**
  * @route   GET /api/locks/:lockId/ekeys
  * @desc    Get all eKeys for a lock
- * @access  Private (requires Supabase auth)
+ * @access  Private (requires Supabase auth + lock access)
  */
-router.get('/locks/:lockId/ekeys', authenticate, getEkeyList);
+router.get('/locks/:lockId/ekeys', authenticate, checkLockAccess, getEkeyList);
 
 /**
  * @route   DELETE /api/ekeys/:keyId

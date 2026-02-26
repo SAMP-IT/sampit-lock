@@ -953,6 +953,10 @@ export const addUserToLock = async (req, res) => {
  * Update User Permissions
  * PATCH /locks/:lockId/users/:userId
  */
+// Roles that can be assigned via the PATCH endpoint.
+// 'owner' is excluded — ownership is transferred via the dedicated transfer endpoint.
+const ASSIGNABLE_ROLES = ['admin', 'family', 'scheduled', 'guest_otp', 'guest_longterm'];
+
 export const updateUserPermissions = async (req, res) => {
   try {
     const { lockId, userId } = req.params;
@@ -960,7 +964,18 @@ export const updateUserPermissions = async (req, res) => {
 
     const updates = {};
 
-    if (role !== undefined) updates.role = role;
+    if (role !== undefined) {
+      if (!ASSIGNABLE_ROLES.includes(role)) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_ROLE',
+            message: `Invalid role. Allowed values: ${ASSIGNABLE_ROLES.join(', ')}`
+          }
+        });
+      }
+      updates.role = role;
+    }
     if (is_active !== undefined) updates.is_active = is_active;
     if (time_restrictions !== undefined) updates.time_restrictions = time_restrictions;
 

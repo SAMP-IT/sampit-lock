@@ -507,7 +507,14 @@ router.patch('/rules/:ruleId', async (req, res) => {
     const userId = req.user?.id;
     logger.info('[AI] Request: ' + 'toggleRule', userId, { ruleId, is_active });
 
-    const result = await toggleRule(ruleId, is_active);
+    const result = await toggleRule(ruleId, is_active, userId);
+
+    if (!result.success) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Rule not found or access denied' }
+      });
+    }
 
     logger.info(`[AI] ✅ Rule ${ruleId} toggled to ${is_active ? 'ACTIVE' : 'INACTIVE'} by user ${userId}`);
     res.json({
@@ -534,7 +541,14 @@ router.delete('/rules/:ruleId', async (req, res) => {
     const userId = req.user?.id;
     logger.info('[AI] Request: ' + 'deleteRule', userId, { ruleId });
 
-    const result = await deleteRule(ruleId);
+    const result = await deleteRule(ruleId, userId);
+
+    if (!result.success) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Rule not found or access denied' }
+      });
+    }
 
     logger.info(`[AI] ✅ Rule ${ruleId} deleted by user ${userId}`);
     res.json({

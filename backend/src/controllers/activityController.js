@@ -803,6 +803,17 @@ export const getUserActivityHistory = async (req, res) => {
     const { lock_id } = req.query;
     const { limit, offset } = parsePagination(req.query);
 
+    // Users can only view their own activity history
+    if (userId !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: 'You can only view your own activity history'
+        }
+      });
+    }
+
     let query = supabase
       .from('activity_logs')
       .select(`

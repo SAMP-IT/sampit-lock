@@ -249,8 +249,58 @@ export const getLockInvites = async (req, res) => {
 export const revokeInvite = async (req, res) => {
   try {
     const { inviteId } = req.params;
+    const userId = req.user.id;
 
-    const { data: invite, error } = await supabase
+    // First verify the invite exists and the caller owns it or has lock access
+    const { data: invite, error: fetchError } = await supabase
+      .from('invites')
+      .select('id, invited_by, lock_id, status')
+      .eq('id', inviteId)
+      .eq('status', 'pending')
+      .single();
+
+    if (fetchError || !invite) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Invite not found or already processed'
+        }
+      });
+    }
+
+    // Check: caller must be the invite creator OR be lock owner/admin with manage_users
+    if (invite.invited_by !== userId) {
+      const { data: lockOwner } = await supabase
+        .from('locks')
+        .select('id')
+        .eq('id', invite.lock_id)
+        .eq('owner_id', userId)
+        .single();
+
+      if (!lockOwner) {
+        const { data: lockAdmin } = await supabase
+          .from('user_locks')
+          .select('lock_id')
+          .eq('lock_id', invite.lock_id)
+          .eq('user_id', userId)
+          .eq('can_manage_users', true)
+          .single();
+
+        if (!lockAdmin) {
+          return res.status(403).json({
+            success: false,
+            error: {
+              code: 'FORBIDDEN',
+              message: 'You do not have permission to revoke this invite'
+            }
+          });
+        }
+      }
+    }
+
+    // Now perform the revocation
+    const { data: revokedInvite, error } = await supabase
       .from('invites')
       .update({ status: 'revoked' })
       .eq('id', inviteId)
@@ -258,7 +308,7 @@ export const revokeInvite = async (req, res) => {
       .select()
       .single();
 
-    if (error || !invite) {
+    if (error || !revokedInvite) {
       return res.status(404).json({
         success: false,
         error: {
@@ -546,7 +596,56 @@ export const getGuestAccessHistory = async (req, res) => {
 export const revokeGuestAccess = async (req, res) => {
   try {
     const { accessId } = req.params;
+    const userId = req.user.id;
 
+    // First fetch the guest access to verify ownership
+    const { data: accessRecord, error: fetchError } = await supabase
+      .from('guest_access')
+      .select('id, created_by_user_id, lock_id')
+      .eq('id', accessId)
+      .single();
+
+    if (fetchError || !accessRecord) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Guest access not found'
+        }
+      });
+    }
+
+    // Check: caller must be the creator OR be lock owner/admin with manage_users
+    if (accessRecord.created_by_user_id !== userId) {
+      const { data: lockOwner } = await supabase
+        .from('locks')
+        .select('id')
+        .eq('id', accessRecord.lock_id)
+        .eq('owner_id', userId)
+        .single();
+
+      if (!lockOwner) {
+        const { data: lockAdmin } = await supabase
+          .from('user_locks')
+          .select('lock_id')
+          .eq('lock_id', accessRecord.lock_id)
+          .eq('user_id', userId)
+          .eq('can_manage_users', true)
+          .single();
+
+        if (!lockAdmin) {
+          return res.status(403).json({
+            success: false,
+            error: {
+              code: 'FORBIDDEN',
+              message: 'You do not have permission to revoke this guest access'
+            }
+          });
+        }
+      }
+    }
+
+    // Now perform the revocation
     const { data: guestAccess, error } = await supabase
       .from('guest_access')
       .update({ is_active: false })
