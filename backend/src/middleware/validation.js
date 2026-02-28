@@ -5,7 +5,7 @@ import Joi from 'joi';
 // ============================================================
 const uuid = Joi.string().uuid();
 const uuidRequired = Joi.string().uuid().required();
-const paginationLimit = Joi.number().integer().min(1).max(100).default(20);
+const paginationLimit = Joi.number().integer().min(1).max(200).default(20);
 const paginationOffset = Joi.number().integer().min(0).default(0);
 const pageNo = Joi.number().integer().min(1).default(1);
 
@@ -149,7 +149,7 @@ export const queries = {
     limit: paginationLimit,
     offset: paginationOffset,
     page: pageNo,
-    pageSize: Joi.number().integer().min(1).max(100).optional()
+    pageSize: Joi.number().integer().min(1).max(200).optional()
   }),
 
   lockList: Joi.object({
