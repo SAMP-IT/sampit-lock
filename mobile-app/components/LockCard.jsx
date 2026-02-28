@@ -442,7 +442,11 @@ const LockCard = ({
 
           {/* Bottom Row - Explore More Features */}
           <View style={styles.prominentFooter}>
-            <TouchableOpacity style={styles.settingsButton} onPress={handleSettings}>
+            <TouchableOpacity
+              style={[styles.settingsButton, isProcessing && { opacity: 0.4 }]}
+              onPress={handleSettings}
+              disabled={isProcessing}
+            >
               <Ionicons name="settings-outline" size={18} color={Colors.subtitlecolor} />
               <Text style={styles.settingsText}>Explore More Features</Text>
             </TouchableOpacity>

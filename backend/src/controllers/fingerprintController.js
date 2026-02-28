@@ -177,9 +177,25 @@ export const addFingerprint = async (req, res) => {
     } = req.body;
 
     logger.info(`[FINGERPRINT] Adding fingerprint to lock ${lockId} via ${addType === 1 ? 'Bluetooth' : 'Cloud API'}`);
+    logger.info(`[FINGERPRINT] Received fingerprintNumber: "${fingerprintNumber}" (type: ${typeof fingerprintNumber})`);
 
     // Validate required fields
-    if (!fingerprintNumber) {
+    // For Bluetooth enrollment (addType=1), some TTLock SDK versions return 0, "", or null
+    // as the fingerprintNumber even though the fingerprint was successfully enrolled on the lock.
+    // We generate a fallback number so the record can still be saved to the database.
+    let resolvedFingerprintNumber = fingerprintNumber;
+
+    if (fingerprintNumber === 0 || fingerprintNumber === '0') {
+      // TTLock SDK returned numeric 0 — treat as valid but note it
+      resolvedFingerprintNumber = '0';
+      logger.warn('[FINGERPRINT] Fingerprint number is 0 — SDK may not have returned a proper ID');
+    } else if (!fingerprintNumber && addType === 1) {
+      // Bluetooth enrollment with missing fingerprint number — generate a placeholder
+      // so the fingerprint record is saved and can be managed/deleted from the app
+      resolvedFingerprintNumber = `BT_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      logger.warn(`[FINGERPRINT] Bluetooth enrollment with no fingerprint number — using generated ID: ${resolvedFingerprintNumber}`);
+    } else if (!fingerprintNumber) {
+      // Gateway enrollment requires a real fingerprint number
       return res.status(400).json({
         success: false,
         error: {
@@ -187,6 +203,8 @@ export const addFingerprint = async (req, res) => {
           message: 'Fingerprint number is required (obtained from SDK enrollment)'
         }
       });
+    } else {
+      resolvedFingerprintNumber = String(fingerprintNumber);
     }
 
     // Get lock details
@@ -212,11 +230,11 @@ export const addFingerprint = async (req, res) => {
     if (addType === 1) {
       logger.info('[FINGERPRINT] Bluetooth enrollment - fingerprint already on lock, saving to database only');
 
-      // For Bluetooth additions, we use the fingerprintNumber as a unique identifier
+      // For Bluetooth additions, we use the resolvedFingerprintNumber as a unique identifier
       // since there's no cloud API call to get a fingerprintId
       // IMPORTANT: Don't use parseInt() - these can be very large numbers (e.g., 53784736890887)
       // that exceed JavaScript's safe integer range. Store as string and let PostgreSQL BIGINT handle it.
-      ttlockFingerprintId = String(fingerprintNumber);
+      ttlockFingerprintId = resolvedFingerprintNumber;
 
     } else {
       // addType is Gateway (2) - need to call TTLock cloud API
@@ -238,7 +256,7 @@ export const addFingerprint = async (req, res) => {
         clientId: TTLOCK_CLIENT_ID,
         accessToken,
         lockId: lock.ttlock_lock_id,
-        fingerprintNumber,
+        fingerprintNumber: resolvedFingerprintNumber,
         fingerprintType,
         date: Date.now()
       };
@@ -277,7 +295,7 @@ export const addFingerprint = async (req, res) => {
       lock_id: lockId,
       user_id: userId,
       ttlock_fingerprint_id: ttlockFingerprintId,
-      fingerprint_number: fingerprintNumber,
+      fingerprint_number: resolvedFingerprintNumber,
       fingerprint_name: fingerprintName || 'Unnamed Fingerprint',
       fingerprint_type: fingerprintType,
       valid_from: startDate ? new Date(startDate).toISOString() : null,
@@ -310,7 +328,7 @@ export const addFingerprint = async (req, res) => {
         failureReason: 'Database error: ' + dbError.message,
         metadata: {
           fingerprint_name: fingerprintName || 'Unnamed Fingerprint',
-          fingerprint_number: fingerprintNumber,
+          fingerprint_number: resolvedFingerprintNumber,
           error_code: 'DATABASE_ERROR'
         }
       });
@@ -336,7 +354,7 @@ export const addFingerprint = async (req, res) => {
       success: true,
       metadata: {
         fingerprint_name: fingerprintName || 'Unnamed Fingerprint',
-        fingerprint_number: fingerprintNumber,
+        fingerprint_number: resolvedFingerprintNumber,
         fingerprint_type: fingerprintType,
         enrollment_method: addType === 1 ? 'bluetooth' : 'gateway'
       }

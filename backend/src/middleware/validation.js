@@ -336,7 +336,7 @@ export const schemas = {
   logActivity: Joi.object({
     action: Joi.string().max(50).required(),
     access_method: Joi.string().max(50).optional(),
-    metadata: Joi.object().max(20).optional().allow(null).default({})
+    metadata: Joi.object().optional().allow(null).default({})
   }),
 
   // ---- User Management ----
@@ -520,8 +520,16 @@ export const schemas = {
 
   // ---- Fingerprints ----
   addFingerprint: Joi.object({
+    fingerprintNumber: Joi.alternatives().try(Joi.string().max(50), Joi.number()).optional(),
+    fingerprint_number: Joi.alternatives().try(Joi.string().max(50), Joi.number()).optional(),
+    fingerprintName: Joi.string().max(100).optional(),
     name: Joi.string().max(100).optional(),
+    fingerprintType: Joi.number().integer().valid(1, 2, 3, 4).optional(),
     finger_number: Joi.number().integer().min(0).max(9).optional(),
+    startDate: Joi.alternatives().try(Joi.date().iso(), Joi.number()).optional(),
+    endDate: Joi.alternatives().try(Joi.date().iso(), Joi.number()).optional(),
+    cyclicConfig: Joi.alternatives().try(Joi.array(), Joi.string()).optional(),
+    addType: Joi.number().integer().valid(1, 2).optional(),
     ttlock_fingerprint_id: Joi.alternatives().try(Joi.string().max(50), Joi.number()).optional()
   }),
 

@@ -116,12 +116,45 @@ function extractLockData(ttlockData) {
 }
 
 class LockControlService {
+  constructor() {
+    // Track in-progress operations per lock to prevent concurrent requests
+    this._operationsInProgress = new Map(); // lockId -> 'lock' | 'unlock'
+  }
+
+  /**
+   * Check if an operation is already in progress for a lock.
+   * Returns the operation name if busy, or null if free.
+   */
+  getOperationInProgress(lockId) {
+    return this._operationsInProgress.get(lockId) || null;
+  }
+
+  /**
+   * Check if ANY lock operation is in progress (global guard).
+   */
+  isAnyOperationInProgress() {
+    return this._operationsInProgress.size > 0;
+  }
+
   /**
    * Unlock a lock using hybrid control method
    * @param {Object} lock - Lock object from database
    * @returns {Promise<Object>} Result with control method used
    */
   async unlock(lock) {
+    // Prevent concurrent operations on the same lock
+    const existingOp = this._operationsInProgress.get(lock.id);
+    if (existingOp) {
+      console.warn(`[LockControl] Operation "${existingOp}" already in progress for lock ${lock.id}`);
+      return {
+        success: false,
+        method: 'none',
+        message: `Lock is busy (${existingOp} in progress). Please wait and try again.`,
+        busy: true
+      };
+    }
+
+    this._operationsInProgress.set(lock.id, 'unlock');
     console.log(`🔓 Attempting to unlock: ${lock.name} (ID: ${lock.id})`);
 
     try {
@@ -198,6 +231,8 @@ class LockControlService {
         message: error.message || 'Failed to unlock',
         error: error
       };
+    } finally {
+      this._operationsInProgress.delete(lock.id);
     }
   }
 
@@ -207,6 +242,19 @@ class LockControlService {
    * @returns {Promise<Object>} Result with control method used
    */
   async lock(lock) {
+    // Prevent concurrent operations on the same lock
+    const existingOp = this._operationsInProgress.get(lock.id);
+    if (existingOp) {
+      console.warn(`[LockControl] Operation "${existingOp}" already in progress for lock ${lock.id}`);
+      return {
+        success: false,
+        method: 'none',
+        message: `Lock is busy (${existingOp} in progress). Please wait and try again.`,
+        busy: true
+      };
+    }
+
+    this._operationsInProgress.set(lock.id, 'lock');
     console.log(`🔒 Attempting to lock: ${lock.name} (ID: ${lock.id})`);
 
     try {
@@ -283,6 +331,8 @@ class LockControlService {
         message: error.message || 'Failed to lock',
         error: error
       };
+    } finally {
+      this._operationsInProgress.delete(lock.id);
     }
   }
 

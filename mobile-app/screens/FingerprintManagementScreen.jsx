@@ -244,9 +244,19 @@ const FingerprintManagementScreen = ({ route, navigation }) => {
       // Wait for lock to finish processing before saving to backend
       await new Promise(resolve => setTimeout(resolve, 2000));
 
+      // Ensure fingerprintNumber is a valid string — some TTLock SDK versions
+      // return 0, null, or undefined even on successful enrollment
+      const safeFingerprintNumber = (result.fingerprintNumber != null && result.fingerprintNumber !== '')
+        ? String(result.fingerprintNumber)
+        : `BT_${Date.now()}`;
+
+      if (!result.fingerprintNumber && result.fingerprintNumber !== 0) {
+        console.warn('[FingerprintManagement] TTLock SDK returned empty fingerprintNumber, using generated ID:', safeFingerprintNumber);
+      }
+
       // Save to backend
       await backendApi.post(`/locks/${lock.id}/fingerprints`, {
-        fingerprintNumber: result.fingerprintNumber,
+        fingerprintNumber: safeFingerprintNumber,
         fingerprintName: newFingerprintName.trim(),
         startDate: new Date(startDate).toISOString(),
         endDate: new Date(endDate).toISOString(),
@@ -265,21 +275,47 @@ const FingerprintManagementScreen = ({ route, navigation }) => {
       setStatusMessage('');
       globalOperationInProgress = false;
       lastOperationTime = Date.now();
-      
-      // Show user-friendly error message
-      Alert.alert(
-        'Fingerprint Not Added',
-        getUserFriendlyError(error),
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Button is already re-enabled via state reset above
-              // User can try again without going back
+
+      // Check if this is a backend save error (fingerprint already on lock via Bluetooth)
+      // vs a Bluetooth error (fingerprint never reached the lock)
+      const isBackendError = error.response && error.response.status;
+      if (isBackendError) {
+        // Fingerprint was enrolled on the physical lock but failed to save to backend.
+        // Do NOT delete from lock — the user's fingerprint is physically stored.
+        Alert.alert(
+          'Fingerprint Partially Added',
+          'Your fingerprint was enrolled on the lock hardware and can unlock the door, but failed to save to the app.\n\nPlease try syncing from the cloud, or contact support if the issue persists.',
+          [
+            {
+              text: 'Try Sync',
+              onPress: async () => {
+                try {
+                  await backendApi.get(`/locks/${lock.id}/fingerprints?sync=true`);
+                  fetchFingerprints();
+                } catch (syncErr) {
+                  console.error('Sync failed:', syncErr);
+                }
+              }
+            },
+            { text: 'OK' }
+          ]
+        );
+      } else {
+        // Bluetooth-level failure — fingerprint was NOT enrolled on lock hardware
+        Alert.alert(
+          'Fingerprint Not Added',
+          getUserFriendlyError(error),
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Button is already re-enabled via state reset above
+                // User can try again without going back
+              }
             }
-          }
-        ]
-      );
+          ]
+        );
+      }
     } finally {
       // Ensure state is reset even if error handling fails
       setAdding(false);
