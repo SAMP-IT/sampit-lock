@@ -173,9 +173,25 @@ export const addICCard = async (req, res) => {
     } = req.body;
 
     logger.info(`[IC_CARD] Adding IC card to lock ${lockId} via ${addType === 1 ? 'Bluetooth' : 'Cloud API'}`);
+    logger.info(`[IC_CARD] Received cardNumber: "${cardNumber}" (type: ${typeof cardNumber})`);
 
     // Validate required fields
-    if (!cardNumber) {
+    // For Bluetooth enrollment (addType=1), some TTLock SDK versions return 0, "", or null
+    // as the cardNumber even though the card was successfully added to the lock.
+    // We generate a fallback card number so the record can still be saved to the database.
+    let resolvedCardNumber = cardNumber;
+
+    if (cardNumber === 0 || cardNumber === '0') {
+      // TTLock SDK returned numeric 0 — treat as valid but note it
+      resolvedCardNumber = '0';
+      logger.warn('[IC_CARD] Card number is 0 — SDK may not have read the NFC chip number');
+    } else if (!cardNumber && addType === 1) {
+      // Bluetooth enrollment with missing card number — generate a placeholder
+      // so the card record is saved and can be managed/deleted from the app
+      resolvedCardNumber = `BT_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      logger.warn(`[IC_CARD] Bluetooth enrollment with no card number — using generated ID: ${resolvedCardNumber}`);
+    } else if (!cardNumber) {
+      // Gateway enrollment requires a real card number
       return res.status(400).json({
         success: false,
         error: {
@@ -183,6 +199,8 @@ export const addICCard = async (req, res) => {
           message: 'Card number is required (read from NFC chip)'
         }
       });
+    } else {
+      resolvedCardNumber = String(cardNumber);
     }
 
     // Get lock details
@@ -208,11 +226,11 @@ export const addICCard = async (req, res) => {
     if (addType === 1) {
       logger.info('[IC_CARD] Bluetooth enrollment - card already on lock, saving to database only');
 
-      // For Bluetooth additions, we use the cardNumber as a unique identifier
+      // For Bluetooth additions, we use the resolvedCardNumber as a unique identifier
       // since there's no cloud API call to get a cardId
       // IMPORTANT: Don't use parseInt() - these can be very large numbers (e.g., 3216951435)
       // that may exceed JavaScript's safe integer range. Store as string and let PostgreSQL BIGINT handle it.
-      ttlockCardId = String(cardNumber);
+      ttlockCardId = resolvedCardNumber;
 
     } else {
       // addType is Gateway (2) - need to call TTLock cloud API
@@ -234,7 +252,7 @@ export const addICCard = async (req, res) => {
         clientId: TTLOCK_CLIENT_ID,
         accessToken,
         lockId: lock.ttlock_lock_id,
-        cardNumber,
+        cardNumber: resolvedCardNumber,
         addType,
         date: Date.now()
       };
@@ -270,7 +288,7 @@ export const addICCard = async (req, res) => {
       lock_id: lockId,
       user_id: userId,
       ttlock_card_id: ttlockCardId,
-      card_number: cardNumber,
+      card_number: resolvedCardNumber,
       card_name: cardName || 'Unnamed Card',
       valid_from: startDate ? new Date(startDate).toISOString() : null,
       valid_until: endDate ? new Date(endDate).toISOString() : null,
@@ -297,7 +315,7 @@ export const addICCard = async (req, res) => {
         failureReason: 'Database error: ' + dbError.message,
         metadata: {
           card_name: cardName || 'Unnamed Card',
-          card_number: cardNumber,
+          card_number: resolvedCardNumber,
           error_code: 'DATABASE_ERROR'
         }
       });
@@ -323,7 +341,7 @@ export const addICCard = async (req, res) => {
       success: true,
       metadata: {
         card_name: cardName || 'Unnamed Card',
-        card_number: cardNumber,
+        card_number: resolvedCardNumber,
         enrollment_method: addType === 1 ? 'bluetooth' : 'gateway'
       }
     });

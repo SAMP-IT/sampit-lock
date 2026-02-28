@@ -13,8 +13,8 @@ import { parsePagination } from '../utils/pagination.js';
 const applyRoleBasedLogFiltering = (query, lockAccess, userId) => {
   // Restricted and Long Term Guest can only see their own activity
   if (lockAccess.can_view_own_logs_only ||
-      lockAccess.role === 'restricted' ||
-      lockAccess.role === 'long_term_guest') {
+      lockAccess.role === 'scheduled' ||
+      lockAccess.role === 'guest_longterm') {
     query = query.eq('user_id', userId);
   }
 
@@ -62,7 +62,7 @@ const getUserLockAccess = async (userId, lockId) => {
  *
  * Role-based visibility:
  * - owner, admin, family: Full log visibility for their locks
- * - restricted, long_term_guest: Own activity only across all locks
+ * - scheduled, guest_longterm: Own activity only across all locks
  * - guest: No log access for locks where they are guest
  */
 export const getAllActivities = async (req, res) => {
@@ -119,7 +119,7 @@ export const getAllActivities = async (req, res) => {
 
     // Full visibility locks: owned locks + admin/family roles
     const fullVisibilityLockIds = [];
-    // Own activity only locks: restricted, long_term_guest roles
+    // Own activity only locks: scheduled, guest_longterm roles
     const ownActivityLockIds = [];
     // No visibility locks: guest roles (unless can_view_logs is true)
     const noVisibilityLockIds = [];
@@ -135,8 +135,8 @@ export const getAllActivities = async (req, res) => {
       if (ul.role === 'guest' && !ul.can_view_logs) {
         noVisibilityLockIds.push(ul.lock_id);
       } else if (ul.can_view_own_logs_only ||
-                 ul.role === 'restricted' ||
-                 ul.role === 'long_term_guest') {
+                 ul.role === 'scheduled' ||
+                 ul.role === 'guest_longterm') {
         ownActivityLockIds.push(ul.lock_id);
       } else {
         // admin, family, or roles with full log visibility
@@ -381,7 +381,7 @@ export const getAllActivities = async (req, res) => {
  *
  * Role-based visibility:
  * - owner, admin, family: Full log visibility
- * - restricted, long_term_guest: Own activity only
+ * - scheduled, guest_longterm: Own activity only
  * - guest: No log access
  */
 export const getRecentActivities = async (req, res) => {
@@ -429,7 +429,7 @@ export const getRecentActivities = async (req, res) => {
 
     // Full visibility locks: owned locks + admin/family roles
     const fullVisibilityLockIds = [];
-    // Own activity only locks: restricted, long_term_guest roles
+    // Own activity only locks: scheduled, guest_longterm roles
     const ownActivityLockIds = [];
 
     // Add owned locks to full visibility
@@ -444,8 +444,8 @@ export const getRecentActivities = async (req, res) => {
         // No visibility - skip this lock
         return;
       } else if (ul.can_view_own_logs_only ||
-                 ul.role === 'restricted' ||
-                 ul.role === 'long_term_guest') {
+                 ul.role === 'scheduled' ||
+                 ul.role === 'guest_longterm') {
         ownActivityLockIds.push(ul.lock_id);
       } else {
         // admin, family, or roles with full log visibility
@@ -544,7 +544,7 @@ export const getRecentActivities = async (req, res) => {
  *
  * Role-based visibility:
  * - owner, admin, family: Full log visibility
- * - restricted, long_term_guest: Own activity only
+ * - scheduled, guest_longterm: Own activity only
  * - guest: No log access (returns empty)
  */
 export const getActivityLogs = async (req, res) => {
@@ -678,8 +678,8 @@ export const getActivityLogs = async (req, res) => {
 
     // Add visibility notice for restricted roles
     if (lockAccess.can_view_own_logs_only ||
-        lockAccess.role === 'restricted' ||
-        lockAccess.role === 'long_term_guest') {
+        lockAccess.role === 'scheduled' ||
+        lockAccess.role === 'guest_longterm') {
       response.data.visibility_notice = 'Showing your activity only';
     }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -29,6 +29,7 @@ const settingsData = [
 const SettingsScreen = ({ navigation }) => {
   // Hidden debug mode - tap version number 7 times
   const [debugTapCount, setDebugTapCount] = useState(0);
+  const debugTapTimer = useRef(null);
   const { isDevMode, localServerUrl, toggleDevMode, updateLocalServerUrl } = useDevMode();
   const [editingServerUrl, setEditingServerUrl] = useState(false);
   const [serverUrlInput, setServerUrlInput] = useState(localServerUrl);
@@ -65,6 +66,11 @@ const SettingsScreen = ({ navigation }) => {
   };
 
   const handleVersionTap = () => {
+    // Clear any existing reset timer so rapid taps don't get killed
+    if (debugTapTimer.current) {
+      clearTimeout(debugTapTimer.current);
+    }
+
     const newCount = debugTapCount + 1;
     setDebugTapCount(newCount);
 
@@ -72,10 +78,11 @@ const SettingsScreen = ({ navigation }) => {
       console.log('Debug mode activated');
       navigation.navigate('DebugLogs');
       setDebugTapCount(0);
+      return;
     }
 
     // Reset counter after 3 seconds of inactivity
-    setTimeout(() => setDebugTapCount(0), 3000);
+    debugTapTimer.current = setTimeout(() => setDebugTapCount(0), 3000);
   };
 
   const { setRole } = useRole();

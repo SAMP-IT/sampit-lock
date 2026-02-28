@@ -749,8 +749,8 @@ export const controlLock = async (req, res) => {
       });
     }
 
-    // For unlock: enforce daily time window and day-of-week for restricted users
-    if (action === 'unlock' && (access.time_restricted || access.role === 'restricted')) {
+    // For unlock: enforce daily time window and day-of-week for scheduled users
+    if (action === 'unlock' && (access.time_restricted || access.role === 'scheduled')) {
       const currentDay = now.getDay();
       const currentHours = now.getHours();
       const currentMinutes = now.getMinutes();

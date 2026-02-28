@@ -342,9 +342,11 @@ export const schemas = {
   // ---- User Management ----
   addUser: Joi.object({
     email: Joi.string().email().max(254).required(),
-    first_name: Joi.string().min(1).max(100).required(),
-    last_name: Joi.string().min(1).max(100).required(),
-    role: Joi.string().valid('admin', 'family', 'guest').required(),
+    first_name: Joi.string().min(1).max(100).optional(),
+    last_name: Joi.string().min(1).max(100).optional(),
+    role: Joi.string().valid('owner', 'admin', 'family', 'scheduled', 'guest_otp', 'guest_longterm', 'guest').required(),
+    lock_ids: Joi.array().items(Joi.string().uuid()).min(1).max(50).optional(),
+    notes: Joi.string().max(500).allow(null, '').optional(),
     permissions: Joi.object({
       can_unlock: Joi.boolean().default(true),
       can_lock: Joi.boolean().default(true),
@@ -356,6 +358,12 @@ export const schemas = {
     access_methods: Joi.array().items(
       Joi.string().valid('phone', 'pin', 'fingerprint', 'card')
     ).max(10).optional(),
+    time_restricted: Joi.boolean().optional(),
+    days_of_week: Joi.array().items(Joi.number().min(0).max(6)).max(7).optional(),
+    time_restriction_start: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
+    time_restriction_end: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
+    access_valid_from: Joi.string().isoDate().optional(),
+    access_valid_until: Joi.string().isoDate().optional(),
     time_restrictions: Joi.object({
       enabled: Joi.boolean().default(false),
       start_time: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),

@@ -613,7 +613,7 @@ const analyzeUsageFrequency = async (lockId) => {
     const accessCount = activities?.length || 0;
 
     // Low usage: fewer than 2 accesses per month for non-guest roles
-    if (accessCount < 2 && !['guest', 'long_term_guest'].includes(userLock.role)) {
+    if (accessCount < 2 && !['guest', 'guest_longterm'].includes(userLock.role)) {
       suggestions.push({
         type: RuleType.USAGE_BASED,
         priority: 'low',

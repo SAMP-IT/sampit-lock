@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -25,9 +25,12 @@ import { useAllUsersForAllLocks } from '../hooks/useQueryHooks';
 
 const roleFilters = [
   { id: 'all', label: 'All' },
+  { id: 'owner', label: 'Owner' },
   { id: 'admin', label: 'Admin' },
   { id: 'family', label: 'Family' },
-  { id: 'guest', label: 'Guest' },
+  { id: 'scheduled', label: 'Scheduled' },
+  { id: 'guest_longterm', label: 'Long Term' },
+  { id: 'guest_otp', label: 'OTP Guest' },
 ];
 
 const UserManagementScreen = ({ navigation, route }) => {
@@ -37,6 +40,13 @@ const UserManagementScreen = ({ navigation, route }) => {
 
   const [roleFilter, setRoleFilter] = useState('all');
   const [lockFilter, setLockFilter] = useState(lockId || null);
+
+  // Refetch when navigating back from AddUserScreen (refresh timestamp changes)
+  useEffect(() => {
+    if (refresh) {
+      queryClient.invalidateQueries({ queryKey: ['allUsersForAllLocks'] });
+    }
+  }, [refresh]);
 
   // Build filters for the query
   const filters = useMemo(() => {
@@ -50,7 +60,7 @@ const UserManagementScreen = ({ navigation, route }) => {
 
   const usersData = data?.users || [];
   const locksData = data?.locks || [];
-  const stats = data?.stats || { total_users: 0, admins: 0, family: 0 };
+  const stats = data?.stats || { total_users: 0, admins: 0, family: 0, owners: 0 };
   const canManageUsers = locksData.length > 0;
   const error = queryError ? 'Failed to load users. Please try again.' : null;
 
@@ -72,7 +82,10 @@ const UserManagementScreen = ({ navigation, route }) => {
     const roles = (user.locks || []).map(l => l.role);
     const dominantRole = roles.includes('owner') ? 'owner' :
       roles.includes('admin') ? 'admin' :
-      roles.includes('family') ? 'family' : 'guest';
+      roles.includes('family') ? 'family' :
+      roles.includes('scheduled') ? 'scheduled' :
+      roles.includes('guest_longterm') ? 'guest_longterm' :
+      roles.includes('guest_otp') ? 'guest_otp' : 'guest';
 
     const userForEdit = {
       ...user,
@@ -157,13 +170,19 @@ const UserManagementScreen = ({ navigation, route }) => {
   const getRoleColor = (role) => {
     switch (role) {
       case 'owner':
-        return '#dc2626'; // Red for owner
+        return '#dc2626'; // Red
       case 'admin':
         return '#7c3aed'; // Purple
       case 'family':
         return '#2563eb'; // Blue
-      case 'guest':
+      case 'scheduled':
+        return '#0891b2'; // Cyan
+      case 'guest_longterm':
+        return '#d97706'; // Amber
+      case 'guest_otp':
         return '#059669'; // Green
+      case 'guest':
+        return '#6b7280'; // Gray
       default:
         return Colors.subtitlecolor;
     }
@@ -177,6 +196,12 @@ const UserManagementScreen = ({ navigation, route }) => {
         return 'Admin';
       case 'family':
         return 'Family';
+      case 'scheduled':
+        return 'Scheduled';
+      case 'guest_longterm':
+        return 'Long Term';
+      case 'guest_otp':
+        return 'OTP Guest';
       case 'guest':
         return 'Guest';
       default:
@@ -192,7 +217,10 @@ const UserManagementScreen = ({ navigation, route }) => {
     const roles = userLocks.map(l => l.role);
     const dominantRole = roles.includes('owner') ? 'owner' :
       roles.includes('admin') ? 'admin' :
-      roles.includes('family') ? 'family' : 'guest';
+      roles.includes('family') ? 'family' :
+      roles.includes('scheduled') ? 'scheduled' :
+      roles.includes('guest_longterm') ? 'guest_longterm' :
+      roles.includes('guest_otp') ? 'guest_otp' : 'guest';
 
     return (
       <AppCard key={user.id} style={styles.userCard}>

@@ -172,7 +172,7 @@ function initWorker(supabaseClient) {
     const now = new Date().toISOString();
 
     try {
-      // 1. Find expired user_locks (long_term_guest/restricted with passed access_valid_until)
+      // 1. Find expired user_locks (guest_longterm/scheduled with passed access_valid_until)
       const { data: expiredAccess, error: queryError } = await supabase
         .from('user_locks')
         .select(`
@@ -183,7 +183,7 @@ function initWorker(supabaseClient) {
           ttlock_ekey_id,
           locks!inner(owner_id, ttlock_lock_id)
         `)
-        .in('role', ['long_term_guest', 'restricted'])
+        .in('role', ['guest_longterm', 'scheduled'])
         .lt('access_valid_until', now)
         .eq('is_active', true);
 
@@ -398,7 +398,7 @@ async function triggerGuestAutoExpiry(lockId = null) {
       access_valid_until,
       locks!inner(owner_id, ttlock_lock_id)
     `)
-    .in('role', ['long_term_guest', 'restricted'])
+    .in('role', ['guest_longterm', 'scheduled'])
     .lt('access_valid_until', now)
     .eq('is_active', true);
 

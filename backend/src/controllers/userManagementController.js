@@ -66,7 +66,7 @@ const sendTTLockEkey = async (lockId, targetUser, role, startDate, endDate) => {
     let ekeyStartDate = 0;
     let ekeyEndDate = 0;
 
-    if (role === 'restricted' || role === 'long_term_guest') {
+    if (role === 'scheduled' || role === 'guest_longterm') {
       ekeyStartDate = startDate ? new Date(startDate).getTime() : Date.now();
       ekeyEndDate = endDate ? new Date(endDate).getTime() : 0;
     }
@@ -587,7 +587,7 @@ export const addUserToMultipleLocks = async (req, res) => {
         remote_unlock_enabled: true,
         time_restricted: false
       },
-      restricted: {
+      scheduled: {
         can_unlock: true,              // Only during schedule (enforced in controller)
         can_lock: true,
         can_view_logs: true,
@@ -598,7 +598,7 @@ export const addUserToMultipleLocks = async (req, res) => {
         remote_unlock_enabled: true,
         time_restricted: true              // Always enforced
       },
-      long_term_guest: {
+      guest_longterm: {
         can_unlock: true,
         can_lock: true,
         can_view_logs: false,
@@ -608,6 +608,17 @@ export const addUserToMultipleLocks = async (req, res) => {
         can_view_own_logs_only: true,
         remote_unlock_enabled: true,
         time_restricted: false             // Uses access_valid_until instead
+      },
+      guest_otp: {
+        can_unlock: true,
+        can_lock: true,
+        can_view_logs: false,
+        can_manage_users: false,
+        can_modify_settings: false,
+        can_manage_own_credentials: false,
+        can_view_own_logs_only: true,
+        remote_unlock_enabled: true,
+        time_restricted: false
       },
       // Keep 'guest' for backward compatibility (maps to short-term guest)
       guest: {
@@ -628,7 +639,7 @@ export const addUserToMultipleLocks = async (req, res) => {
 
     // Build time restriction fields
     const timeRestrictionFields = {};
-    if (role === 'restricted' || time_restricted) {
+    if (role === 'scheduled' || time_restricted) {
       timeRestrictionFields.time_restricted = true;
       if (days_of_week) timeRestrictionFields.days_of_week = days_of_week;
       if (time_restriction_start) timeRestrictionFields.time_restriction_start = time_restriction_start;
@@ -716,12 +727,24 @@ export const addUserToMultipleLocks = async (req, res) => {
       }
     }
 
+    // Build informative message
+    let message = '';
+    if (results.added.length > 0 && results.updated.length > 0) {
+      message = `User added to ${results.added.length} lock(s) and role updated in ${results.updated.length} lock(s)`;
+    } else if (results.added.length > 0) {
+      message = `User added to ${results.added.length} lock(s) successfully`;
+    } else if (results.updated.length > 0) {
+      message = `User already had access — role updated to ${role} in ${results.updated.length} lock(s)`;
+    } else {
+      message = 'No changes were made';
+    }
+
     res.status(201).json({
       success: true,
       data: {
         user: existingUser,
         results,
-        message: `User ${results.added.length > 0 ? `added to ${results.added.length} lock(s)` : ''}${results.updated.length > 0 ? `${results.added.length > 0 ? ' and ' : ''}updated in ${results.updated.length} lock(s)` : ''}`
+        message
       }
     });
   } catch (error) {

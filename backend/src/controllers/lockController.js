@@ -24,6 +24,14 @@ export const getAllLocks = async (req, res) => {
         can_manage_users,
         can_modify_settings,
         remote_unlock_enabled,
+        can_manage_own_credentials,
+        can_view_own_logs_only,
+        time_restricted,
+        days_of_week,
+        time_restriction_start,
+        time_restriction_end,
+        access_valid_from,
+        access_valid_until,
         locks (
           id,
           name,
@@ -74,6 +82,15 @@ export const getAllLocks = async (req, res) => {
       can_manage_users: ul.can_manage_users,
       can_modify_settings: ul.can_modify_settings,
       remote_unlock_enabled: ul.remote_unlock_enabled,
+      can_manage_own_credentials: ul.can_manage_own_credentials,
+      can_view_own_logs_only: ul.can_view_own_logs_only,
+      // Schedule and access validity
+      time_restricted: ul.time_restricted,
+      days_of_week: ul.days_of_week,
+      time_restriction_start: ul.time_restriction_start,
+      time_restriction_end: ul.time_restriction_end,
+      access_valid_from: ul.access_valid_from,
+      access_valid_until: ul.access_valid_until,
     }));
 
     logger.info(`[LOCK] ✅ Retrieved ${locks.length} locks for user ${userId}`);
@@ -1173,8 +1190,8 @@ export const lockDoor = async (req, res) => {
  * POST /locks/:lockId/unlock
  *
  * Time restriction enforcement for:
- * - restricted: Daily time window + days of week
- * - long_term_guest: Access valid from/until dates
+ * - scheduled: Daily time window + days of week
+ * - guest_longterm: Access valid from/until dates
  */
 export const unlockDoor = async (req, res) => {
   try {
@@ -1272,7 +1289,7 @@ export const unlockDoor = async (req, res) => {
     }
 
     // Check daily time window for restricted roles or time_restricted users
-    if (access.time_restricted || access.role === 'restricted') {
+    if (access.time_restricted || access.role === 'scheduled') {
       const currentDay = now.getDay(); // 0 = Sunday, 6 = Saturday
       const currentHours = now.getHours();
       const currentMinutes = now.getMinutes();

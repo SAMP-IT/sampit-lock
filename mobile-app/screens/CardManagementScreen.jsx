@@ -160,9 +160,19 @@ const CardManagementScreen = ({ route, navigation }) => {
                 // Wait for lock to finish processing before saving to backend
                 await new Promise(resolve => setTimeout(resolve, 2000));
 
+                // Ensure cardNumber is a valid string — some TTLock SDK versions
+                // return 0, null, or undefined even on successful enrollment
+                const safeCardNumber = (result.cardNumber != null && result.cardNumber !== '')
+                  ? String(result.cardNumber)
+                  : `BT_${Date.now()}`;
+
+                if (!result.cardNumber && result.cardNumber !== 0) {
+                  console.warn('[CardManagement] TTLock SDK returned empty cardNumber, using generated ID:', safeCardNumber);
+                }
+
                 // Save to backend
                 await backendApi.post(`/locks/${lock.id}/cards`, {
-                  cardNumber: result.cardNumber,
+                  cardNumber: safeCardNumber,
                   cardName: newCardName.trim(),
                   startDate: new Date(startDate).toISOString(),
                   endDate: new Date(endDate).toISOString(),
@@ -175,7 +185,33 @@ const CardManagementScreen = ({ route, navigation }) => {
                 fetchCards();
               } catch (error) {
                 console.error('Add card error:', error);
-                Alert.alert('Could Not Add Card', getUserFriendlyError(error));
+
+                // Check if this is a backend save error (card already on lock via Bluetooth)
+                // vs a Bluetooth error (card never reached the lock)
+                const isBackendError = error.response && error.response.status;
+                if (isBackendError) {
+                  // Card was added to the physical lock but failed to save to backend
+                  Alert.alert(
+                    'Card Partially Added',
+                    'The card was successfully added to the lock hardware and can unlock the door, but failed to save to the app.\n\nPlease try syncing your cards from the cloud, or contact support if the issue persists.',
+                    [
+                      {
+                        text: 'Try Sync',
+                        onPress: async () => {
+                          try {
+                            await backendApi.get(`/locks/${lock.id}/cards?sync=true`);
+                            fetchCards();
+                          } catch (syncErr) {
+                            console.error('Sync failed:', syncErr);
+                          }
+                        }
+                      },
+                      { text: 'OK' }
+                    ]
+                  );
+                } else {
+                  Alert.alert('Could Not Add Card', getUserFriendlyError(error));
+                }
               } finally {
                 setAdding(false);
                 setStatusMessage('');
@@ -275,7 +311,7 @@ const CardManagementScreen = ({ route, navigation }) => {
       <View style={styles.cardInfo}>
         <Text style={styles.cardName}>{item.card_name || 'Unnamed Card'}</Text>
         <Text style={styles.cardMeta}>
-          Card #: {item.card_number.slice(-8)}...
+          Card #: {item.card_number ? item.card_number.slice(-8) : 'Unknown'}
         </Text>
         {item.user_name && (
           <Text style={styles.cardUser}>
