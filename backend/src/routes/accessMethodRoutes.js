@@ -11,6 +11,7 @@ import {
   updateCard,
   deleteCard
 } from '../controllers/accessMethodController.js';
+import { validate, validateParams, schemas, params } from '../middleware/validation.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = express.Router();
@@ -25,6 +26,7 @@ router.use(authenticateToken);
 // Get all fingerprints for a lock
 router.get(
   '/locks/:lockId/fingerprints',
+  validateParams(params.lockId),
   checkLockAccess('can_view_logs'),
   asyncHandler(getFingerprints)
 );
@@ -32,20 +34,25 @@ router.get(
 // Add a fingerprint
 router.post(
   '/locks/:lockId/fingerprints',
+  validateParams(params.lockId),
   checkLockAccess('can_modify_settings'),
+  validate(schemas.addFingerprint),
   asyncHandler(addFingerprint)
 );
 
 // Update a fingerprint
 router.patch(
   '/locks/:lockId/fingerprints/:fingerprintId',
+  validateParams(params.fingerprintId),
   checkLockAccess('can_modify_settings'),
+  validate(schemas.updateFingerprint),
   asyncHandler(updateFingerprint)
 );
 
 // Delete a fingerprint
 router.delete(
   '/locks/:lockId/fingerprints/:fingerprintId',
+  validateParams(params.fingerprintId),
   checkLockAccess('can_modify_settings'),
   asyncHandler(deleteFingerprint)
 );
@@ -57,6 +64,7 @@ router.delete(
 // Get all cards for a lock
 router.get(
   '/locks/:lockId/cards',
+  validateParams(params.lockId),
   checkLockAccess('can_view_logs'),
   asyncHandler(getCards)
 );
@@ -64,20 +72,25 @@ router.get(
 // Add a card
 router.post(
   '/locks/:lockId/cards',
+  validateParams(params.lockId),
   checkLockAccess('can_modify_settings'),
+  validate(schemas.addICCard),
   asyncHandler(addCard)
 );
 
 // Update a card
 router.patch(
   '/locks/:lockId/cards/:cardId',
+  validateParams(params.cardId),
   checkLockAccess('can_modify_settings'),
+  validate(schemas.updateICCard),
   asyncHandler(updateCard)
 );
 
 // Delete a card
 router.delete(
   '/locks/:lockId/cards/:cardId',
+  validateParams(params.cardId),
   checkLockAccess('can_modify_settings'),
   asyncHandler(deleteCard)
 );

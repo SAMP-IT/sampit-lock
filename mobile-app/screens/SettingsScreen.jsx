@@ -65,7 +65,6 @@ const SettingsScreen = ({ navigation }) => {
   };
 
   const handleVersionTap = () => {
-    if (!__DEV__) return; // Debug logs only available in development builds
     const newCount = debugTapCount + 1;
     setDebugTapCount(newCount);
 

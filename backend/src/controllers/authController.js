@@ -219,7 +219,7 @@ const registerAndConnectTTLock = async (username, password) => {
  */
 export const signup = async (req, res) => {
   try {
-    const { email, password, first_name, last_name, phone, role } = req.body;
+    const { email, password, first_name, last_name, phone } = req.body;
 
     // Hash password
     const password_hash = await bcrypt.hash(password, 10);
@@ -296,7 +296,7 @@ export const signup = async (req, res) => {
       first_name,
       last_name,
       phone,
-      role: role || 'owner',
+      role: 'owner',  // Always default - never trust client-supplied role
       email_verified: false
     };
 
@@ -381,7 +381,7 @@ export const signup = async (req, res) => {
       action: EventAction.SIGNUP,
       ipAddress: req.ip,
       metadata: { email }
-    });
+    }).catch(() => {}); // fire-and-forget, errors already logged internally
 
     res.status(201).json({
       success: true,
@@ -422,7 +422,7 @@ export const login = async (req, res) => {
         failureReason: 'Invalid email or password',
         ipAddress: req.ip,
         metadata: { email }
-      });
+      }).catch(() => {}); // fire-and-forget, errors already logged internally
       return res.status(401).json({
         success: false,
         error: {
@@ -453,7 +453,7 @@ export const login = async (req, res) => {
       action: EventAction.LOGIN_SUCCESS,
       ipAddress: req.ip,
       metadata: { email }
-    });
+    }).catch(() => {}); // fire-and-forget, errors already logged internally
 
     res.json({
       success: true,
@@ -501,7 +501,7 @@ export const logout = async (req, res) => {
       action: EventAction.LOGOUT,
       ipAddress: req.ip,
       metadata: { email: req.user.email }
-    });
+    }).catch(() => {}); // fire-and-forget, errors already logged internally
 
     res.json({
       success: true,
@@ -546,7 +546,7 @@ export const forgotPassword = async (req, res) => {
       action: EventAction.PASSWORD_RESET_REQUEST,
       ipAddress: req.ip,
       metadata: { email }
-    });
+    }).catch(() => {}); // fire-and-forget, errors already logged internally
 
     res.json({
       success: true,
@@ -603,7 +603,7 @@ export const resetPassword = async (req, res) => {
       action: EventAction.PASSWORD_RESET_COMPLETE,
       ipAddress: req.ip,
       metadata: { email: data.user.email }
-    });
+    }).catch(() => {}); // fire-and-forget, errors already logged internally
 
     res.json({
       success: true,
@@ -656,7 +656,7 @@ export const verifyEmail = async (req, res) => {
       action: EventAction.EMAIL_VERIFIED,
       ipAddress: req.ip,
       metadata: { email: data.user.email }
-    });
+    }).catch(() => {}); // fire-and-forget, errors already logged internally
 
     res.json({
       success: true,
@@ -756,7 +756,7 @@ export const refreshToken = async (req, res) => {
       action: EventAction.TOKEN_REFRESHED,
       ipAddress: req.ip,
       metadata: { email: data.user.email }
-    });
+    }).catch(() => {}); // fire-and-forget, errors already logged internally
 
     // Fetch updated user details
     const { data: user } = await supabase
@@ -824,7 +824,7 @@ export const updateProfile = async (req, res) => {
       action: EventAction.PROFILE_UPDATED,
       ipAddress: req.ip,
       metadata: { fields: Object.keys(updates) }
-    });
+    }).catch(() => {}); // fire-and-forget, errors already logged internally
 
     res.json({
       success: true,
@@ -915,7 +915,7 @@ export const deleteAccount = async (req, res) => {
       action: EventAction.ACCOUNT_DELETED,
       ipAddress: req.ip,
       metadata: { email: req.user.email }
-    });
+    }).catch(() => {}); // fire-and-forget, errors already logged internally
 
     // Delete user from Supabase Auth (external to DB transaction)
     const { error: authError } = await supabase.auth.admin.deleteUser(userId);

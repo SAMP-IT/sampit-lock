@@ -65,7 +65,7 @@ router.post('/sync-lock-data', asyncHandler(syncLockBluetoothData));
  * @desc    Hybrid lock control (Cloud API with Bluetooth fallback)
  * @access  Private
  */
-router.post('/lock/:lockId/control', validate(schemas.ttlockControl), asyncHandler(controlLock));
+router.post('/lock/:lockId/control', validateParams(params.lockId), validate(schemas.ttlockControl), asyncHandler(controlLock));
 
 /**
  * @route   POST /api/ttlock/lock/:lockId/passcodes
@@ -73,20 +73,20 @@ router.post('/lock/:lockId/control', validate(schemas.ttlockControl), asyncHandl
  * @access  Private
  * @body    { passcode, type: 'one_time'|'permanent'|'timed', name?, startDate?, endDate?, validHours? }
  */
-router.post('/lock/:lockId/passcodes', validate(schemas.ttlockPasscode), asyncHandler(createCloudPasscode));
+router.post('/lock/:lockId/passcodes', validateParams(params.lockId), validate(schemas.ttlockPasscode), asyncHandler(createCloudPasscode));
 
 /**
  * @route   GET /api/ttlock/lock/:lockId/passcodes
  * @desc    Get all passcodes from TTLock Cloud
  * @access  Private
  */
-router.get('/lock/:lockId/passcodes', asyncHandler(getCloudPasscodes));
+router.get('/lock/:lockId/passcodes', validateParams(params.lockId), asyncHandler(getCloudPasscodes));
 
 /**
  * @route   DELETE /api/ttlock/lock/:lockId/passcodes/:passcodeId
  * @desc    Delete passcode via TTLock Cloud API
  * @access  Private
  */
-router.delete('/lock/:lockId/passcodes/:passcodeId', asyncHandler(deleteCloudPasscode));
+router.delete('/lock/:lockId/passcodes/:passcodeId', validateParams(params.passcodeId), asyncHandler(deleteCloudPasscode));
 
 export default router;

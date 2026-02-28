@@ -496,122 +496,64 @@ export const addLock = async (req, res) => {
     console.log('[LOCK] Creating new lock with name:', lockName);
     logger.lock.add(userId, lockName, 'pending', { ttlock_mac, ttlock_lock_id, is_bluetooth_paired });
 
-    // Create lock with TTLock fields
-    const insertData = {
+    // Atomic transaction: create lock + grant owner access + default settings
+    const lockData = {
       name: lockName,
-      location: location || 'Home', // Default location - required by database
+      location: location || 'Home',
       device_id: effectiveDeviceId,
       mac_address: effectiveMacAddress,
-      owner_id: userId,
-      is_online: false,
       battery_level: initialBattery !== undefined && initialBattery !== null ? initialBattery : 100,
-      is_locked: initialLockState !== undefined ? initialLockState : true,
-      // TTLock-specific fields
+      is_locked: initialLockState !== undefined ? String(initialLockState) : 'true',
       ttlock_mac: ttlock_mac || null,
       ttlock_data: ttlock_data || null,
-      ttlock_lock_id: ttlock_lock_id || null,
-      is_bluetooth_paired: is_bluetooth_paired || false,
-      has_gateway: false,
-      paired_at: is_bluetooth_paired ? new Date().toISOString() : null,
-      // TTLock recovery keys (saved for emergency access and factory reset)
+      ttlock_lock_id: ttlock_lock_id ? String(ttlock_lock_id) : null,
+      is_bluetooth_paired: is_bluetooth_paired ? 'true' : 'false',
       admin_pwd: admin_pwd || null,
       delete_pwd: delete_pwd || null,
       no_key_pwd: no_key_pwd || null
     };
 
-    const { data: lock, error: lockError } = await supabase
-      .from('locks')
-      .insert([insertData])
-      .select()
-      .single();
+    const { data: lock, error: rpcError } = await supabase
+      .rpc('add_lock_with_access', {
+        p_lock_data: lockData,
+        p_user_id: userId
+      });
 
-    if (lockError) {
-      // Log detailed error information
-      console.error('[LOCK] ❌ Database error details:', {
-        code: lockError.code,
-        message: lockError.message,
-        details: lockError.details,
-        hint: lockError.hint,
-        insertData: JSON.stringify(insertData, null, 2)
+    if (rpcError) {
+      console.error('[LOCK] ❌ Transaction error:', {
+        code: rpcError.code,
+        message: rpcError.message,
+        details: rpcError.details,
+        hint: rpcError.hint
       });
-      
-      logger.error('[LOCK] ❌ Failed to create lock:', { 
-        error: lockError.message || lockError, 
-        code: lockError.code,
-        details: lockError.details,
-        hint: lockError.hint,
-        name, 
-        userId 
+
+      logger.error('[LOCK] ❌ Failed to create lock:', {
+        error: rpcError.message || rpcError,
+        code: rpcError.code,
+        name,
+        userId
       });
-      
-      // Provide more specific error messages
+
       let errorMessage = 'Failed to create lock';
-      if (lockError.code === '23505') { // Unique violation
+      if (rpcError.code === '23505') {
         errorMessage = 'This lock is already registered';
-      } else if (lockError.code === '23503') { // Foreign key violation
+      } else if (rpcError.code === '23503') {
         errorMessage = 'Invalid user or lock reference';
-      } else if (lockError.code === '23502') { // Not null violation
-        errorMessage = `Missing required field: ${lockError.column || 'unknown'}`;
-      } else if (lockError.message) {
-        errorMessage = lockError.message;
+      } else if (rpcError.code === '23502') {
+        errorMessage = `Missing required field`;
+      } else if (rpcError.message) {
+        errorMessage = rpcError.message;
       }
-      
+
       return res.status(500).json({
         success: false,
         error: {
           code: 'CREATE_FAILED',
           message: errorMessage,
-          details: lockError.details || lockError.message,
-          hint: lockError.hint
+          details: rpcError.details || rpcError.message
         }
       });
     }
-
-    // Grant owner full access
-    const { error: accessError } = await supabase
-      .from('user_locks')
-      .insert([{
-        user_id: userId,
-        lock_id: lock.id,
-        role: 'owner',  // Lock owner gets 'owner' role
-        can_unlock: true,
-        can_lock: true,
-        can_view_logs: true,
-        can_manage_users: true,
-        can_modify_settings: true,
-        remote_unlock_enabled: true,
-        is_active: true
-      }]);
-
-    if (accessError) {
-      // Rollback lock creation
-      await supabase.from('locks').delete().eq('id', lock.id);
-
-      return res.status(500).json({
-        success: false,
-        error: {
-          code: 'CREATE_FAILED',
-          message: 'Failed to grant lock access'
-        }
-      });
-    }
-
-    // Create default lock settings
-    await supabase
-      .from('lock_settings')
-      .insert([{
-        lock_id: lock.id,
-        auto_lock_enabled: true,
-        auto_lock_delay: 30,
-        passage_mode_enabled: false,
-        one_touch_locking: true,
-        privacy_lock: false,
-        sound_enabled: true,
-        sound_volume: 50,
-        led_enabled: true,
-        tamper_alert: true,
-        wrong_code_lockout: 5
-      }]);
 
     logger.lock.add(userId, name, 'success', { lockId: lock.id });
     res.status(201).json({

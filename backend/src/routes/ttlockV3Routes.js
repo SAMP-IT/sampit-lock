@@ -40,6 +40,7 @@ import { addGroup, getGroupList, updateGroup, deleteGroup, setLockGroup } from '
 // Import Passcode controller
 import { getPasscode, deletePasscode, changePasscode, addPasscode } from '../controllers/ttlock-cloud-api-v3/passcode.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { replayProtection } from '../utils/replayProtection.js';
 
 const router = express.Router();
 
@@ -139,14 +140,14 @@ router.post('/gateway/update-date', authenticate, asyncHandler(adjustLockTime));
  * @desc    Unlock a lock via WiFi gateway
  * @access  Private (requires access token in request body)
  */
-router.post('/gateway/unlock', authenticate, asyncHandler(unlockViaGateway));
+router.post('/gateway/unlock', authenticate, replayProtection, asyncHandler(unlockViaGateway));
 
 /**
  * @route   POST /api/ttlock-v3/gateway/lock
  * @desc    Lock a lock via WiFi gateway
  * @access  Private (requires access token in request body)
  */
-router.post('/gateway/lock', authenticate, asyncHandler(lockViaGateway));
+router.post('/gateway/lock', authenticate, replayProtection, asyncHandler(lockViaGateway));
 
 /**
  * @route   POST /api/ttlock-v3/gateway/query-open-state

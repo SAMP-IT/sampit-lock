@@ -199,7 +199,7 @@ const ConsumerNavigator = () => (
     <Stack.Screen name="InviteManagement" component={InviteManagementScreen} options={{ headerShown: false }} />
     <Stack.Screen name="ActivityStats" component={ActivityStatsScreen} options={{ headerShown: false }} />
     <Stack.Screen name="SecurityDashboard" component={SecurityDashboardScreen} options={{ headerShown: false }} />
-    {__DEV__ && <Stack.Screen name="DebugLogs" component={DebugLogsScreen} options={{ headerShown: false }} />}
+    <Stack.Screen name="DebugLogs" component={DebugLogsScreen} options={{ headerShown: false }} />
     <Stack.Screen name="LockSoundSettings" component={LockSoundSettingsScreen} options={{ headerShown: false }} />
     <Stack.Screen name="EmergencyUnlock" component={EmergencyUnlockScreen} options={{ headerShown: false }} />
     <Stack.Screen name="GuestAccessHistory" component={GuestAccessHistoryScreen} options={{ headerShown: false }} />

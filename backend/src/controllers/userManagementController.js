@@ -745,140 +745,49 @@ export const addUserToLock = async (req, res) => {
     const { lockId } = req.params;
     const { email, first_name, last_name, role, permissions, access_methods, time_restrictions, notes } = req.body;
 
-    // Check if user exists
-    let { data: existingUser, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .single();
+    // Generate a temporary password hash in case a new user needs to be created
+    const temporaryPassword = Math.random().toString(36).slice(-12);
+    const password_hash = await bcrypt.hash(temporaryPassword, 10);
 
-    let userId;
+    // Atomic transaction: find-or-create user + grant/update lock access
+    const { data: result, error: rpcError } = await supabase
+      .rpc('add_user_to_lock', {
+        p_email: email,
+        p_first_name: first_name,
+        p_last_name: last_name,
+        p_password_hash: password_hash,
+        p_lock_id: lockId,
+        p_role: role || 'family',
+        p_notes: notes || null,
+        p_can_unlock: permissions?.can_unlock ?? true,
+        p_can_lock: permissions?.can_lock ?? true,
+        p_can_view_logs: permissions?.can_view_logs ?? true,
+        p_can_manage_users: permissions?.can_manage_users ?? false,
+        p_can_modify_settings: permissions?.can_modify_settings ?? false,
+        p_remote_unlock_enabled: permissions?.remote_unlock_enabled ?? true,
+        p_time_restrictions: time_restrictions || null
+      });
 
-    if (userError || !existingUser) {
-      // Create new user with temporary password
-      const temporaryPassword = Math.random().toString(36).slice(-12);
-      const password_hash = await bcrypt.hash(temporaryPassword, 10);
-
-      const { data: newUser, error: createError } = await supabase
-        .from('users')
-        .insert([{
-          email,
-          password_hash,
-          first_name,
-          last_name,
-          role: 'guest',
-          email_verified: false
-        }])
-        .select()
-        .single();
-
-      if (createError) {
-        return res.status(500).json({
-          success: false,
-          error: {
-            code: 'CREATE_FAILED',
-            message: 'Failed to create user'
-          }
-        });
-      }
-
-      userId = newUser.id;
-
-      // Send invitation email (would be implemented with email service)
-      // await sendInvitationEmail(email, first_name, temporaryPassword);
-    } else {
-      userId = existingUser.id;
-
-      // Check if user already has access to this lock - if so, update their role
-      const { data: existingAccess } = await supabase
-        .from('user_locks')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('lock_id', lockId)
-        .single();
-
-      if (existingAccess) {
-        // Update existing access instead of returning error
-        const { data: updatedAccess, error: updateError } = await supabase
-          .from('user_locks')
-          .update({
-            role: role || 'family',
-            notes: notes || null,
-            can_unlock: permissions?.can_unlock ?? true,
-            can_lock: permissions?.can_lock ?? true,
-            can_view_logs: permissions?.can_view_logs ?? true,
-            can_manage_users: permissions?.can_manage_users ?? false,
-            can_modify_settings: permissions?.can_modify_settings ?? false,
-            remote_unlock_enabled: permissions?.remote_unlock_enabled ?? true,
-            time_restrictions: time_restrictions || null
-          })
-          .eq('id', existingAccess.id)
-          .select()
-          .single();
-
-        if (updateError) {
-          return res.status(500).json({
-            success: false,
-            error: {
-              code: 'UPDATE_FAILED',
-              message: 'Failed to update user access'
-            }
-          });
-        }
-
-        // Fetch full user details
-        const { data: user } = await supabase
-          .from('users')
-          .select('id, email, first_name, last_name, phone, avatar_url')
-          .eq('id', userId)
-          .single();
-
-        return res.status(200).json({
-          success: true,
-          data: {
-            ...user,
-            role: updatedAccess.role,
-            notes: updatedAccess.notes,
-            updated: true
-          }
-        });
-      }
-    }
-
-    // Grant lock access
-    const { data: userLock, error: accessError } = await supabase
-      .from('user_locks')
-      .insert([{
-        user_id: userId,
-        lock_id: lockId,
-        role: role || 'family',
-        notes: notes || null,
-        can_unlock: permissions?.can_unlock ?? true,
-        can_lock: permissions?.can_lock ?? true,
-        can_view_logs: permissions?.can_view_logs ?? true,
-        can_manage_users: permissions?.can_manage_users ?? false,
-        can_modify_settings: permissions?.can_modify_settings ?? false,
-        remote_unlock_enabled: permissions?.remote_unlock_enabled ?? true,
-        time_restrictions: time_restrictions || null,
-        is_active: true
-      }])
-      .select()
-      .single();
-
-    if (accessError) {
+    if (rpcError) {
+      console.error('Add user to lock RPC error:', rpcError);
       return res.status(500).json({
         success: false,
         error: {
           code: 'ACCESS_GRANT_FAILED',
-          message: 'Failed to grant lock access'
+          message: 'Failed to add user to lock'
         }
       });
     }
 
-    // Add access methods if provided
+    const user = result.user;
+    const userLock = result.user_lock;
+    const isNewUser = result.is_new_user;
+    const wasUpdated = result.updated;
+
+    // Add access methods if provided (best-effort, non-transactional)
     if (access_methods && access_methods.length > 0 && userLock?.id) {
       const accessMethodsData = access_methods.map(method => ({
-        user_lock_id: userLock.id,  // Use user_lock_id, not user_id/lock_id
+        user_lock_id: userLock.id,
         method_type: method,
         is_enabled: true
       }));
@@ -889,22 +798,14 @@ export const addUserToLock = async (req, res) => {
 
       if (methodError) {
         console.warn('Failed to insert access methods:', methodError);
-        // Continue even if access methods fail - the user access is still granted
       }
     }
 
-    // Fetch full user details
-    const { data: user } = await supabase
-      .from('users')
-      .select('id, email, first_name, last_name, phone, avatar_url')
-      .eq('id', userId)
-      .single();
-
     // Log the user added event for AI
-    await logUserEvent({
+    logUserEvent({
       lockId,
       actorUserId: req.user.id,
-      targetUserId: userId,
+      targetUserId: user.id,
       action: EventAction.USER_ADDED,
       details: {
         role: role || 'family',
@@ -916,16 +817,18 @@ export const addUserToLock = async (req, res) => {
           can_modify_settings: permissions?.can_modify_settings ?? false
         },
         access_methods: access_methods || [],
-        is_new_user: !existingUser
+        is_new_user: isNewUser
       }
-    });
+    }).catch(() => {});
 
-    res.status(201).json({
+    const statusCode = wasUpdated ? 200 : 201;
+    res.status(statusCode).json({
       success: true,
       data: {
         ...user,
         role: userLock.role,
         notes: userLock.notes,
+        updated: wasUpdated,
         permissions: {
           can_unlock: userLock.can_unlock,
           can_lock: userLock.can_lock,
@@ -1510,69 +1413,33 @@ export const transferLockOwnership = async (req, res) => {
     const currentOwnerId = req.user.id;
     const { new_owner_id } = req.body;
 
-    // Verify current user is the owner
-    const { data: lock } = await supabase
-      .from('locks')
-      .select('owner_id')
-      .eq('id', lockId)
-      .single();
-
-    if (!lock || lock.owner_id !== currentOwnerId) {
-      return res.status(403).json({
-        success: false,
-        error: {
-          code: 'FORBIDDEN',
-          message: 'Only the owner can transfer ownership'
-        }
+    // Atomic transaction: verify ownership, transfer, and update roles
+    const { data: result, error: rpcError } = await supabase
+      .rpc('transfer_lock_ownership', {
+        p_lock_id: lockId,
+        p_current_owner_id: currentOwnerId,
+        p_new_owner_id: new_owner_id
       });
-    }
 
-    // Verify new owner has access to the lock
-    const { data: newOwnerAccess } = await supabase
-      .from('user_locks')
-      .select('id')
-      .eq('user_id', new_owner_id)
-      .eq('lock_id', lockId)
-      .single();
-
-    if (!newOwnerAccess) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'INVALID_USER',
-          message: 'New owner must have access to the lock'
-        }
-      });
-    }
-
-    // Update lock owner
-    const { error: updateError } = await supabase
-      .from('locks')
-      .update({ owner_id: new_owner_id })
-      .eq('id', lockId);
-
-    if (updateError) {
+    if (rpcError) {
+      const msg = rpcError.message || '';
+      if (msg.includes('FORBIDDEN')) {
+        return res.status(403).json({
+          success: false,
+          error: { code: 'FORBIDDEN', message: 'Only the owner can transfer ownership' }
+        });
+      }
+      if (msg.includes('INVALID_USER')) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_USER', message: 'New owner must have access to the lock' }
+        });
+      }
       return res.status(500).json({
         success: false,
-        error: {
-          code: 'TRANSFER_FAILED',
-          message: 'Failed to transfer ownership'
-        }
+        error: { code: 'TRANSFER_FAILED', message: 'Failed to transfer ownership' }
       });
     }
-
-    // Update roles
-    await supabase
-      .from('user_locks')
-      .update({ role: 'admin' })
-      .eq('user_id', new_owner_id)
-      .eq('lock_id', lockId);
-
-    await supabase
-      .from('user_locks')
-      .update({ role: 'family' })
-      .eq('user_id', currentOwnerId)
-      .eq('lock_id', lockId);
 
     res.json({
       success: true,

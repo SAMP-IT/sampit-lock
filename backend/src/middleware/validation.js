@@ -254,8 +254,8 @@ export const schemas = {
     password: Joi.string().min(8).max(128).required(),
     first_name: Joi.string().min(1).max(100).required(),
     last_name: Joi.string().min(1).max(100).required(),
-    phone: Joi.string().max(20).optional().allow('', null),
-    role: Joi.string().valid('owner', 'family', 'guest', 'service', 'enterprise').default('owner')
+    phone: Joi.string().max(20).optional().allow('', null)
+    // role intentionally omitted - server always assigns 'owner' on signup
   }),
 
   login: Joi.object({
@@ -336,7 +336,7 @@ export const schemas = {
   logActivity: Joi.object({
     action: Joi.string().max(50).required(),
     access_method: Joi.string().max(50).optional(),
-    metadata: Joi.object().max(20).optional()
+    metadata: Joi.object().max(20).optional().allow(null).default({})
   }),
 
   // ---- User Management ----
@@ -524,8 +524,13 @@ export const schemas = {
 
   // ---- IC Cards ----
   addICCard: Joi.object({
-    name: Joi.string().max(100).optional(),
+    cardNumber: Joi.string().max(50).optional(),
     card_number: Joi.string().max(50).optional(),
+    cardName: Joi.string().max(100).optional(),
+    name: Joi.string().max(100).optional(),
+    startDate: Joi.alternatives().try(Joi.date().iso(), Joi.number()).optional(),
+    endDate: Joi.alternatives().try(Joi.date().iso(), Joi.number()).optional(),
+    addType: Joi.number().integer().valid(1, 2).optional(),
     ttlock_card_id: Joi.alternatives().try(Joi.string().max(50), Joi.number()).optional()
   }),
 
@@ -537,8 +542,13 @@ export const schemas = {
   // ---- Passcodes ----
   addPasscode: Joi.object({
     name: Joi.string().max(100).optional(),
+    // Accept both field name conventions
+    code: Joi.string().pattern(/^[0-9]{4,9}$/).optional(),
     passcode: Joi.string().pattern(/^[0-9]{4,9}$/).optional(),
+    code_type: Joi.string().valid('permanent', 'temporary', 'one_time', 'custom').optional(),
     passcode_type: Joi.string().valid('permanent', 'temporary', 'one_time', 'custom').optional(),
+    valid_from: Joi.date().iso().optional(),
+    valid_until: Joi.date().iso().optional(),
     start_date: Joi.date().iso().optional(),
     end_date: Joi.date().iso().optional()
   }),
@@ -599,7 +609,7 @@ export const schemas = {
     userId: Joi.string().uuid().required(),
     recommendationType: Joi.string().max(50).required(),
     action: Joi.string().valid('accept', 'dismiss', 'defer').required(),
-    metadata: Joi.object().optional()
+    metadata: Joi.object().optional().allow(null).default({})
   }),
 
   // ---- Security ----
@@ -613,10 +623,16 @@ export const schemas = {
   }),
 
   ttlockPasscode: Joi.object({
-    keyboardPwd: Joi.string().pattern(/^[0-9]{4,9}$/).required(),
+    // Support both controller field names (passcode) and TTLock API field names (keyboardPwd)
+    passcode: Joi.string().pattern(/^[0-9]{4,9}$/).optional(),
+    keyboardPwd: Joi.string().pattern(/^[0-9]{4,9}$/).optional(),
     keyboardPwdName: Joi.string().max(100).optional(),
+    name: Joi.string().max(100).optional(),
+    type: Joi.string().valid('one_time', 'permanent', 'timed').optional(),
     startDate: Joi.number().optional(),
     endDate: Joi.number().optional(),
+    validHours: Joi.number().integer().min(1).max(8760).optional(),
+    useBluetooth: Joi.boolean().optional(),
     keyboardPwdType: Joi.number().integer().min(1).max(5).optional()
   })
 };

@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 
 /**
  * Global rate limiter - applies to all routes
@@ -60,7 +60,8 @@ export const authEmailLimiter = rateLimit({
       return `email:${email.trim().toLowerCase()}`;
     }
     // Fall back to IP if no email in body (malformed request)
-    return req.ip;
+    // Use ipKeyGenerator for proper IPv6 subnet grouping
+    return ipKeyGenerator(req.ip);
   },
   message: {
     success: false,

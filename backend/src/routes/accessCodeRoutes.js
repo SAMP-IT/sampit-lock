@@ -18,7 +18,7 @@ router.use(authenticate);
 
 // Access code management
 router.get('/:lockId/access-codes', validateParams(params.lockId), checkLockAccess, requirePermission('view_logs'), asyncHandler(getAccessCodes));
-router.post('/:lockId/access-codes', checkLockAccess, requirePermission('manage_users'), validate(schemas.createAccessCode), asyncHandler(createAccessCode));
+router.post('/:lockId/access-codes', validateParams(params.lockId), checkLockAccess, requirePermission('manage_users'), validate(schemas.createAccessCode), asyncHandler(createAccessCode));
 router.patch('/:lockId/access-codes/:codeId', validateParams(params.codeId), checkLockAccess, requirePermission('manage_users'), validate(schemas.updateAccessCode), asyncHandler(updateAccessCode));
 router.delete('/:lockId/access-codes/:codeId', validateParams(params.codeId), checkLockAccess, requirePermission('manage_users'), asyncHandler(deleteAccessCode));
 

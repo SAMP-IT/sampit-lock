@@ -31,7 +31,7 @@ router.use(authenticate);
 router.get('/users/all', asyncHandler(getAllUsersForAllLocks));
 
 // Add user to multiple locks at once
-router.post('/users/add', asyncHandler(addUserToMultipleLocks));
+router.post('/users/add', validate(schemas.addUser), asyncHandler(addUserToMultipleLocks));
 
 // Remove user from specific locks (selective removal)
 router.delete('/users/:userId/locks', validateParams(params.userId), asyncHandler(removeUserFromMultipleLocks));
@@ -49,8 +49,8 @@ router.delete('/:lockId/users/:userId', validateParams(params.lockIdAndUserId), 
 // Access methods management
 router.get('/:lockId/users/:userId/access-methods', validateParams(params.lockIdAndUserId), checkLockAccess, asyncHandler(getUserAccessMethods));
 router.post('/:lockId/users/:userId/access-methods', validateParams(params.lockIdAndUserId), checkLockAccess, requirePermission('manage_users'), validate(schemas.addAccessMethod), asyncHandler(addAccessMethod));
-router.patch('/:lockId/users/:userId/access-methods/:methodId', checkLockAccess, requirePermission('manage_users'), validate(schemas.updateAccessMethod), asyncHandler(updateAccessMethod));
-router.delete('/:lockId/users/:userId/access-methods/:methodId', checkLockAccess, requirePermission('manage_users'), asyncHandler(deleteAccessMethod));
+router.patch('/:lockId/users/:userId/access-methods/:methodId', validateParams(params.lockIdAndMethodId), checkLockAccess, requirePermission('manage_users'), validate(schemas.updateAccessMethod), asyncHandler(updateAccessMethod));
+router.delete('/:lockId/users/:userId/access-methods/:methodId', validateParams(params.lockIdAndMethodId), checkLockAccess, requirePermission('manage_users'), asyncHandler(deleteAccessMethod));
 
 // Lock ownership transfer
 router.post('/:lockId/transfer', validateParams(params.lockId), requireLockOwner, validate(schemas.transferOwnership), asyncHandler(transferLockOwnership));

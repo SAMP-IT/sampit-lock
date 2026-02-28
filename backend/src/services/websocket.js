@@ -170,24 +170,28 @@ const setupRealtimeSubscriptions = () => {
         table: 'activity_logs'
       },
       async (payload) => {
-        const log = payload.new;
+        try {
+          const log = payload.new;
 
-        // Get user details
-        const { data: user } = await supabase
-          .from('users')
-          .select('first_name, last_name, avatar_url')
-          .eq('id', log.user_id)
-          .single();
+          // Get user details
+          const { data: user } = await supabase
+            .from('users')
+            .select('first_name, last_name, avatar_url')
+            .eq('id', log.user_id)
+            .single();
 
-        // Broadcast to all users subscribed to this lock
-        io.to(`lock:${log.lock_id}`).emit('activity:new', {
-          id: log.id,
-          lock_id: log.lock_id,
-          action: log.action,
-          access_method: log.access_method,
-          timestamp: log.timestamp,
-          user: user || null
-        });
+          // Broadcast to all users subscribed to this lock
+          io.to(`lock:${log.lock_id}`).emit('activity:new', {
+            id: log.id,
+            lock_id: log.lock_id,
+            action: log.action,
+            access_method: log.access_method,
+            timestamp: log.timestamp,
+            user: user || null
+          });
+        } catch (error) {
+          console.error('[WebSocket] Realtime callback error:', error.message);
+        }
       }
     )
     .subscribe();

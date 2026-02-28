@@ -11,6 +11,7 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { validateParams, validateQuery, validate, params, queries, schemas } from '../middleware/validation.js';
 import logger from '../utils/logger.js';
 
 // Import controllers
@@ -96,7 +97,7 @@ router.use((req, res, next) => {
  * @desc    Get activity logs with natural language summaries
  * @access  Private
  */
-router.get('/locks/:lockId/activity/natural', asyncHandler(getNaturalLanguageActivity));
+router.get('/locks/:lockId/activity/natural', validateParams(params.lockId), asyncHandler(getNaturalLanguageActivity));
 
 /**
  * @route   GET /api/ai/locks/:lockId/summary/daily
@@ -104,7 +105,7 @@ router.get('/locks/:lockId/activity/natural', asyncHandler(getNaturalLanguageAct
  * @access  Private
  * @query   date - YYYY-MM-DD format (optional, defaults to today)
  */
-router.get('/locks/:lockId/summary/daily', asyncHandler(getDailySummary));
+router.get('/locks/:lockId/summary/daily', validateParams(params.lockId), asyncHandler(getDailySummary));
 
 // ==========================================
 // AI Insights
@@ -119,21 +120,21 @@ router.get('/locks/:lockId/summary/daily', asyncHandler(getDailySummary));
  * @query   limit - Max results (default 20)
  * @query   include_dismissed - Include dismissed insights (default false)
  */
-router.get('/locks/:lockId/insights', asyncHandler(getInsights));
+router.get('/locks/:lockId/insights', validateParams(params.lockId), asyncHandler(getInsights));
 
 /**
  * @route   POST /api/ai/insights/:insightId/read
  * @desc    Mark an insight as read
  * @access  Private
  */
-router.post('/insights/:insightId/read', asyncHandler(markInsightRead));
+router.post('/insights/:insightId/read', validateParams(params.insightId), asyncHandler(markInsightRead));
 
 /**
  * @route   POST /api/ai/insights/:insightId/dismiss
  * @desc    Dismiss an insight
  * @access  Private
  */
-router.post('/insights/:insightId/dismiss', asyncHandler(dismissInsight));
+router.post('/insights/:insightId/dismiss', validateParams(params.insightId), asyncHandler(dismissInsight));
 
 // ==========================================
 // Risk Scores
@@ -144,7 +145,7 @@ router.post('/insights/:insightId/dismiss', asyncHandler(dismissInsight));
  * @desc    Get risk score for a specific lock
  * @access  Private
  */
-router.get('/locks/:lockId/risk-score', asyncHandler(getRiskScore));
+router.get('/locks/:lockId/risk-score', validateParams(params.lockId), asyncHandler(getRiskScore));
 
 /**
  * @route   GET /api/ai/risk-scores
@@ -179,21 +180,21 @@ router.get('/chat/conversations', asyncHandler(getConversations));
  * @desc    Get a specific conversation with messages
  * @access  Private
  */
-router.get('/chat/conversations/:conversationId', asyncHandler(getConversation));
+router.get('/chat/conversations/:conversationId', validateParams(params.conversationId), asyncHandler(getConversation));
 
 /**
  * @route   DELETE /api/ai/chat/conversations/:conversationId
  * @desc    Archive a conversation
  * @access  Private
  */
-router.delete('/chat/conversations/:conversationId', asyncHandler(archiveConversation));
+router.delete('/chat/conversations/:conversationId', validateParams(params.conversationId), asyncHandler(archiveConversation));
 
 /**
  * @route   GET /api/ai/chat/suggestions/:lockId
  * @desc    Get suggested questions for a lock
  * @access  Private
  */
-router.get('/chat/suggestions/:lockId', asyncHandler(getSuggestions));
+router.get('/chat/suggestions/:lockId', validateParams(params.lockId), asyncHandler(getSuggestions));
 
 // ==========================================
 // Access Recommendations
@@ -204,7 +205,7 @@ router.get('/chat/suggestions/:lockId', asyncHandler(getSuggestions));
  * @desc    Get AI access recommendations for a lock
  * @access  Private
  */
-router.get('/locks/:lockId/recommendations', asyncHandler(async (req, res) => {
+router.get('/locks/:lockId/recommendations', validateParams(params.lockId), asyncHandler(async (req, res) => {
   try {
     const { lockId } = req.params;
     const userId = req.user?.id;
@@ -231,7 +232,7 @@ router.get('/locks/:lockId/recommendations', asyncHandler(async (req, res) => {
  * @desc    Get AI suggestion for a specific user's access
  * @access  Private
  */
-router.get('/locks/:lockId/users/:userId/suggestion', asyncHandler(async (req, res) => {
+router.get('/locks/:lockId/users/:userId/suggestion', validateParams(params.lockIdAndUserId), asyncHandler(async (req, res) => {
   try {
     const { lockId, userId } = req.params;
     const requesterId = req.user?.id;
@@ -296,7 +297,7 @@ router.post('/recommendations/action', asyncHandler(async (req, res) => {
  * @desc    Get battery prediction for a lock
  * @access  Private
  */
-router.get('/locks/:lockId/battery/prediction', asyncHandler(async (req, res) => {
+router.get('/locks/:lockId/battery/prediction', validateParams(params.lockId), asyncHandler(async (req, res) => {
   try {
     const { lockId } = req.params;
     const userId = req.user?.id;
@@ -324,7 +325,7 @@ router.get('/locks/:lockId/battery/prediction', asyncHandler(async (req, res) =>
  * @access  Private
  * @query   days - Number of days of history (default 30)
  */
-router.get('/locks/:lockId/battery/history', asyncHandler(async (req, res) => {
+router.get('/locks/:lockId/battery/history', validateParams(params.lockId), asyncHandler(async (req, res) => {
   try {
     const { lockId } = req.params;
     const { days = 30 } = req.query;
@@ -357,7 +358,7 @@ router.get('/locks/:lockId/battery/history', asyncHandler(async (req, res) => {
  * @access  Private
  * @query   days - Number of days to look back (default 7)
  */
-router.get('/locks/:lockId/security/alerts', asyncHandler(async (req, res) => {
+router.get('/locks/:lockId/security/alerts', validateParams(params.lockId), asyncHandler(async (req, res) => {
   try {
     const { lockId } = req.params;
     const { days = 7 } = req.query;
@@ -385,7 +386,7 @@ router.get('/locks/:lockId/security/alerts', asyncHandler(async (req, res) => {
  * @desc    Get security summary for a lock
  * @access  Private
  */
-router.get('/locks/:lockId/security/summary', asyncHandler(async (req, res) => {
+router.get('/locks/:lockId/security/summary', validateParams(params.lockId), asyncHandler(async (req, res) => {
   try {
     const { lockId } = req.params;
     const userId = req.user?.id;
@@ -416,7 +417,7 @@ router.get('/locks/:lockId/security/summary', asyncHandler(async (req, res) => {
  * @desc    Get AI-generated rule suggestions
  * @access  Private
  */
-router.get('/locks/:lockId/rules/suggestions', asyncHandler(async (req, res) => {
+router.get('/locks/:lockId/rules/suggestions', validateParams(params.lockId), asyncHandler(async (req, res) => {
   try {
     const { lockId } = req.params;
     const userId = req.user?.id;
@@ -443,7 +444,7 @@ router.get('/locks/:lockId/rules/suggestions', asyncHandler(async (req, res) => 
  * @desc    Get active rules for a lock
  * @access  Private
  */
-router.get('/locks/:lockId/rules', asyncHandler(async (req, res) => {
+router.get('/locks/:lockId/rules', validateParams(params.lockId), asyncHandler(async (req, res) => {
   try {
     const { lockId } = req.params;
     const userId = req.user?.id;
@@ -471,7 +472,7 @@ router.get('/locks/:lockId/rules', asyncHandler(async (req, res) => {
  * @access  Private
  * @body    { suggestion: Object }
  */
-router.post('/locks/:lockId/rules', asyncHandler(async (req, res) => {
+router.post('/locks/:lockId/rules', validateParams(params.lockId), asyncHandler(async (req, res) => {
   try {
     const { lockId } = req.params;
     const { suggestion } = req.body;
@@ -501,7 +502,7 @@ router.post('/locks/:lockId/rules', asyncHandler(async (req, res) => {
  * @access  Private
  * @body    { is_active: boolean }
  */
-router.patch('/rules/:ruleId', asyncHandler(async (req, res) => {
+router.patch('/rules/:ruleId', validateParams(params.ruleId), asyncHandler(async (req, res) => {
   try {
     const { ruleId } = req.params;
     const { is_active } = req.body;
@@ -536,7 +537,7 @@ router.patch('/rules/:ruleId', asyncHandler(async (req, res) => {
  * @desc    Delete a rule
  * @access  Private
  */
-router.delete('/rules/:ruleId', asyncHandler(async (req, res) => {
+router.delete('/rules/:ruleId', validateParams(params.ruleId), asyncHandler(async (req, res) => {
   try {
     const { ruleId } = req.params;
     const userId = req.user?.id;
@@ -570,7 +571,7 @@ router.delete('/rules/:ruleId', asyncHandler(async (req, res) => {
  * @desc    Dismiss a rule suggestion so it won't reappear
  * @access  Private
  */
-router.post('/locks/:lockId/rules/dismiss', asyncHandler(async (req, res) => {
+router.post('/locks/:lockId/rules/dismiss', validateParams(params.lockId), asyncHandler(async (req, res) => {
   try {
     const { lockId } = req.params;
     const { suggestion } = req.body;
