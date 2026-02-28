@@ -5,9 +5,15 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
-// Test credentials - use registered user
-const username = process.argv[2] || 'ffcca_testuser84041';
-const newPassword = process.argv[3] || 'NewTestPass456';
+// Test credentials from command line or env vars (no hardcoded defaults)
+const username = process.argv[2] || process.env.TTLOCK_TEST_USERNAME;
+const newPassword = process.argv[3] || process.env.TEST_PASSWORD;
+if (!username || !newPassword) {
+  console.error('❌ Error: Username and new password required');
+  console.error('Usage: node test-user-reset-password.js <username> <new_password>');
+  console.error('Or set TTLOCK_TEST_USERNAME and TEST_PASSWORD env vars');
+  process.exit(1);
+}
 
 const TTLOCK_CLIENT_ID = process.env.TTLOCK_CLIENT_ID;
 const TTLOCK_CLIENT_SECRET = process.env.TTLOCK_CLIENT_SECRET;

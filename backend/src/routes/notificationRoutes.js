@@ -8,6 +8,8 @@ import {
   updateNotificationPreferences
 } from '../controllers/notificationController.js';
 import { authenticate } from '../middleware/auth.js';
+import { validate, validateParams, validateQuery, schemas, params, queries } from '../middleware/validation.js';
+import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = express.Router();
 
@@ -15,13 +17,13 @@ const router = express.Router();
 router.use(authenticate);
 
 // Notification routes
-router.get('/', getUserNotifications);
-router.patch('/:notificationId/read', markNotificationAsRead);
-router.post('/read-all', markAllNotificationsAsRead);
-router.delete('/:notificationId', deleteNotification);
+router.get('/', validateQuery(queries.notifications), asyncHandler(getUserNotifications));
+router.patch('/:notificationId/read', validateParams(params.notificationId), asyncHandler(markNotificationAsRead));
+router.post('/read-all', asyncHandler(markAllNotificationsAsRead));
+router.delete('/:notificationId', validateParams(params.notificationId), asyncHandler(deleteNotification));
 
 // Notification preferences
-router.get('/preferences', getNotificationPreferences);
-router.patch('/preferences', updateNotificationPreferences);
+router.get('/preferences', asyncHandler(getNotificationPreferences));
+router.patch('/preferences', validate(schemas.updateNotificationPreferences), asyncHandler(updateNotificationPreferences));
 
 export default router;

@@ -11,6 +11,8 @@ import {
   getActivityInsights,
   acknowledgeSecurityAlert
 } from '../controllers/securityDashboardController.js';
+import { validateParams, validateQuery, params, queries } from '../middleware/validation.js';
+import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = express.Router();
 
@@ -23,7 +25,7 @@ router.use(authenticate);
  * @access  Private
  * @query   lockId - Lock ID (required)
  */
-router.get('/dashboard', getSecurityDashboard);
+router.get('/dashboard', validateQuery(queries.securityDashboard), asyncHandler(getSecurityDashboard));
 
 /**
  * @route   GET /api/activity/insights
@@ -31,13 +33,13 @@ router.get('/dashboard', getSecurityDashboard);
  * @access  Private
  * @query   lockId - Lock ID (required)
  */
-router.get('/insights', getActivityInsights);
+router.get('/insights', validateQuery(queries.securityDashboard), asyncHandler(getActivityInsights));
 
 /**
  * @route   POST /api/security/alerts/:alertId/acknowledge
  * @desc    Acknowledge a security alert
  * @access  Private
  */
-router.post('/alerts/:alertId/acknowledge', acknowledgeSecurityAlert);
+router.post('/alerts/:alertId/acknowledge', validateParams(params.alertId), asyncHandler(acknowledgeSecurityAlert));
 
 export default router;

@@ -16,7 +16,7 @@ console.log('');
 // Step 1: Register a test user to delete
 const randomNum = Math.floor(Math.random() * 100000);
 const username = `testdelete${randomNum}`;
-const password = 'DeleteTest123';
+const password = process.env.TEST_PASSWORD || (() => { throw new Error('TEST_PASSWORD env var is required'); })();
 const hashedPassword = md5(password).toLowerCase();
 
 console.log('Step 1: Creating a test user to delete...');

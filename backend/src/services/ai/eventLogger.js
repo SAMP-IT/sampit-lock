@@ -41,7 +41,19 @@ export const EventAction = {
 
   // Settings
   SETTING_CHANGED: 'setting_changed',
-  MODE_CHANGED: 'mode_changed'
+  MODE_CHANGED: 'mode_changed',
+
+  // Auth events
+  LOGIN_SUCCESS: 'login_success',
+  LOGIN_FAILED: 'login_failed',
+  SIGNUP: 'signup',
+  LOGOUT: 'logout',
+  PASSWORD_RESET_REQUEST: 'password_reset_request',
+  PASSWORD_RESET_COMPLETE: 'password_reset_complete',
+  EMAIL_VERIFIED: 'email_verified',
+  PROFILE_UPDATED: 'profile_updated',
+  ACCOUNT_DELETED: 'account_deleted',
+  TOKEN_REFRESHED: 'token_refreshed'
 };
 
 // Access method types
@@ -315,6 +327,65 @@ export const logModeChange = async ({
 };
 
 /**
+ * Log an authentication/security event (no lock context)
+ *
+ * @param {Object} params
+ * @param {string} params.userId - User UUID (null for failed login by unknown user)
+ * @param {string} params.action - EventAction auth constant
+ * @param {boolean} [params.success=true]
+ * @param {string} [params.failureReason]
+ * @param {string} [params.ipAddress] - Request IP for audit trail
+ * @param {Object} [params.metadata] - Extra details (email, user-agent, etc.)
+ */
+export const logAuthEvent = async ({
+  userId = null,
+  action,
+  success = true,
+  failureReason = null,
+  ipAddress = null,
+  metadata = {}
+}) => {
+  try {
+    const eventData = {
+      lock_id: null,
+      user_id: userId,
+      action,
+      access_method: null,
+      success,
+      failure_reason: failureReason,
+      ip_address: ipAddress,
+      metadata: JSON.stringify(metadata),
+      created_at: new Date().toISOString()
+    };
+
+    let result = await supabase
+      .from('activity_logs')
+      .insert([{ ...eventData, ai_processed: false }])
+      .select()
+      .single();
+
+    if (result.error && result.error.message?.includes('ai_processed')) {
+      result = await supabase
+        .from('activity_logs')
+        .insert([eventData])
+        .select()
+        .single();
+    }
+
+    if (result.error) {
+      console.error('[EventLogger] Failed to log auth event:', result.error);
+      return null;
+    }
+
+    console.log(`[EventLogger] Logged auth event: ${action} for user ${userId || 'unknown'}`);
+    return result.data;
+  } catch (error) {
+    console.error('[EventLogger] Error logging auth event:', error);
+    return null;
+  }
+};
+
+/**
  * Check if event should be queued for AI processing
  */
 const shouldQueueForAI = (action) => {
@@ -415,6 +486,7 @@ export const getFailedAttemptsCount = async (lockId, minutes = 5) => {
 export default {
   logEvent,
   logUserEvent,
+  logAuthEvent,
   logSettingChange,
   logBatteryLevel,
   logFailedAttempt,

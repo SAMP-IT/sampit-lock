@@ -13,17 +13,18 @@ console.log('🕐 Testing TTLock Adjust Lock Time API');
 console.log('======================================');
 console.log('');
 
-// Get credentials from command line or use defaults
-const username = process.argv[2] || 'tusharvaishnavtv@gmail.com';
-const password = process.argv[3] || 'Tushar@900';
+// Get credentials from command line or env vars (no hardcoded defaults)
+const username = process.argv[2] || process.env.TTLOCK_TEST_USERNAME;
+const password = process.argv[3] || process.env.TTLOCK_TEST_PASSWORD;
 const lockId = process.argv[4]; // Lock ID is required
 
-if (!lockId) {
+if (!username || !password || !lockId) {
   console.log('⚠️  USAGE:');
-  console.log('   node test-adjust-lock-time.js [username] [password] <lockId>');
+  console.log('   node test-adjust-lock-time.js <username> <password> <lockId>');
+  console.log('   Or set TTLOCK_TEST_USERNAME and TTLOCK_TEST_PASSWORD env vars');
   console.log('');
   console.log('Example:');
-  console.log('   node test-adjust-lock-time.js tusharvaishnavtv@gmail.com Tushar@900 123456');
+  console.log('   node test-adjust-lock-time.js user@example.com yourpassword 123456');
   console.log('');
   console.log('To get a lockId, first run:');
   console.log('   node test-lock-list.js');

@@ -16,7 +16,9 @@ import {
 } from '../controllers/lockController.js';
 import { authenticate } from '../middleware/auth.js';
 import { checkLockAccess, requirePermission, requireLockOwner } from '../middleware/rbac.js';
-import { validate, schemas } from '../middleware/validation.js';
+import { validate, validateParams, validateQuery, schemas, params, queries } from '../middleware/validation.js';
+import replayProtection from '../utils/replayProtection.js';
+import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = express.Router();
 
@@ -24,30 +26,30 @@ const router = express.Router();
 router.use(authenticate);
 
 // Lock CRUD operations
-router.get('/', getAllLocks);
-router.post('/', validate(schemas.addLock), addLock);
+router.get('/', validateQuery(queries.lockList), asyncHandler(getAllLocks));
+router.post('/', validate(schemas.addLock), asyncHandler(addLock));
 
 // Lock-specific routes (require lock access)
-router.get('/:lockId', checkLockAccess, getLockDetails);
-router.patch('/:lockId', checkLockAccess, requirePermission('modify_settings'), validate(schemas.updateLock), updateLock);
-router.delete('/:lockId', requireLockOwner, deleteLock);
+router.get('/:lockId', validateParams(params.lockId), checkLockAccess, asyncHandler(getLockDetails));
+router.patch('/:lockId', validateParams(params.lockId), checkLockAccess, requirePermission('modify_settings'), validate(schemas.updateLock), asyncHandler(updateLock));
+router.delete('/:lockId', validateParams(params.lockId), requireLockOwner, asyncHandler(deleteLock));
 
 // Factory reset (clears all data but keeps lock - owner only)
-router.post('/:lockId/factory-reset', requireLockOwner, factoryResetLock);
+router.post('/:lockId/factory-reset', validateParams(params.lockId), requireLockOwner, asyncHandler(factoryResetLock));
 
 // Lock operations
-router.post('/:lockId/pair', checkLockAccess, pairLock);
-router.post('/:lockId/lock', checkLockAccess, requirePermission('lock'), validate(schemas.lockAction), lockDoor);
-router.post('/:lockId/unlock', checkLockAccess, requirePermission('unlock'), validate(schemas.lockAction), unlockDoor);
+router.post('/:lockId/pair', validateParams(params.lockId), validate(schemas.pairLock), checkLockAccess, asyncHandler(pairLock));
+router.post('/:lockId/lock', validateParams(params.lockId), checkLockAccess, requirePermission('lock'), replayProtection, validate(schemas.lockAction), asyncHandler(lockDoor));
+router.post('/:lockId/unlock', validateParams(params.lockId), checkLockAccess, requirePermission('unlock'), replayProtection, validate(schemas.lockAction), asyncHandler(unlockDoor));
 
 // Lock status
-router.get('/:lockId/status', checkLockAccess, getLockStatus);
-router.get('/:lockId/battery', checkLockAccess, getBatteryLevel);
+router.get('/:lockId/status', validateParams(params.lockId), checkLockAccess, asyncHandler(getLockStatus));
+router.get('/:lockId/battery', validateParams(params.lockId), checkLockAccess, asyncHandler(getBatteryLevel));
 
 // Activity logging (for Bluetooth actions from mobile app)
-router.post('/:lockId/activity', checkLockAccess, logActivity);
+router.post('/:lockId/activity', validateParams(params.lockId), validate(schemas.logActivity), checkLockAccess, asyncHandler(logActivity));
 
 // Recovery keys (owner only)
-router.get('/:lockId/recovery-keys', requireLockOwner, getRecoveryKeys);
+router.get('/:lockId/recovery-keys', validateParams(params.lockId), requireLockOwner, asyncHandler(getRecoveryKeys));
 
 export default router;

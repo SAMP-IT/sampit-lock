@@ -15,7 +15,8 @@ import {
 } from '../controllers/userManagementController.js';
 import { authenticate } from '../middleware/auth.js';
 import { checkLockAccess, requirePermission, requireLockOwner } from '../middleware/rbac.js';
-import { validate, schemas } from '../middleware/validation.js';
+import { validate, validateParams, schemas, params } from '../middleware/validation.js';
+import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = express.Router();
 
@@ -27,31 +28,31 @@ router.use(authenticate);
 // ============================================
 
 // Get all users across all locks the current user manages
-router.get('/users/all', getAllUsersForAllLocks);
+router.get('/users/all', asyncHandler(getAllUsersForAllLocks));
 
 // Add user to multiple locks at once
-router.post('/users/add', addUserToMultipleLocks);
+router.post('/users/add', asyncHandler(addUserToMultipleLocks));
 
 // Remove user from specific locks (selective removal)
-router.delete('/users/:userId/locks', removeUserFromMultipleLocks);
+router.delete('/users/:userId/locks', validateParams(params.userId), asyncHandler(removeUserFromMultipleLocks));
 
 // ============================================
 // Legacy Lock-specific User Management Routes
 // ============================================
 
 // GET users only needs lock access - all users with lock access can view who has access
-router.get('/:lockId/users', checkLockAccess, getLockUsers);
-router.post('/:lockId/users', checkLockAccess, requirePermission('manage_users'), validate(schemas.addUser), addUserToLock);
-router.patch('/:lockId/users/:userId', checkLockAccess, requirePermission('manage_users'), updateUserPermissions);
-router.delete('/:lockId/users/:userId', checkLockAccess, requirePermission('manage_users'), removeUserFromLock);
+router.get('/:lockId/users', validateParams(params.lockId), checkLockAccess, asyncHandler(getLockUsers));
+router.post('/:lockId/users', validateParams(params.lockId), checkLockAccess, requirePermission('manage_users'), validate(schemas.addUser), asyncHandler(addUserToLock));
+router.patch('/:lockId/users/:userId', validateParams(params.lockIdAndUserId), checkLockAccess, requirePermission('manage_users'), validate(schemas.updateUserPermissions), asyncHandler(updateUserPermissions));
+router.delete('/:lockId/users/:userId', validateParams(params.lockIdAndUserId), checkLockAccess, requirePermission('manage_users'), asyncHandler(removeUserFromLock));
 
 // Access methods management
-router.get('/:lockId/users/:userId/access-methods', checkLockAccess, getUserAccessMethods);
-router.post('/:lockId/users/:userId/access-methods', checkLockAccess, requirePermission('manage_users'), addAccessMethod);
-router.patch('/:lockId/users/:userId/access-methods/:methodId', checkLockAccess, requirePermission('manage_users'), updateAccessMethod);
-router.delete('/:lockId/users/:userId/access-methods/:methodId', checkLockAccess, requirePermission('manage_users'), deleteAccessMethod);
+router.get('/:lockId/users/:userId/access-methods', validateParams(params.lockIdAndUserId), checkLockAccess, asyncHandler(getUserAccessMethods));
+router.post('/:lockId/users/:userId/access-methods', validateParams(params.lockIdAndUserId), checkLockAccess, requirePermission('manage_users'), validate(schemas.addAccessMethod), asyncHandler(addAccessMethod));
+router.patch('/:lockId/users/:userId/access-methods/:methodId', checkLockAccess, requirePermission('manage_users'), validate(schemas.updateAccessMethod), asyncHandler(updateAccessMethod));
+router.delete('/:lockId/users/:userId/access-methods/:methodId', checkLockAccess, requirePermission('manage_users'), asyncHandler(deleteAccessMethod));
 
 // Lock ownership transfer
-router.post('/:lockId/transfer', requireLockOwner, transferLockOwnership);
+router.post('/:lockId/transfer', validateParams(params.lockId), requireLockOwner, validate(schemas.transferOwnership), asyncHandler(transferLockOwnership));
 
 export default router;

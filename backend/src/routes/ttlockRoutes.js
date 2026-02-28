@@ -12,6 +12,8 @@ import {
   deleteCloudPasscode
 } from '../controllers/passcodeController.js';
 import { authenticate } from '../middleware/auth.js';
+import { validate, validateParams, schemas, params } from '../middleware/validation.js';
+import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = express.Router();
 
@@ -35,35 +37,35 @@ router.use((req, res, next) => {
  * @desc    Get TTLock account connection status
  * @access  Private
  */
-router.get('/status', getTTLockStatus);
+router.get('/status', asyncHandler(getTTLockStatus));
 
 /**
  * @route   GET /api/ttlock/token
  * @desc    Get decrypted TTLock access token
  * @access  Private
  */
-router.get('/token', getTTLockToken);
+router.get('/token', asyncHandler(getTTLockToken));
 
 /**
  * @route   POST /api/ttlock/import-locks
  * @desc    Import locks from TTLock Cloud to our database
  * @access  Private
  */
-router.post('/import-locks', importLocks);
+router.post('/import-locks', asyncHandler(importLocks));
 
 /**
  * @route   POST /api/ttlock/sync-lock-data
  * @desc    Sync Bluetooth data for existing locks from TTLock Cloud
  * @access  Private
  */
-router.post('/sync-lock-data', syncLockBluetoothData);
+router.post('/sync-lock-data', asyncHandler(syncLockBluetoothData));
 
 /**
  * @route   POST /api/ttlock/lock/:lockId/control
  * @desc    Hybrid lock control (Cloud API with Bluetooth fallback)
  * @access  Private
  */
-router.post('/lock/:lockId/control', controlLock);
+router.post('/lock/:lockId/control', validate(schemas.ttlockControl), asyncHandler(controlLock));
 
 /**
  * @route   POST /api/ttlock/lock/:lockId/passcodes
@@ -71,20 +73,20 @@ router.post('/lock/:lockId/control', controlLock);
  * @access  Private
  * @body    { passcode, type: 'one_time'|'permanent'|'timed', name?, startDate?, endDate?, validHours? }
  */
-router.post('/lock/:lockId/passcodes', createCloudPasscode);
+router.post('/lock/:lockId/passcodes', validate(schemas.ttlockPasscode), asyncHandler(createCloudPasscode));
 
 /**
  * @route   GET /api/ttlock/lock/:lockId/passcodes
  * @desc    Get all passcodes from TTLock Cloud
  * @access  Private
  */
-router.get('/lock/:lockId/passcodes', getCloudPasscodes);
+router.get('/lock/:lockId/passcodes', asyncHandler(getCloudPasscodes));
 
 /**
  * @route   DELETE /api/ttlock/lock/:lockId/passcodes/:passcodeId
  * @desc    Delete passcode via TTLock Cloud API
  * @access  Private
  */
-router.delete('/lock/:lockId/passcodes/:passcodeId', deleteCloudPasscode);
+router.delete('/lock/:lockId/passcodes/:passcodeId', asyncHandler(deleteCloudPasscode));
 
 export default router;

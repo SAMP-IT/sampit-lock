@@ -8,7 +8,7 @@ dotenv.config();
 // Generate a random test username (only letters and numbers allowed)
 const randomNum = Math.floor(Math.random() * 100000);
 const username = process.argv[2] || `testuser${randomNum}`;
-const password = process.argv[3] || 'TestPass123';
+const password = process.argv[3] || process.env.TEST_PASSWORD || (() => { throw new Error('TEST_PASSWORD env var or CLI arg required'); })();
 
 const TTLOCK_CLIENT_ID = process.env.TTLOCK_CLIENT_ID;
 const TTLOCK_CLIENT_SECRET = process.env.TTLOCK_CLIENT_SECRET;

@@ -10,6 +10,7 @@
 
 import express from 'express';
 import { authenticate } from '../middleware/auth.js';
+import { asyncHandler } from '../middleware/errorHandler.js';
 import logger from '../utils/logger.js';
 
 // Import controllers
@@ -95,7 +96,7 @@ router.use((req, res, next) => {
  * @desc    Get activity logs with natural language summaries
  * @access  Private
  */
-router.get('/locks/:lockId/activity/natural', getNaturalLanguageActivity);
+router.get('/locks/:lockId/activity/natural', asyncHandler(getNaturalLanguageActivity));
 
 /**
  * @route   GET /api/ai/locks/:lockId/summary/daily
@@ -103,7 +104,7 @@ router.get('/locks/:lockId/activity/natural', getNaturalLanguageActivity);
  * @access  Private
  * @query   date - YYYY-MM-DD format (optional, defaults to today)
  */
-router.get('/locks/:lockId/summary/daily', getDailySummary);
+router.get('/locks/:lockId/summary/daily', asyncHandler(getDailySummary));
 
 // ==========================================
 // AI Insights
@@ -118,21 +119,21 @@ router.get('/locks/:lockId/summary/daily', getDailySummary);
  * @query   limit - Max results (default 20)
  * @query   include_dismissed - Include dismissed insights (default false)
  */
-router.get('/locks/:lockId/insights', getInsights);
+router.get('/locks/:lockId/insights', asyncHandler(getInsights));
 
 /**
  * @route   POST /api/ai/insights/:insightId/read
  * @desc    Mark an insight as read
  * @access  Private
  */
-router.post('/insights/:insightId/read', markInsightRead);
+router.post('/insights/:insightId/read', asyncHandler(markInsightRead));
 
 /**
  * @route   POST /api/ai/insights/:insightId/dismiss
  * @desc    Dismiss an insight
  * @access  Private
  */
-router.post('/insights/:insightId/dismiss', dismissInsight);
+router.post('/insights/:insightId/dismiss', asyncHandler(dismissInsight));
 
 // ==========================================
 // Risk Scores
@@ -143,14 +144,14 @@ router.post('/insights/:insightId/dismiss', dismissInsight);
  * @desc    Get risk score for a specific lock
  * @access  Private
  */
-router.get('/locks/:lockId/risk-score', getRiskScore);
+router.get('/locks/:lockId/risk-score', asyncHandler(getRiskScore));
 
 /**
  * @route   GET /api/ai/risk-scores
  * @desc    Get risk scores for all user's locks
  * @access  Private
  */
-router.get('/risk-scores', getAllRiskScores);
+router.get('/risk-scores', asyncHandler(getAllRiskScores));
 
 // ==========================================
 // Chat Assistant
@@ -162,7 +163,7 @@ router.get('/risk-scores', getAllRiskScores);
  * @access  Private
  * @body    { message: string, lockId: string, conversationId?: string }
  */
-router.post('/chat', sendMessage);
+router.post('/chat', asyncHandler(sendMessage));
 
 /**
  * @route   GET /api/ai/chat/conversations
@@ -171,28 +172,28 @@ router.post('/chat', sendMessage);
  * @query   lockId - Filter by lock (optional)
  * @query   limit - Max results (default 20)
  */
-router.get('/chat/conversations', getConversations);
+router.get('/chat/conversations', asyncHandler(getConversations));
 
 /**
  * @route   GET /api/ai/chat/conversations/:conversationId
  * @desc    Get a specific conversation with messages
  * @access  Private
  */
-router.get('/chat/conversations/:conversationId', getConversation);
+router.get('/chat/conversations/:conversationId', asyncHandler(getConversation));
 
 /**
  * @route   DELETE /api/ai/chat/conversations/:conversationId
  * @desc    Archive a conversation
  * @access  Private
  */
-router.delete('/chat/conversations/:conversationId', archiveConversation);
+router.delete('/chat/conversations/:conversationId', asyncHandler(archiveConversation));
 
 /**
  * @route   GET /api/ai/chat/suggestions/:lockId
  * @desc    Get suggested questions for a lock
  * @access  Private
  */
-router.get('/chat/suggestions/:lockId', getSuggestions);
+router.get('/chat/suggestions/:lockId', asyncHandler(getSuggestions));
 
 // ==========================================
 // Access Recommendations
@@ -203,7 +204,7 @@ router.get('/chat/suggestions/:lockId', getSuggestions);
  * @desc    Get AI access recommendations for a lock
  * @access  Private
  */
-router.get('/locks/:lockId/recommendations', async (req, res) => {
+router.get('/locks/:lockId/recommendations', asyncHandler(async (req, res) => {
   try {
     const { lockId } = req.params;
     const userId = req.user?.id;
@@ -223,14 +224,14 @@ router.get('/locks/:lockId/recommendations', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to get recommendations' }
     });
   }
-});
+}));
 
 /**
  * @route   GET /api/ai/locks/:lockId/users/:userId/suggestion
  * @desc    Get AI suggestion for a specific user's access
  * @access  Private
  */
-router.get('/locks/:lockId/users/:userId/suggestion', async (req, res) => {
+router.get('/locks/:lockId/users/:userId/suggestion', asyncHandler(async (req, res) => {
   try {
     const { lockId, userId } = req.params;
     const requesterId = req.user?.id;
@@ -250,7 +251,7 @@ router.get('/locks/:lockId/users/:userId/suggestion', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to get suggestion' }
     });
   }
-});
+}));
 
 /**
  * @route   POST /api/ai/recommendations/:recommendationId/action
@@ -258,7 +259,7 @@ router.get('/locks/:lockId/users/:userId/suggestion', async (req, res) => {
  * @access  Private
  * @body    { lockId, userId, recommendationType, action, metadata }
  */
-router.post('/recommendations/action', async (req, res) => {
+router.post('/recommendations/action', asyncHandler(async (req, res) => {
   try {
     const { lockId, userId, recommendationType, action, metadata } = req.body;
     const requesterId = req.user?.id;
@@ -284,7 +285,7 @@ router.post('/recommendations/action', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to record action' }
     });
   }
-});
+}));
 
 // ==========================================
 // Predictive Battery Alerts
@@ -295,7 +296,7 @@ router.post('/recommendations/action', async (req, res) => {
  * @desc    Get battery prediction for a lock
  * @access  Private
  */
-router.get('/locks/:lockId/battery/prediction', async (req, res) => {
+router.get('/locks/:lockId/battery/prediction', asyncHandler(async (req, res) => {
   try {
     const { lockId } = req.params;
     const userId = req.user?.id;
@@ -315,7 +316,7 @@ router.get('/locks/:lockId/battery/prediction', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to predict battery' }
     });
   }
-});
+}));
 
 /**
  * @route   GET /api/ai/locks/:lockId/battery/history
@@ -323,7 +324,7 @@ router.get('/locks/:lockId/battery/prediction', async (req, res) => {
  * @access  Private
  * @query   days - Number of days of history (default 30)
  */
-router.get('/locks/:lockId/battery/history', async (req, res) => {
+router.get('/locks/:lockId/battery/history', asyncHandler(async (req, res) => {
   try {
     const { lockId } = req.params;
     const { days = 30 } = req.query;
@@ -344,7 +345,7 @@ router.get('/locks/:lockId/battery/history', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to get battery history' }
     });
   }
-});
+}));
 
 // ==========================================
 // Fraud Detection
@@ -356,7 +357,7 @@ router.get('/locks/:lockId/battery/history', async (req, res) => {
  * @access  Private
  * @query   days - Number of days to look back (default 7)
  */
-router.get('/locks/:lockId/security/alerts', async (req, res) => {
+router.get('/locks/:lockId/security/alerts', asyncHandler(async (req, res) => {
   try {
     const { lockId } = req.params;
     const { days = 7 } = req.query;
@@ -377,14 +378,14 @@ router.get('/locks/:lockId/security/alerts', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to get security alerts' }
     });
   }
-});
+}));
 
 /**
  * @route   GET /api/ai/locks/:lockId/security/summary
  * @desc    Get security summary for a lock
  * @access  Private
  */
-router.get('/locks/:lockId/security/summary', async (req, res) => {
+router.get('/locks/:lockId/security/summary', asyncHandler(async (req, res) => {
   try {
     const { lockId } = req.params;
     const userId = req.user?.id;
@@ -404,7 +405,7 @@ router.get('/locks/:lockId/security/summary', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to get security summary' }
     });
   }
-});
+}));
 
 // ==========================================
 // Auto Rules Engine
@@ -415,7 +416,7 @@ router.get('/locks/:lockId/security/summary', async (req, res) => {
  * @desc    Get AI-generated rule suggestions
  * @access  Private
  */
-router.get('/locks/:lockId/rules/suggestions', async (req, res) => {
+router.get('/locks/:lockId/rules/suggestions', asyncHandler(async (req, res) => {
   try {
     const { lockId } = req.params;
     const userId = req.user?.id;
@@ -435,14 +436,14 @@ router.get('/locks/:lockId/rules/suggestions', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to get rule suggestions' }
     });
   }
-});
+}));
 
 /**
  * @route   GET /api/ai/locks/:lockId/rules
  * @desc    Get active rules for a lock
  * @access  Private
  */
-router.get('/locks/:lockId/rules', async (req, res) => {
+router.get('/locks/:lockId/rules', asyncHandler(async (req, res) => {
   try {
     const { lockId } = req.params;
     const userId = req.user?.id;
@@ -462,7 +463,7 @@ router.get('/locks/:lockId/rules', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to get rules' }
     });
   }
-});
+}));
 
 /**
  * @route   POST /api/ai/locks/:lockId/rules
@@ -470,7 +471,7 @@ router.get('/locks/:lockId/rules', async (req, res) => {
  * @access  Private
  * @body    { suggestion: Object }
  */
-router.post('/locks/:lockId/rules', async (req, res) => {
+router.post('/locks/:lockId/rules', asyncHandler(async (req, res) => {
   try {
     const { lockId } = req.params;
     const { suggestion } = req.body;
@@ -492,7 +493,7 @@ router.post('/locks/:lockId/rules', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to create rule' }
     });
   }
-});
+}));
 
 /**
  * @route   PATCH /api/ai/rules/:ruleId
@@ -500,7 +501,7 @@ router.post('/locks/:lockId/rules', async (req, res) => {
  * @access  Private
  * @body    { is_active: boolean }
  */
-router.patch('/rules/:ruleId', async (req, res) => {
+router.patch('/rules/:ruleId', asyncHandler(async (req, res) => {
   try {
     const { ruleId } = req.params;
     const { is_active } = req.body;
@@ -528,14 +529,14 @@ router.patch('/rules/:ruleId', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to toggle rule' }
     });
   }
-});
+}));
 
 /**
  * @route   DELETE /api/ai/rules/:ruleId
  * @desc    Delete a rule
  * @access  Private
  */
-router.delete('/rules/:ruleId', async (req, res) => {
+router.delete('/rules/:ruleId', asyncHandler(async (req, res) => {
   try {
     const { ruleId } = req.params;
     const userId = req.user?.id;
@@ -562,14 +563,14 @@ router.delete('/rules/:ruleId', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to delete rule' }
     });
   }
-});
+}));
 
 /**
  * @route   POST /api/ai/locks/:lockId/rules/dismiss
  * @desc    Dismiss a rule suggestion so it won't reappear
  * @access  Private
  */
-router.post('/locks/:lockId/rules/dismiss', async (req, res) => {
+router.post('/locks/:lockId/rules/dismiss', asyncHandler(async (req, res) => {
   try {
     const { lockId } = req.params;
     const { suggestion } = req.body;
@@ -587,7 +588,7 @@ router.post('/locks/:lockId/rules/dismiss', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to dismiss suggestion' }
     });
   }
-});
+}));
 
 // ==========================================
 // Smart Scheduling / Vacation Mode
@@ -598,7 +599,7 @@ router.post('/locks/:lockId/rules/dismiss', async (req, res) => {
  * @desc    Get current home mode
  * @access  Private
  */
-router.get('/mode', async (req, res) => {
+router.get('/mode', asyncHandler(async (req, res) => {
   try {
     const userId = req.user.id;
     logger.info('[AI] Request: ' + 'getCurrentMode', userId, {});
@@ -617,7 +618,7 @@ router.get('/mode', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to get mode' }
     });
   }
-});
+}));
 
 /**
  * @route   POST /api/ai/mode
@@ -625,7 +626,7 @@ router.get('/mode', async (req, res) => {
  * @access  Private
  * @body    { mode: string, options?: Object }
  */
-router.post('/mode', async (req, res) => {
+router.post('/mode', asyncHandler(async (req, res) => {
   try {
     const userId = req.user.id;
     const { mode, options } = req.body;
@@ -646,7 +647,7 @@ router.post('/mode', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to set mode' }
     });
   }
-});
+}));
 
 /**
  * @route   POST /api/ai/vacation
@@ -654,7 +655,7 @@ router.post('/mode', async (req, res) => {
  * @access  Private
  * @body    { startDate?, endDate?, trustedUsers?, disableGuests?, presenceSimulation?, alertOnAccess?, lockIds? }
  */
-router.post('/vacation', async (req, res) => {
+router.post('/vacation', asyncHandler(async (req, res) => {
   try {
     const userId = req.user.id;
     const options = req.body;
@@ -675,14 +676,14 @@ router.post('/vacation', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to enable vacation mode' }
     });
   }
-});
+}));
 
 /**
  * @route   DELETE /api/ai/vacation
  * @desc    Disable vacation mode
  * @access  Private
  */
-router.delete('/vacation', async (req, res) => {
+router.delete('/vacation', asyncHandler(async (req, res) => {
   try {
     const userId = req.user.id;
     logger.info('[AI] Request: ' + 'disableVacationMode', userId, {});
@@ -702,14 +703,14 @@ router.delete('/vacation', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to disable vacation mode' }
     });
   }
-});
+}));
 
 /**
  * @route   GET /api/ai/schedule/suggestions
  * @desc    Get suggested schedules based on patterns
  * @access  Private
  */
-router.get('/schedule/suggestions', async (req, res) => {
+router.get('/schedule/suggestions', asyncHandler(async (req, res) => {
   try {
     const userId = req.user.id;
     logger.info('[AI] Request: ' + 'getSuggestedSchedule', userId, {});
@@ -728,14 +729,14 @@ router.get('/schedule/suggestions', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to get schedule suggestions' }
     });
   }
-});
+}));
 
 /**
  * @route   POST /api/ai/schedule/activate
  * @desc    Activate a suggested schedule
  * @access  Private
  */
-router.post('/schedule/activate', async (req, res) => {
+router.post('/schedule/activate', asyncHandler(async (req, res) => {
   try {
     const userId = req.user.id;
     const { schedule } = req.body;
@@ -752,14 +753,14 @@ router.post('/schedule/activate', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to activate schedule' }
     });
   }
-});
+}));
 
 /**
  * @route   PATCH /api/ai/settings/auto-pilot
  * @desc    Toggle AI auto-pilot mode
  * @access  Private
  */
-router.patch('/settings/auto-pilot', async (req, res) => {
+router.patch('/settings/auto-pilot', asyncHandler(async (req, res) => {
   try {
     const userId = req.user.id;
     const { enabled } = req.body;
@@ -776,14 +777,14 @@ router.patch('/settings/auto-pilot', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to update auto-pilot' }
     });
   }
-});
+}));
 
 /**
  * @route   POST /api/ai/settings/location
  * @desc    Save home location for geofencing
  * @access  Private
  */
-router.post('/settings/location', async (req, res) => {
+router.post('/settings/location', asyncHandler(async (req, res) => {
   try {
     const userId = req.user.id;
     const { latitude, longitude, radius = 100, address } = req.body;
@@ -811,14 +812,14 @@ router.post('/settings/location', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to save location' }
     });
   }
-});
+}));
 
 /**
  * @route   GET /api/ai/settings/location
  * @desc    Get saved home location
  * @access  Private
  */
-router.get('/settings/location', async (req, res) => {
+router.get('/settings/location', asyncHandler(async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -842,14 +843,14 @@ router.get('/settings/location', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to get location' }
     });
   }
-});
+}));
 
 /**
  * @route   GET /api/ai/settings
  * @desc    Get all user AI settings
  * @access  Private
  */
-router.get('/settings', async (req, res) => {
+router.get('/settings', asyncHandler(async (req, res) => {
   try {
     const userId = req.user.id;
     const settings = await getUserAISettings(userId);
@@ -861,7 +862,7 @@ router.get('/settings', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: 'Failed to get AI settings' }
     });
   }
-});
+}));
 
 // ==========================================
 // AI Status
@@ -872,7 +873,7 @@ router.get('/settings', async (req, res) => {
  * @desc    Check AI features status and configuration
  * @access  Private
  */
-router.get('/status', (req, res) => {
+router.get('/status', asyncHandler((req, res) => {
   const openaiConfigured = !!process.env.OPENAI_API_KEY;
   const userId = req.user?.id;
 
@@ -906,7 +907,7 @@ router.get('/status', (req, res) => {
       }
     }
   });
-});
+}));
 
 // ==========================================
 // Manual AI Job Triggers (Testing Only)
@@ -918,7 +919,7 @@ router.get('/status', (req, res) => {
  * @access  Private
  * @query   lockId - Optional lock ID to run for specific lock
  */
-router.post('/jobs/battery-predictions', async (req, res) => {
+router.post('/jobs/battery-predictions', asyncHandler(async (req, res) => {
   try {
     const { lockId } = req.query;
     const userId = req.user?.id;
@@ -939,7 +940,7 @@ router.post('/jobs/battery-predictions', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: error.message }
     });
   }
-});
+}));
 
 /**
  * @route   POST /api/ai/jobs/fraud-detection
@@ -947,7 +948,7 @@ router.post('/jobs/battery-predictions', async (req, res) => {
  * @access  Private
  * @query   lockId - Optional lock ID to run for specific lock
  */
-router.post('/jobs/fraud-detection', async (req, res) => {
+router.post('/jobs/fraud-detection', asyncHandler(async (req, res) => {
   try {
     const { lockId } = req.query;
     const userId = req.user?.id;
@@ -968,14 +969,14 @@ router.post('/jobs/fraud-detection', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: error.message }
     });
   }
-});
+}));
 
 /**
  * @route   POST /api/ai/jobs/daily-analysis
  * @desc    Manually trigger daily analysis (risk scores + recommendations + rules)
  * @access  Private
  */
-router.post('/jobs/daily-analysis', async (req, res) => {
+router.post('/jobs/daily-analysis', asyncHandler(async (req, res) => {
   try {
     const userId = req.user?.id;
 
@@ -995,6 +996,6 @@ router.post('/jobs/daily-analysis', async (req, res) => {
       error: { code: 'SERVER_ERROR', message: error.message }
     });
   }
-});
+}));
 
 export default router;

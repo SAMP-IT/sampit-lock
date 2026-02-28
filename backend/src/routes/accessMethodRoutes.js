@@ -11,6 +11,7 @@ import {
   updateCard,
   deleteCard
 } from '../controllers/accessMethodController.js';
+import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = express.Router();
 
@@ -25,28 +26,28 @@ router.use(authenticateToken);
 router.get(
   '/locks/:lockId/fingerprints',
   checkLockAccess('can_view_logs'),
-  getFingerprints
+  asyncHandler(getFingerprints)
 );
 
 // Add a fingerprint
 router.post(
   '/locks/:lockId/fingerprints',
   checkLockAccess('can_modify_settings'),
-  addFingerprint
+  asyncHandler(addFingerprint)
 );
 
 // Update a fingerprint
 router.patch(
   '/locks/:lockId/fingerprints/:fingerprintId',
   checkLockAccess('can_modify_settings'),
-  updateFingerprint
+  asyncHandler(updateFingerprint)
 );
 
 // Delete a fingerprint
 router.delete(
   '/locks/:lockId/fingerprints/:fingerprintId',
   checkLockAccess('can_modify_settings'),
-  deleteFingerprint
+  asyncHandler(deleteFingerprint)
 );
 
 // =====================================================
@@ -57,28 +58,28 @@ router.delete(
 router.get(
   '/locks/:lockId/cards',
   checkLockAccess('can_view_logs'),
-  getCards
+  asyncHandler(getCards)
 );
 
 // Add a card
 router.post(
   '/locks/:lockId/cards',
   checkLockAccess('can_modify_settings'),
-  addCard
+  asyncHandler(addCard)
 );
 
 // Update a card
 router.patch(
   '/locks/:lockId/cards/:cardId',
   checkLockAccess('can_modify_settings'),
-  updateCard
+  asyncHandler(updateCard)
 );
 
 // Delete a card
 router.delete(
   '/locks/:lockId/cards/:cardId',
   checkLockAccess('can_modify_settings'),
-  deleteCard
+  asyncHandler(deleteCard)
 );
 
 export default router;

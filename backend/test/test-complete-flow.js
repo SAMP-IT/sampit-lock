@@ -9,7 +9,7 @@ const API_BASE_URL = 'http://localhost:3009';
 // Test credentials - use a unique email each time
 const testUser = {
   email: `test${Date.now()}@awakey.com`,
-  password: 'Test1234!',
+  password: process.env.TEST_PASSWORD || (() => { throw new Error('TEST_PASSWORD env var is required'); })(),
   first_name: 'Test',
   last_name: 'User'
 };

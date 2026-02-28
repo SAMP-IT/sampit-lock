@@ -253,21 +253,54 @@ httpServer.listen(PORT, () => {
   console.log('==============================================');
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM signal received: closing HTTP server');
-  httpServer.close(() => {
-    console.log('HTTP server closed');
-    process.exit(0);
-  });
+// ============================================================
+// Process-level error handlers
+// ============================================================
+
+// Catch unhandled promise rejections so the process doesn't crash silently
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('⚠️  Unhandled Promise Rejection:', reason);
+  // Log full stack if available
+  if (reason instanceof Error) {
+    console.error('Stack:', reason.stack);
+  }
+  // Don't exit - let the process continue serving requests.
+  // The global Express error handler will catch route-level rejections,
+  // but this catches anything outside the request cycle (timers, background jobs).
 });
 
-process.on('SIGINT', () => {
-  console.log('SIGINT signal received: closing HTTP server');
+// Catch uncaught synchronous exceptions (rare in async code, but a safety net)
+process.on('uncaughtException', (error) => {
+  console.error('🔴 Uncaught Exception - server may be in an unstable state:', error);
+  console.error('Stack:', error.stack);
+  // Give the process a moment to flush logs, then exit with failure
+  // Render will auto-restart the service on non-zero exit
+  setTimeout(() => process.exit(1), 1000);
+});
+
+// ============================================================
+// Graceful shutdown
+// ============================================================
+const SHUTDOWN_TIMEOUT_MS = 10_000; // 10 seconds max to close connections
+
+const gracefulShutdown = (signal) => {
+  console.log(`${signal} received: shutting down gracefully…`);
+
+  // Force-exit if close takes too long (prevents hanging on Render)
+  const forceTimer = setTimeout(() => {
+    console.error('Shutdown timed out - forcing exit');
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS);
+  if (forceTimer.unref) forceTimer.unref();
+
   httpServer.close(() => {
     console.log('HTTP server closed');
+    clearTimeout(forceTimer);
     process.exit(0);
   });
-});
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 export default app;

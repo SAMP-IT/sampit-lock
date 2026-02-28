@@ -2,6 +2,7 @@
 import { supabase } from '../services/supabase.js';
 import { sendSmartNotification, logEvent, EventAction, AccessMethod } from '../services/ai/index.js';
 import { authenticateWebhook, webhookHealthOnly } from '../middleware/webhookAuth.js';
+import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = express.Router();
 
@@ -21,7 +22,7 @@ const router = express.Router();
  * https://open.ttlock.com -> Application Settings -> Callback URL
  * URL format: https://your-domain.com/api/webhook/ttlock?token=YOUR_WEBHOOK_SECRET
  */
-router.post('/ttlock', authenticateWebhook, async (req, res) => {
+router.post('/ttlock', authenticateWebhook, asyncHandler(async (req, res) => {
   try {
     console.log('[WEBHOOK] TTLock event received:', req.body?.eventType || req.body?.recordType, 'lockId:', req.body?.lockId);
 
@@ -182,7 +183,7 @@ router.post('/ttlock', authenticateWebhook, async (req, res) => {
       error: error.message
     });
   }
-});
+}));
 
 /**
  * Gateway Status Webhook
@@ -190,7 +191,7 @@ router.post('/ttlock', authenticateWebhook, async (req, res) => {
  *
  * Security: Same 3-layer webhook authentication
  */
-router.post('/ttlock/gateway', authenticateWebhook, async (req, res) => {
+router.post('/ttlock/gateway', authenticateWebhook, asyncHandler(async (req, res) => {
   try {
     console.log('[WEBHOOK] TTLock Gateway event:', req.body?.isOnline ? 'online' : 'offline', 'gatewayId:', req.body?.gatewayId);
 
@@ -237,7 +238,7 @@ router.post('/ttlock/gateway', authenticateWebhook, async (req, res) => {
     console.error('Gateway webhook error:', error);
     res.status(200).json({ success: false, message: 'Webhook received but processing failed' });
   }
-});
+}));
 
 /**
  * TTLock Callback URL Verification
@@ -246,21 +247,21 @@ router.post('/ttlock/gateway', authenticateWebhook, async (req, res) => {
  * TTLock Open Platform sends a GET request to test the callback URL before saving it.
  * This handler responds with 200 so the URL validation passes.
  */
-router.get('/ttlock', webhookHealthOnly, (req, res) => {
+router.get('/ttlock', webhookHealthOnly, asyncHandler((req, res) => {
   res.status(200).json({ success: true, message: 'OK' });
-});
+}));
 
 /**
  * Health check for webhook endpoint
  * GET /api/webhook/health
  */
-router.get('/health', webhookHealthOnly, (req, res) => {
+router.get('/health', webhookHealthOnly, asyncHandler((req, res) => {
   res.json({
     success: true,
     message: 'Webhook endpoint is healthy',
     timestamp: new Date().toISOString()
   });
-});
+}));
 
 const parseBatteryLevel = (value) => {
   const parsed = Number(value);

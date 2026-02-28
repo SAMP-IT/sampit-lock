@@ -4,6 +4,8 @@ import axios from 'axios';
 import md5 from 'md5';
 import { encrypt } from '../utils/ttlockCrypto.js';
 import { invalidateAllUserSessions } from '../utils/sessionManager.js';
+import logger from '../utils/logger.js';
+import { logAuthEvent, EventAction } from '../services/ai/eventLogger.js';
 
 // TTLock API Configuration
 const TTLOCK_CLIENT_ID = process.env.TTLOCK_CLIENT_ID;
@@ -373,6 +375,14 @@ export const signup = async (req, res) => {
 
     console.log('✅ Signup complete - User and TTLock account created and connected');
 
+    // Audit trail: log signup to activity_logs
+    logAuthEvent({
+      userId: user.id,
+      action: EventAction.SIGNUP,
+      ipAddress: req.ip,
+      metadata: { email }
+    });
+
     res.status(201).json({
       success: true,
       data: responseData
@@ -404,6 +414,15 @@ export const login = async (req, res) => {
     });
 
     if (error) {
+      logger.auth.login(email, false, { reason: error.message });
+      // Audit trail: log failed login to activity_logs
+      logAuthEvent({
+        action: EventAction.LOGIN_FAILED,
+        success: false,
+        failureReason: 'Invalid email or password',
+        ipAddress: req.ip,
+        metadata: { email }
+      });
       return res.status(401).json({
         success: false,
         error: {
@@ -426,6 +445,16 @@ export const login = async (req, res) => {
       .eq('id', data.user.id)
       .single();
 
+    logger.auth.login(email, true, { userId: data.user.id });
+
+    // Audit trail: log successful login to activity_logs
+    logAuthEvent({
+      userId: data.user.id,
+      action: EventAction.LOGIN_SUCCESS,
+      ipAddress: req.ip,
+      metadata: { email }
+    });
+
     res.json({
       success: true,
       data: {
@@ -436,7 +465,7 @@ export const login = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
+    logger.error('[AUTH] Login error:', { error: error.message });
     res.status(500).json({
       success: false,
       error: {
@@ -465,6 +494,14 @@ export const logout = async (req, res) => {
         }
       });
     }
+
+    // Audit trail: log logout
+    logAuthEvent({
+      userId: req.user.id,
+      action: EventAction.LOGOUT,
+      ipAddress: req.ip,
+      metadata: { email: req.user.email }
+    });
 
     res.json({
       success: true,
@@ -503,6 +540,13 @@ export const forgotPassword = async (req, res) => {
         }
       });
     }
+
+    // Audit trail: log password reset request
+    logAuthEvent({
+      action: EventAction.PASSWORD_RESET_REQUEST,
+      ipAddress: req.ip,
+      metadata: { email }
+    });
 
     res.json({
       success: true,
@@ -553,6 +597,14 @@ export const resetPassword = async (req, res) => {
     // Invalidate ALL sessions so old tokens on compromised devices stop working
     await invalidateAllUserSessions(data.user.id, 'password_reset');
 
+    // Audit trail: log password reset completion
+    logAuthEvent({
+      userId: data.user.id,
+      action: EventAction.PASSWORD_RESET_COMPLETE,
+      ipAddress: req.ip,
+      metadata: { email: data.user.email }
+    });
+
     res.json({
       success: true,
       message: 'Password reset successful. Please sign in with your new password.'
@@ -597,6 +649,14 @@ export const verifyEmail = async (req, res) => {
       .from('users')
       .update({ email_verified: true })
       .eq('id', data.user.id);
+
+    // Audit trail: log email verification
+    logAuthEvent({
+      userId: data.user.id,
+      action: EventAction.EMAIL_VERIFIED,
+      ipAddress: req.ip,
+      metadata: { email: data.user.email }
+    });
 
     res.json({
       success: true,
@@ -690,6 +750,14 @@ export const refreshToken = async (req, res) => {
 
     console.log('✅ Token refreshed successfully for user:', data.user?.email);
 
+    // Audit trail: log token refresh
+    logAuthEvent({
+      userId: data.user.id,
+      action: EventAction.TOKEN_REFRESHED,
+      ipAddress: req.ip,
+      metadata: { email: data.user.email }
+    });
+
     // Fetch updated user details
     const { data: user } = await supabase
       .from('users')
@@ -750,6 +818,14 @@ export const updateProfile = async (req, res) => {
       });
     }
 
+    // Audit trail: log profile update
+    logAuthEvent({
+      userId,
+      action: EventAction.PROFILE_UPDATED,
+      ipAddress: req.ip,
+      metadata: { fields: Object.keys(updates) }
+    });
+
     res.json({
       success: true,
       data: user
@@ -782,7 +858,7 @@ export const deleteAccount = async (req, res) => {
       .single();
 
     if (fetchError) {
-      console.error('Error fetching user for deletion:', fetchError.message);
+      logger.error('[AUTH] Error fetching user for deletion:', { error: fetchError.message, userId });
     }
 
     // Immediately invalidate all sessions before deleting data
@@ -805,59 +881,22 @@ export const deleteAccount = async (req, res) => {
         );
 
         if (ttlockResponse.data.errcode && ttlockResponse.data.errcode !== 0) {
-          console.error('TTLock user deletion failed:', ttlockResponse.data.errmsg);
+          logger.error('[AUTH] TTLock user deletion failed:', { error: ttlockResponse.data.errmsg, userId });
         }
       } catch (ttlockError) {
-        console.error('TTLock user deletion error:', ttlockError.message);
+        logger.error('[AUTH] TTLock user deletion error:', { error: ttlockError.message, userId });
         // Continue with account deletion even if TTLock fails
       }
     }
 
-    // Delete all user's locks first (cascades to related data)
-    const { error: locksError } = await supabase
-      .from('locks')
-      .delete()
-      .eq('owner_id', userId);
+    // Delete all user data in a single atomic transaction via RPC
+    // This ensures all-or-nothing: locks, user_locks, activity_logs, guest_codes,
+    // guest_access, notifications, access_codes, invite_codes, and the user record
+    const { data: deleteResult, error: rpcError } = await supabase
+      .rpc('delete_user_account', { p_user_id: userId });
 
-    if (locksError) {
-      console.error('Error deleting user locks:', locksError.message);
-    }
-
-    // Delete user_locks entries (shared access)
-    const { error: userLocksError } = await supabase
-      .from('user_locks')
-      .delete()
-      .eq('user_id', userId);
-
-    if (userLocksError) {
-      console.error('Error deleting user_locks:', userLocksError.message);
-    }
-
-    // Clean up orphaned records in related tables
-    const orphanTables = [
-      { table: 'activity_logs', column: 'user_id' },
-      { table: 'guest_codes', column: 'created_by_user_id' },
-      { table: 'guest_access', column: 'created_by_user_id' },
-      { table: 'notifications', column: 'user_id' },
-      { table: 'access_codes', column: 'created_by_user_id' },
-      { table: 'invite_codes', column: 'created_by_user_id' }
-    ];
-
-    for (const { table, column } of orphanTables) {
-      const { error } = await supabase.from(table).delete().eq(column, userId);
-      if (error) {
-        console.error(`Error cleaning ${table}:`, error.message);
-      }
-    }
-
-    // Delete user from database
-    const { error: dbError } = await supabase
-      .from('users')
-      .delete()
-      .eq('id', userId);
-
-    if (dbError) {
-      console.error('Error deleting user from database:', dbError.message);
+    if (rpcError) {
+      logger.error('[AUTH] Transactional account deletion failed:', { error: rpcError.message, userId });
       return res.status(500).json({
         success: false,
         error: {
@@ -867,11 +906,22 @@ export const deleteAccount = async (req, res) => {
       });
     }
 
-    // Delete user from Supabase Auth
+    logger.info('[AUTH] User data deleted via transaction:', { userId, result: deleteResult });
+
+    // Audit trail: log account deletion BEFORE removing auth user
+    // (do this before auth deletion so the row exists in the DB)
+    logAuthEvent({
+      userId,
+      action: EventAction.ACCOUNT_DELETED,
+      ipAddress: req.ip,
+      metadata: { email: req.user.email }
+    });
+
+    // Delete user from Supabase Auth (external to DB transaction)
     const { error: authError } = await supabase.auth.admin.deleteUser(userId);
 
     if (authError) {
-      console.error('Error deleting user from Supabase Auth:', authError.message);
+      logger.error('[AUTH] Error deleting user from Supabase Auth:', { error: authError.message, userId });
       // Don't fail here since DB data is already deleted
     }
 
@@ -880,7 +930,7 @@ export const deleteAccount = async (req, res) => {
       message: 'Account deleted successfully'
     });
   } catch (error) {
-    console.error('Delete account error:', error.message);
+    logger.error('[AUTH] Delete account error:', { error: error.message });
     res.status(500).json({
       success: false,
       error: {

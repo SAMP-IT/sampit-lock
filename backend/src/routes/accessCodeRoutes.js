@@ -8,7 +8,8 @@ import {
 } from '../controllers/accessCodeController.js';
 import { authenticate } from '../middleware/auth.js';
 import { checkLockAccess, requirePermission } from '../middleware/rbac.js';
-import { validate, schemas } from '../middleware/validation.js';
+import { validate, validateParams, schemas, params } from '../middleware/validation.js';
+import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = express.Router();
 
@@ -16,12 +17,12 @@ const router = express.Router();
 router.use(authenticate);
 
 // Access code management
-router.get('/:lockId/access-codes', checkLockAccess, requirePermission('view_logs'), getAccessCodes);
-router.post('/:lockId/access-codes', checkLockAccess, requirePermission('manage_users'), validate(schemas.createAccessCode), createAccessCode);
-router.patch('/:lockId/access-codes/:codeId', checkLockAccess, requirePermission('manage_users'), updateAccessCode);
-router.delete('/:lockId/access-codes/:codeId', checkLockAccess, requirePermission('manage_users'), deleteAccessCode);
+router.get('/:lockId/access-codes', validateParams(params.lockId), checkLockAccess, requirePermission('view_logs'), asyncHandler(getAccessCodes));
+router.post('/:lockId/access-codes', checkLockAccess, requirePermission('manage_users'), validate(schemas.createAccessCode), asyncHandler(createAccessCode));
+router.patch('/:lockId/access-codes/:codeId', validateParams(params.codeId), checkLockAccess, requirePermission('manage_users'), validate(schemas.updateAccessCode), asyncHandler(updateAccessCode));
+router.delete('/:lockId/access-codes/:codeId', validateParams(params.codeId), checkLockAccess, requirePermission('manage_users'), asyncHandler(deleteAccessCode));
 
 // Verify access code (used by the lock itself)
-router.post('/:lockId/access-codes/verify', verifyAccessCode);
+router.post('/:lockId/access-codes/verify', validateParams(params.lockId), validate(schemas.verifyAccessCode), asyncHandler(verifyAccessCode));
 
 export default router;

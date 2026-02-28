@@ -13,9 +13,15 @@ console.log('🔒 Testing TTLock Get Lock List API');
 console.log('===================================');
 console.log('');
 
-// Get credentials from command line or use defaults
-const username = process.argv[2] || 'tusharvaishnavtv@gmail.com';
-const password = process.argv[3] || 'Tushar@900';
+// Get credentials from command line or env vars (no hardcoded defaults)
+const username = process.argv[2] || process.env.TTLOCK_TEST_USERNAME;
+const password = process.argv[3] || process.env.TTLOCK_TEST_PASSWORD;
+if (!username || !password) {
+  console.error('❌ Error: Username and password required');
+  console.error('Usage: node test-lock-list.js <username> <password>');
+  console.error('Or set TTLOCK_TEST_USERNAME and TTLOCK_TEST_PASSWORD env vars');
+  process.exit(1);
+}
 const pageNo = parseInt(process.argv[4]) || 1;
 const pageSize = parseInt(process.argv[5]) || 20;
 
