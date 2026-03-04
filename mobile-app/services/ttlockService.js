@@ -27,13 +27,8 @@ const TTLOCK_AVAILABLE = TtlockNative &&
   typeof TtlockNative.getBluetoothState === 'function' &&
   typeof TtlockNative.startScan === 'function';
 
-console.log('[TTLock] Native module available:', TTLOCK_AVAILABLE);
-if (TTLOCK_AVAILABLE) {
-  const allMethods = Object.keys(TtlockNative);
-  console.log('[TTLock] Available methods:', allMethods);
-  console.log('[TTLock] Has setAutomaticLockingPeriod:', typeof TtlockNative.setAutomaticLockingPeriod === 'function');
-  console.log('[TTLock] Has setPassageMode:', typeof TtlockNative.setPassageMode === 'function');
-  console.log('[TTLock] Has setPassbackMode:', typeof TtlockNative.setPassbackMode === 'function');
+if (!TTLOCK_AVAILABLE) {
+  console.warn('[TTLock] Native module not available');
 }
 
 // Create event emitter for scan callbacks
@@ -117,9 +112,9 @@ class TTLockService {
       // Subscribe to scan events via NativeEventEmitter
       // IMPORTANT: Native event name is 'EventScanLock' (from TTLockEvent.java)
       const scanSubscription = ttLockEventEmitter.addListener('EventScanLock', (lockData) => {
-        console.log('[TTLock] Found lock:', lockData);
         const exists = discoveredLocks.find(l => l.lockMac === lockData.lockMac);
         if (!exists) {
+          console.log('[TTLock] Found lock:', lockData.lockName, lockData.lockMac, 'RSSI:', lockData.rssi, 'Inited:', lockData.isInited);
           discoveredLocks.push({
             lockMac: lockData.lockMac,
             lockName: lockData.lockName || 'TTLock',
@@ -127,6 +122,11 @@ class TTLockService {
             lockData: lockData,
             rssi: lockData.rssi || -100
           });
+        } else {
+          // Update RSSI with latest signal strength (keep best reading)
+          if (lockData.rssi > exists.rssi) {
+            exists.rssi = lockData.rssi;
+          }
         }
       });
 

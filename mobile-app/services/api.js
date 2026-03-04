@@ -144,7 +144,6 @@ backendApi.interceptors.request.use(
 
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
-        console.log('🔑 Auth token added from secure storage');
         return config;
       }
     } catch (error) {
@@ -618,17 +617,14 @@ export const getTTLockLocks = async () => {
 
 // Locks
 export const getLocks = () => {
-  console.log('🔍 Fetching locks from backend API...');
   return backendApi.get('/locks');
 };
 
 export const getLockById = (lockId) => {
-  console.log('🔍 Fetching lock details from backend API:', lockId);
   return backendApi.get(`/locks/${lockId}`);
 };
 
 export const updateLockStatus = (lockId, isLocked) => {
-  console.log('🔄 Updating lock status via backend API:', lockId);
   return backendApi.patch(`/locks/${lockId}`, { isLocked });
 };
 
@@ -813,7 +809,6 @@ export const updateRemoteUnlockSetting = (lockId, enabled) => {
 };
 
 export const deleteLock = (lockId) => {
-  console.log('🗑️ Deleting lock via backend API:', lockId);
   return backendApi.delete(`/locks/${lockId}`);
 };
 

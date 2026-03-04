@@ -103,12 +103,12 @@ const HomeScreen = ({ navigation }) => {
     loadUserName();
   }, []);
 
-  // Refetch on screen focus
+  // Refetch on screen focus - only invalidate so React Query respects staleTime
   useFocusEffect(
     useCallback(() => {
-      refetchLocks();
-      refetchActivities();
-    }, [refetchLocks, refetchActivities])
+      queryClient.invalidateQueries({ queryKey: ['locks'] });
+      queryClient.invalidateQueries({ queryKey: ['recentActivity'] });
+    }, [queryClient])
   );
 
   // Pull-to-refresh handler

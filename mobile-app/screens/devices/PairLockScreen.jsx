@@ -166,6 +166,10 @@ const PairLockScreen = ({ navigation }) => {
   };
 
   const handleSelectLock = async (lock) => {
+    // Prevent double-tap while already processing a selection
+    if (connectionStatus === 'pairing' || connectionStatus === 'saving' || connectionStatus === 'connected') {
+      return;
+    }
     console.log('[PairLock] Lock selected:', lock.lockMac);
     setSelectedLock(lock);
 
