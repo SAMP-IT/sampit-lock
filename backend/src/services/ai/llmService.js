@@ -24,6 +24,9 @@ const SUMMARY_CACHE_TTL_SECONDS = parseInt(process.env.AI_SUMMARY_CACHE_TTL_SECO
 // OpenAI API endpoint
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
+// Track API key errors to avoid spamming logs with the same 401 error
+let _apiKeyErrorLogged = false;
+
 /**
  * Check if OpenAI is configured
  */
@@ -166,11 +169,18 @@ const callOpenAI = async (messages, options = {}) => {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error('❌ LLM: OpenAI API error', {
-        status: response.status,
-        error: errorData.error?.message || 'Unknown error'
-      });
-      throw new Error(`OpenAI API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+      const errorMsg = errorData.error?.message || 'Unknown error';
+
+      // Suppress repeated 401 errors to avoid log spam
+      if (response.status === 401) {
+        if (!_apiKeyErrorLogged) {
+          _apiKeyErrorLogged = true;
+          console.error('❌ LLM: OpenAI API key is invalid or expired. AI insight descriptions will use fallback text. Fix the OPENAI_API_KEY env var to restore LLM features.');
+        }
+      } else {
+        console.error('❌ LLM: OpenAI API error', { status: response.status, error: errorMsg });
+      }
+      throw new Error(`OpenAI API error: ${response.status} - ${errorMsg}`);
     }
 
     const data = await response.json();
@@ -412,7 +422,10 @@ User: ${data.userName}`;
 
     return result.content;
   } catch (error) {
-    console.error('[LLMService] Insight generation failed:', error);
+    // Don't re-log 401 errors (already logged once in callOpenAI)
+    if (!error.message?.includes('401')) {
+      console.error('[LLMService] Insight generation failed:', error.message);
+    }
     return `${insightType.replace(/_/g, ' ')} detected. Please review.`;
   }
 };

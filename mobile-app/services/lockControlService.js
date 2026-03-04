@@ -214,16 +214,8 @@ class LockControlService {
     } catch (error) {
       console.error('🔴 Unlock failed:', error);
 
-      // Log failed unlock attempt to database
-      try {
-        await logLockActivity(lock.id, 'failed', 'app', {
-          error_message: error.message,
-          operation: 'unlock'
-        });
-        console.log('✅ Failed unlock attempt logged to database');
-      } catch (logError) {
-        console.warn('⚠️ Failed to log failed unlock attempt:', logError.message);
-      }
+      // Note: _unlockViaBluetooth already logs the failed attempt to the database
+      // so we don't log again here to avoid duplicate activity entries
 
       return {
         success: false,
@@ -314,16 +306,8 @@ class LockControlService {
     } catch (error) {
       console.error('🔴 Lock failed:', error);
 
-      // Log failed lock attempt to database
-      try {
-        await logLockActivity(lock.id, 'failed', 'app', {
-          error_message: error.message,
-          operation: 'lock'
-        });
-        console.log('✅ Failed lock attempt logged to database');
-      } catch (logError) {
-        console.warn('⚠️ Failed to log failed lock attempt:', logError.message);
-      }
+      // Note: _lockViaBluetooth already logs the failed attempt to the database
+      // so we don't log again here to avoid duplicate activity entries
 
       return {
         success: false,

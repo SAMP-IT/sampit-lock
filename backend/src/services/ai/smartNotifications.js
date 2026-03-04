@@ -64,6 +64,7 @@ export const sendSmartNotification = async ({
   lockId,
   action,
   userId = null,
+  eventId = null,
   metadata = {}
 }) => {
   try {
@@ -92,6 +93,7 @@ export const sendSmartNotification = async ({
 
     // Analyze event for anomalies
     const eventData = {
+      id: eventId,
       lock_id: lockId,
       user_id: userId,
       action,

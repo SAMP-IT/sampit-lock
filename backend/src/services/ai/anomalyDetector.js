@@ -219,13 +219,35 @@ async function checkFirstTimeUser(event) {
 
 /**
  * Create an AI insight for detected anomalies
+ * Includes deduplication: skips if a similar insight was created recently
  */
 async function createAnomalyInsight(event, anomalies, totalScore) {
   console.log('📝 AI: Creating anomaly insight...', {
-    event_id: event.id,
+    event_id: event.id || null,
     anomaly_count: anomalies.length,
     total_score: totalScore
   });
+
+  // Deduplication: check if a similar insight was created recently (within 5 min)
+  const primaryType = anomalies[0]?.type;
+  const cooldownMinutes = 5;
+  const cooldownStart = new Date();
+  cooldownStart.setMinutes(cooldownStart.getMinutes() - cooldownMinutes);
+
+  const { data: recentInsights } = await supabase
+    .from('ai_insights')
+    .select('id, created_at')
+    .eq('lock_id', event.lock_id)
+    .eq('insight_type', 'anomaly')
+    .eq('is_dismissed', false)
+    .gte('created_at', cooldownStart.toISOString())
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (recentInsights && recentInsights.length > 0) {
+    console.log(`⏭️ AI: Skipping insight creation - similar insight ${recentInsights[0].id} created ${recentInsights[0].created_at} (within ${cooldownMinutes} min cooldown)`);
+    return;
+  }
 
   // Determine overall severity
   let severity = 'info';
@@ -271,11 +293,11 @@ async function createAnomalyInsight(event, anomalies, totalScore) {
     title,
     description,
     metadata: {
-      event_id: event.id,
+      event_id: event.id || null,
       anomalies,
       total_score: totalScore
     },
-    related_event_id: event.id,
+    ...(event.id ? { related_event_id: event.id } : {}),
     is_read: false,
     is_dismissed: false,
     created_at: new Date().toISOString()

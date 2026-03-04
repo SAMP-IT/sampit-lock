@@ -209,7 +209,7 @@ router.get('/locks/:lockId/recommendations', validateParams(params.lockId), asyn
   try {
     const { lockId } = req.params;
     const userId = req.user?.id;
-    logger.info('[AI] Request: ' + 'getAccessRecommendations', userId, { lockId });
+    logger.info('[AI] Request: getAccessRecommendations', { userId, lockId });
 
     const result = await getAccessRecommendations(lockId);
 
@@ -236,7 +236,7 @@ router.get('/locks/:lockId/users/:userId/suggestion', validateParams(params.lock
   try {
     const { lockId, userId } = req.params;
     const requesterId = req.user?.id;
-    logger.info('[AI] Request: ' + 'getAIAccessSuggestion', requesterId, { lockId, targetUserId: userId });
+    logger.info('[AI] Request: getAIAccessSuggestion', { userId: requesterId, lockId, targetUserId: userId });
 
     const result = await getAIAccessSuggestion(lockId, userId);
 
@@ -264,7 +264,7 @@ router.post('/recommendations/action', asyncHandler(async (req, res) => {
   try {
     const { lockId, userId, recommendationType, action, metadata } = req.body;
     const requesterId = req.user?.id;
-    logger.info('[AI] Request: ' + 'recordRecommendationAction', requesterId, { lockId, userId, recommendationType, action });
+    logger.info('[AI] Request: recordRecommendationAction', { userId: requesterId, lockId, targetUserId: userId, recommendationType, action });
 
     const result = await recordRecommendationAction({
       lockId,
@@ -301,7 +301,7 @@ router.get('/locks/:lockId/battery/prediction', validateParams(params.lockId), a
   try {
     const { lockId } = req.params;
     const userId = req.user?.id;
-    logger.info('[AI] Request: ' + 'predictBatteryDepletion', userId, { lockId });
+    logger.info('[AI] Request: predictBatteryDepletion', { userId, lockId });
 
     const result = await predictBatteryDepletion(lockId);
 
@@ -330,7 +330,7 @@ router.get('/locks/:lockId/battery/history', validateParams(params.lockId), asyn
     const { lockId } = req.params;
     const { days = 30 } = req.query;
     const userId = req.user?.id;
-    logger.info('[AI] Request: ' + 'getBatteryHistory', userId, { lockId, days });
+    logger.info('[AI] Request: getBatteryHistory', { userId, lockId, days });
 
     const result = await getBatteryHistory(lockId, parseInt(days));
 
@@ -363,7 +363,7 @@ router.get('/locks/:lockId/security/alerts', validateParams(params.lockId), asyn
     const { lockId } = req.params;
     const { days = 7 } = req.query;
     const userId = req.user?.id;
-    logger.info('[AI] Request: ' + 'getFraudAlerts', userId, { lockId, days });
+    logger.info('[AI] Request: getFraudAlerts', { userId, lockId, days });
 
     const result = await getFraudAlerts(lockId, parseInt(days));
 
@@ -390,7 +390,7 @@ router.get('/locks/:lockId/security/summary', validateParams(params.lockId), asy
   try {
     const { lockId } = req.params;
     const userId = req.user?.id;
-    logger.info('[AI] Request: ' + 'getFraudSummary', userId, { lockId });
+    logger.info('[AI] Request: getFraudSummary', { userId, lockId });
 
     const result = await getFraudSummary(lockId);
 
@@ -421,7 +421,7 @@ router.get('/locks/:lockId/rules/suggestions', validateParams(params.lockId), as
   try {
     const { lockId } = req.params;
     const userId = req.user?.id;
-    logger.info('[AI] Request: ' + 'generateRuleSuggestions', userId, { lockId });
+    logger.info('[AI] Request: generateRuleSuggestions', { userId, lockId });
 
     const result = await generateRuleSuggestions(lockId);
 
@@ -448,7 +448,7 @@ router.get('/locks/:lockId/rules', validateParams(params.lockId), asyncHandler(a
   try {
     const { lockId } = req.params;
     const userId = req.user?.id;
-    logger.info('[AI] Request: ' + 'getActiveRules', userId, { lockId });
+    logger.info('[AI] Request: getActiveRules', { userId, lockId });
 
     const result = await getActiveRules(lockId);
 
@@ -477,7 +477,7 @@ router.post('/locks/:lockId/rules', validateParams(params.lockId), asyncHandler(
     const { lockId } = req.params;
     const { suggestion } = req.body;
     const userId = req.user.id;
-    logger.info('[AI] Request: ' + 'createRuleFromSuggestion', userId, { lockId, ruleType: suggestion?.type });
+    logger.info('[AI] Request: createRuleFromSuggestion', { userId, lockId, ruleType: suggestion?.type });
 
     const result = await createRuleFromSuggestion(lockId, suggestion, userId);
 
@@ -507,7 +507,7 @@ router.patch('/rules/:ruleId', validateParams(params.ruleId), asyncHandler(async
     const { ruleId } = req.params;
     const { is_active } = req.body;
     const userId = req.user?.id;
-    logger.info('[AI] Request: ' + 'toggleRule', userId, { ruleId, is_active });
+    logger.info('[AI] Request: toggleRule', { userId, ruleId, is_active });
 
     const result = await toggleRule(ruleId, is_active, userId);
 
@@ -541,7 +541,7 @@ router.delete('/rules/:ruleId', validateParams(params.ruleId), asyncHandler(asyn
   try {
     const { ruleId } = req.params;
     const userId = req.user?.id;
-    logger.info('[AI] Request: ' + 'deleteRule', userId, { ruleId });
+    logger.info('[AI] Request: deleteRule', { userId, ruleId });
 
     const result = await deleteRule(ruleId, userId);
 
@@ -576,7 +576,7 @@ router.post('/locks/:lockId/rules/dismiss', validateParams(params.lockId), async
     const { lockId } = req.params;
     const { suggestion } = req.body;
     const userId = req.user.id;
-    logger.info('[AI] Request: dismissSuggestion', userId, { lockId, ruleType: suggestion?.type });
+    logger.info('[AI] Request: dismissSuggestion', { userId, lockId, ruleType: suggestion?.type });
 
     const result = await dismissSuggestion(lockId, suggestion, userId);
 
@@ -603,7 +603,7 @@ router.post('/locks/:lockId/rules/dismiss', validateParams(params.lockId), async
 router.get('/mode', asyncHandler(async (req, res) => {
   try {
     const userId = req.user.id;
-    logger.info('[AI] Request: ' + 'getCurrentMode', userId, {});
+    logger.info('[AI] Request: getCurrentMode', { userId });
 
     const result = await getCurrentMode(userId);
 
@@ -631,7 +631,7 @@ router.post('/mode', asyncHandler(async (req, res) => {
   try {
     const userId = req.user.id;
     const { mode, options } = req.body;
-    logger.info('[AI] Request: ' + 'setHomeMode', userId, { mode, options });
+    logger.info('[AI] Request: setHomeMode', { userId, mode, options });
 
     const result = await setHomeMode(userId, mode, options || {});
 
@@ -660,7 +660,7 @@ router.post('/vacation', asyncHandler(async (req, res) => {
   try {
     const userId = req.user.id;
     const options = req.body;
-    logger.info('[AI] Request: ' + 'enableVacationMode', userId, { startDate: options?.startDate, endDate: options?.endDate });
+    logger.info('[AI] Request: enableVacationMode', { userId, startDate: options?.startDate, endDate: options?.endDate });
 
     const result = await enableVacationMode(userId, options);
 
@@ -687,7 +687,7 @@ router.post('/vacation', asyncHandler(async (req, res) => {
 router.delete('/vacation', asyncHandler(async (req, res) => {
   try {
     const userId = req.user.id;
-    logger.info('[AI] Request: ' + 'disableVacationMode', userId, {});
+    logger.info('[AI] Request: disableVacationMode', { userId });
 
     const result = await disableVacationMode(userId);
 
@@ -714,7 +714,7 @@ router.delete('/vacation', asyncHandler(async (req, res) => {
 router.get('/schedule/suggestions', asyncHandler(async (req, res) => {
   try {
     const userId = req.user.id;
-    logger.info('[AI] Request: ' + 'getSuggestedSchedule', userId, {});
+    logger.info('[AI] Request: getSuggestedSchedule', { userId });
 
     const result = await getSuggestedSchedule(userId);
 
@@ -741,7 +741,7 @@ router.post('/schedule/activate', asyncHandler(async (req, res) => {
   try {
     const userId = req.user.id;
     const { schedule } = req.body;
-    logger.info('[AI] Request: activateSchedule', userId, { scheduleType: schedule?.type });
+    logger.info('[AI] Request: activateSchedule', { userId, scheduleType: schedule?.type });
 
     const result = await activateSchedule(userId, schedule);
 
@@ -765,7 +765,7 @@ router.patch('/settings/auto-pilot', asyncHandler(async (req, res) => {
   try {
     const userId = req.user.id;
     const { enabled } = req.body;
-    logger.info('[AI] Request: setAutoPilot', userId, { enabled });
+    logger.info('[AI] Request: setAutoPilot', { userId, enabled });
 
     const result = await setAutoPilot(userId, enabled);
 
@@ -789,7 +789,7 @@ router.post('/settings/location', asyncHandler(async (req, res) => {
   try {
     const userId = req.user.id;
     const { latitude, longitude, radius = 100, address } = req.body;
-    logger.info('[AI] Request: saveLocation', userId, { latitude, longitude, radius });
+    logger.info('[AI] Request: saveLocation', { userId, latitude, longitude, radius });
 
     const { data, error } = await supabase
       .from('user_ai_settings')

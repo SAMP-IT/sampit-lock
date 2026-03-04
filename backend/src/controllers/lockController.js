@@ -1149,7 +1149,7 @@ export const lockDoor = async (req, res) => {
     }
 
     // Log the activity using AI event logger
-    await logEvent({
+    const lockActivityLog = await logEvent({
       lockId,
       userId,
       action: EventAction.LOCKED,
@@ -1162,6 +1162,7 @@ export const lockDoor = async (req, res) => {
       lockId,
       action: EventAction.LOCKED,
       userId,
+      eventId: lockActivityLog?.id || null,
       metadata: { access_method }
     }).catch(err => console.error('Notification error:', err));
 
@@ -1386,7 +1387,7 @@ export const unlockDoor = async (req, res) => {
     }
 
     // Log the activity using AI event logger
-    await logEvent({
+    const unlockActivityLog = await logEvent({
       lockId,
       userId,
       action: EventAction.UNLOCKED,
@@ -1400,6 +1401,7 @@ export const unlockDoor = async (req, res) => {
       lockId,
       action: EventAction.UNLOCKED,
       userId,
+      eventId: unlockActivityLog?.id || null,
       metadata: { access_method }
     }).catch(err => console.error('Notification error:', err));
 
@@ -1636,6 +1638,7 @@ export const logActivity = async (req, res) => {
         lockId,
         action: eventAction,
         userId,
+        eventId: activityLog.id,
         metadata: { access_method: access_method || 'bluetooth' }
       }).catch(err => console.error('Notification error:', err));
     }
