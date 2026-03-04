@@ -61,7 +61,8 @@ const UserManagementScreen = ({ navigation, route }) => {
   const usersData = data?.users || [];
   const locksData = data?.locks || [];
   const stats = data?.stats || { total_users: 0, admins: 0, family: 0, owners: 0 };
-  const canManageUsers = locksData.length > 0;
+  // Only owners can add/remove users - admins and other roles can only view
+  const canManageUsers = currentUserRole === 'owner' && locksData.length > 0;
   const error = queryError ? 'Failed to load users. Please try again.' : null;
 
   const onRefresh = useCallback(() => {

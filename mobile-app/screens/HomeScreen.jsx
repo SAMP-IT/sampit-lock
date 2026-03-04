@@ -103,12 +103,19 @@ const HomeScreen = ({ navigation }) => {
     loadUserName();
   }, []);
 
-  // Refetch on screen focus - only invalidate so React Query respects staleTime
+  // Refetch on screen focus and sync lock operation state
   useFocusEffect(
     useCallback(() => {
       queryClient.invalidateQueries({ queryKey: ['locks'] });
       queryClient.invalidateQueries({ queryKey: ['recentActivity'] });
-    }, [queryClient])
+
+      // Sync button state from service (in case operation started on another screen)
+      if (selectedLock) {
+        const op = LockControlService.getOperationInProgress(selectedLock.id);
+        setIsLocking(op === 'lock');
+        setIsUnlocking(op === 'unlock');
+      }
+    }, [queryClient, selectedLock])
   );
 
   // Pull-to-refresh handler

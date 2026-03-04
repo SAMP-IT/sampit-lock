@@ -383,6 +383,13 @@ const LockDetailScreen = ({ navigation, route }) => {
     useCallback(() => {
       console.log('[LockDetailScreen] Screen focused');
 
+      // Sync button state from service (in case operation started on HomeScreen)
+      if (currentLock) {
+        const op = LockControlService.getOperationInProgress(currentLock.id);
+        setIsLocking(op === 'lock');
+        setIsUnlocking(op === 'unlock');
+      }
+
       // Force refresh requested (e.g., after factory reset) - clear cache and refetch
       if (forceRefresh) {
         console.log('[LockDetailScreen] Force refresh requested, clearing cache');
@@ -539,9 +546,8 @@ const LockDetailScreen = ({ navigation, route }) => {
   };
 
   const handleUserManagement = () => {
-    const canManage = currentLock.userRole === 'owner' || currentLock.can_manage_users;
-    if (!canManage) {
-      Alert.alert('Access Denied', 'Only owners can manage users for this lock');
+    if (currentLock.userRole !== 'owner') {
+      Alert.alert('Access Denied', 'Only the lock owner can manage users');
       return;
     }
     navigation.navigate('UserManagementLock', { lockId: currentLock.id, lock: currentLock });
@@ -881,8 +887,8 @@ const LockDetailScreen = ({ navigation, route }) => {
           <AppCard style={styles.actionsCard}>
             <FlatList
               data={[
-                // User Management - only for admin/owner or users with can_manage_users
-                ...(currentLock.userRole === 'admin' || currentLock.userRole === 'owner' || currentLock.can_manage_users
+                // User Management - only for the lock owner
+                ...(currentLock.userRole === 'owner'
                   ? [{ id: 1, icon: 'people-outline', text: 'User Management', onPress: handleUserManagement }]
                   : []),
                 // Passcode - available to owner, admin, family
