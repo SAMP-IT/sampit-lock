@@ -334,7 +334,7 @@ export const addLock = async (req, res) => {
             device_id: effectiveDeviceId,
             // Update TTLock-specific fields
             ttlock_mac: ttlock_mac,
-            ttlock_data: ttlock_data || null,
+            ttlock_data: ttlock_data ? JSON.stringify(ttlock_data) : null,
             ttlock_lock_id: ttlock_lock_id || null,
             ttlock_lock_name: ttlock_lock_name || null,
             is_bluetooth_paired: is_bluetooth_paired || false,
