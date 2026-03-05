@@ -16,7 +16,6 @@ import Theme from '../constants/Theme';
 import AppScreen from '../components/ui/AppScreen';
 import Section from '../components/ui/Section';
 import AppCard from '../components/ui/AppCard';
-import { useRole } from '../context/RoleContext';
 import {
   removeUserFromLock,
   removeUserFromMultipleLocks
@@ -35,7 +34,6 @@ const roleFilters = [
 
 const UserManagementScreen = ({ navigation, route }) => {
   const { lockId, lock, refresh } = route.params || {};
-  const { role: currentUserRole } = useRole();
   const queryClient = useQueryClient();
 
   const [roleFilter, setRoleFilter] = useState('all');
@@ -61,8 +59,9 @@ const UserManagementScreen = ({ navigation, route }) => {
   const usersData = data?.users || [];
   const locksData = data?.locks || [];
   const stats = data?.stats || { total_users: 0, admins: 0, family: 0, owners: 0 };
-  // Only owners can add/remove users - admins and other roles can only view
-  const canManageUsers = currentUserRole === 'owner' && locksData.length > 0;
+  // User can manage if the backend returned any manageable locks
+  // (getAllUsersForAllLocks only returns locks where user is owner or has can_manage_users)
+  const canManageUsers = locksData.length > 0;
   const error = queryError ? 'Failed to load users. Please try again.' : null;
 
   const onRefresh = useCallback(() => {

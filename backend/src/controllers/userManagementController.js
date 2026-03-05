@@ -648,23 +648,40 @@ export const addUserToMultipleLocks = async (req, res) => {
     if (access_valid_from) timeRestrictionFields.access_valid_from = access_valid_from;
     if (access_valid_until) timeRestrictionFields.access_valid_until = access_valid_until;
 
-    // Update existing access (change role)
+    // Update existing access (change role) — but protect lock owners
     if (existingLockIds.length > 0) {
-      const { error: updateError } = await supabase
-        .from('user_locks')
-        .update({
-          role: role || 'family',
-          notes: notes || null,
-          ...permissions,
-          ...timeRestrictionFields
-        })
-        .eq('user_id', targetUserId)
-        .in('lock_id', existingLockIds);
+      // Find locks where the target user is the owner — their role cannot be changed
+      const { data: ownerLocks } = await supabase
+        .from('locks')
+        .select('id')
+        .eq('owner_id', targetUserId)
+        .in('id', existingLockIds);
 
-      if (updateError) {
-        results.failed.push(...existingLockIds);
-      } else {
-        results.updated.push(...existingLockIds);
+      const ownerLockIds = (ownerLocks || []).map(l => l.id);
+      const updatableLockIds = existingLockIds.filter(id => !ownerLockIds.includes(id));
+
+      // Skip owner locks (cannot change owner's role)
+      if (ownerLockIds.length > 0) {
+        results.failed.push(...ownerLockIds);
+      }
+
+      if (updatableLockIds.length > 0) {
+        const { error: updateError } = await supabase
+          .from('user_locks')
+          .update({
+            role: role || 'family',
+            notes: notes || null,
+            ...permissions,
+            ...timeRestrictionFields
+          })
+          .eq('user_id', targetUserId)
+          .in('lock_id', updatableLockIds);
+
+        if (updateError) {
+          results.failed.push(...updatableLockIds);
+        } else {
+          results.updated.push(...updatableLockIds);
+        }
       }
     }
 
@@ -887,6 +904,23 @@ export const updateUserPermissions = async (req, res) => {
   try {
     const { lockId, userId } = req.params;
     const { role, permissions, time_restrictions, is_active } = req.body;
+
+    // Prevent modifying the lock owner's role/permissions
+    const { data: lock } = await supabase
+      .from('locks')
+      .select('owner_id')
+      .eq('id', lockId)
+      .single();
+
+    if (lock && lock.owner_id === userId) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'OWNER_PROTECTED',
+          message: 'Cannot modify the lock owner\'s role or permissions. Transfer ownership first if needed.'
+        }
+      });
+    }
 
     const updates = {};
 

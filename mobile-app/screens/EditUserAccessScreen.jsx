@@ -124,6 +124,9 @@ const EditUserAccessScreen = ({ route, navigation }) => {
   const hasChanges = notes !== originalNotes;
   const [selectedLockIndex, setSelectedLockIndex] = useState(0); // Track selected lock for role display
 
+  // Check if the target user is an owner on any lock (cannot be modified/removed)
+  const isOwnerOnAnyLock = (user.locks || []).some(l => l.role === 'owner') || user.role === 'owner';
+
   // Get user display info
   const userName = user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'User';
   const userInitials = user.initials ||
@@ -329,32 +332,43 @@ const EditUserAccessScreen = ({ route, navigation }) => {
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={[styles.saveButton, (isSaving || !hasChanges) && styles.buttonDisabled]}
-            onPress={handleSaveChanges}
-            disabled={isSaving || isLoading || !hasChanges}
-          >
-            {isSaving ? (
-              <ActivityIndicator color={Colors.textwhite} />
-            ) : (
-              <Text style={styles.saveButtonText}>{hasChanges ? 'Save Changes' : 'No Changes'}</Text>
-            )}
-          </TouchableOpacity>
+          {!isOwnerOnAnyLock && (
+            <TouchableOpacity
+              style={[styles.saveButton, (isSaving || !hasChanges) && styles.buttonDisabled]}
+              onPress={handleSaveChanges}
+              disabled={isSaving || isLoading || !hasChanges}
+            >
+              {isSaving ? (
+                <ActivityIndicator color={Colors.textwhite} />
+              ) : (
+                <Text style={styles.saveButtonText}>{hasChanges ? 'Save Changes' : 'No Changes'}</Text>
+              )}
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity
-            style={[styles.removeButton, isLoading && styles.buttonDisabled]}
-            onPress={handleRemoveUser}
-            disabled={isSaving || isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color={Colors.red} />
-            ) : (
-              <>
-                <Ionicons name="trash-outline" size={20} color={Colors.red} />
-                <Text style={styles.removeButtonText}>Remove User</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          {isOwnerOnAnyLock ? (
+            <View style={styles.ownerProtectedBanner}>
+              <Ionicons name="shield-checkmark" size={20} color="#4CAF50" />
+              <Text style={styles.ownerProtectedText}>
+                Lock owner — role cannot be changed or removed
+              </Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.removeButton, isLoading && styles.buttonDisabled]}
+              onPress={handleRemoveUser}
+              disabled={isSaving || isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color={Colors.red} />
+              ) : (
+                <>
+                  <Ionicons name="trash-outline" size={20} color={Colors.red} />
+                  <Text style={styles.removeButtonText}>Remove User</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={{ height: 40 }} />
@@ -568,6 +582,23 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  ownerProtectedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Theme.spacing.sm,
+    paddingVertical: Theme.spacing.md,
+    paddingHorizontal: Theme.spacing.lg,
+    backgroundColor: '#4CAF5015',
+    borderRadius: Theme.radius.md,
+    borderWidth: 1,
+    borderColor: '#4CAF5030',
+  },
+  ownerProtectedText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#4CAF50',
   },
   emptyContainer: {
     padding: Theme.spacing.xl,

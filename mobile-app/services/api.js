@@ -174,7 +174,8 @@ const getErrorMessage = (error) => {
     if (url.includes('/ttlock/status')) {
       return null; // Suppress - TTLock not connected is normal
     }
-    return 'The requested resource was not found.';
+    // Use the server's specific message if available (e.g., "No AwayKey account found with this email")
+    return serverMessage || 'The requested resource was not found.';
   }
 
   if (status === 401) {
