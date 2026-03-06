@@ -115,9 +115,15 @@ const UserManagementScreen = ({ navigation, route }) => {
       return;
     }
 
+    // Use the user's actual lock data — filter to the selected lock if applicable
     const locksToRemove = lockFilter
-      ? [{ lock_id: lockFilter, lock_name: locksData.find(l => l.id === lockFilter)?.name }]
+      ? (user.locks || []).filter(l => l.lock_id === lockFilter)
       : user.locks;
+
+    if (!locksToRemove || locksToRemove.length === 0) {
+      Alert.alert('Error', 'User does not have access to this lock.');
+      return;
+    }
 
     if (locksToRemove.length === 1) {
       // Single lock removal
@@ -273,7 +279,9 @@ const UserManagementScreen = ({ navigation, route }) => {
               </Text>
             </View>
 
-            {canManageUsers && dominantRole !== 'owner' && (
+            {canManageUsers && dominantRole !== 'owner' &&
+              // When filtering by lock, only show delete if user is actually on that lock
+              (!lockFilter || userLocks.some(l => l.lock_id === lockFilter)) && (
               <TouchableOpacity
                 style={styles.removeButton}
                 onPress={() => handleRemoveUser(user)}
