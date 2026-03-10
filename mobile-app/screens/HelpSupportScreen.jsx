@@ -12,12 +12,6 @@ const HelpSupportScreen = ({ navigation }) => {
     Linking.openURL('mailto:sales@jainsonlocks.com?subject=Awakey App Support Request');
   };
 
-  const handleOpenFAQ = () => {
-    Linking.openURL('https://awaykey.com/faq').catch(() => {
-      Alert.alert('Error', 'Unable to open FAQ page');
-    });
-  };
-
   const handleOpenChat = () => {
     // Open WhatsApp chat with support number (+91 90010 77861)
     Linking.openURL('https://wa.me/919001077861').catch(() => {
@@ -79,9 +73,8 @@ const HelpSupportScreen = ({ navigation }) => {
 
       <Section title="Resources" gapless>
         <AppCard padding="none">
-          {renderMenuItem('book-outline', 'FAQ', 'Frequently asked questions', handleOpenFAQ)}
           {renderMenuItem('videocam-outline', 'Video Tutorials', 'Learn How To Set & use Awakey App', () => Linking.openURL('https://youtu.be/11EPZtXfCCs?si=6vanLD-td1N5LaCH').catch(() => Alert.alert('Error', 'Unable to open video.')))}
-          {renderMenuItem('document-text-outline', 'User Guide', 'Complete documentation', () => Alert.alert('Coming Soon', 'User guide will be available soon.'))}
+          {renderMenuItem('document-text-outline', 'User Guide', 'Complete documentation', () => Linking.openURL('https://awakey.bettermode.io/current-feature-set-dcxpgzts').catch(() => Alert.alert('Error', 'Unable to open page.')))}
         </AppCard>
       </Section>
 
