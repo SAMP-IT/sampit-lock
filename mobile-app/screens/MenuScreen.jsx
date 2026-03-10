@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../constants/Colors';
 import Theme from '../constants/Theme';
 import { useRole } from '../context/RoleContext';
 import { logout } from '../services/api';
 import { useTTLockStatus } from '../hooks/useQueryHooks';
+import { getLogoForLightBlue } from '../utils/logoUtils';
 
 const menuItems = [
   // Main Navigation
@@ -85,7 +86,9 @@ const MenuScreen = ({ navigation }) => {
     <View style={styles.overlay}>
       <View style={styles.drawer}>
         <ScrollView showsVerticalScrollIndicator={false}>
-          <Text style={styles.menuTitle}>Awakey</Text>
+          <View style={styles.logoContainer}>
+            <Image source={getLogoForLightBlue()} style={styles.logo} resizeMode="contain" />
+          </View>
           <Text style={styles.menuSubtitle}>Navigate</Text>
 
           {/* Main Navigation */}
@@ -144,6 +147,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  logoContainer: {
+    marginBottom: Theme.spacing.sm,
+  },
+  logo: {
+    width: 120,
+    height: 50,
   },
   menuTitle: {
     fontSize: 22,

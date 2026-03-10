@@ -9,7 +9,7 @@ import Theme from '../constants/Theme';
 
 const HelpSupportScreen = ({ navigation }) => {
   const handleContactSupport = () => {
-    Linking.openURL('mailto:support@awaykey.com?subject=AwayKey App Support Request');
+    Linking.openURL('mailto:sales@jainsonlocks.com?subject=Awakey App Support Request');
   };
 
   const handleOpenFAQ = () => {
@@ -19,7 +19,10 @@ const HelpSupportScreen = ({ navigation }) => {
   };
 
   const handleOpenChat = () => {
-    Alert.alert('Live Chat', 'Live chat support is available Monday-Friday, 9am-5pm EST.');
+    // Open WhatsApp chat with support number (+91 90010 77861)
+    Linking.openURL('https://wa.me/919001077861').catch(() => {
+      Alert.alert('Error', 'Unable to open WhatsApp. Please ensure WhatsApp is installed.');
+    });
   };
 
   const faqItems = [
@@ -68,16 +71,16 @@ const HelpSupportScreen = ({ navigation }) => {
 
       <Section title="Contact Us" gapless>
         <AppCard padding="none">
-          {renderMenuItem('mail-outline', 'Email Support', 'support@awaykey.com', handleContactSupport)}
-          {renderMenuItem('chatbubble-outline', 'Live Chat', 'Available Mon-Fri, 9am-5pm', handleOpenChat)}
-          {renderMenuItem('call-outline', 'Phone Support', '+1 (555) 123-4567', () => Linking.openURL('tel:+15551234567'))}
+          {renderMenuItem('mail-outline', 'Email Support', 'sales@jainsonlocks.com', handleContactSupport)}
+          {renderMenuItem('chatbubble-outline', 'Live Chat', 'Available Mon-Sat, 10am-7pm', handleOpenChat)}
+          {renderMenuItem('call-outline', 'Phone Support', '1800 270 0274 (toll free)', () => Linking.openURL('tel:18002700274'))}
         </AppCard>
       </Section>
 
       <Section title="Resources" gapless>
         <AppCard padding="none">
           {renderMenuItem('book-outline', 'FAQ', 'Frequently asked questions', handleOpenFAQ)}
-          {renderMenuItem('videocam-outline', 'Video Tutorials', 'Learn how to use AwayKey', () => Alert.alert('Coming Soon', 'Video tutorials will be available soon.'))}
+          {renderMenuItem('videocam-outline', 'Video Tutorials', 'Learn How To Set & use Awakey App', () => Linking.openURL('https://youtu.be/11EPZtXfCCs?si=6vanLD-td1N5LaCH').catch(() => Alert.alert('Error', 'Unable to open video.')))}
           {renderMenuItem('document-text-outline', 'User Guide', 'Complete documentation', () => Alert.alert('Coming Soon', 'User guide will be available soon.'))}
         </AppCard>
       </Section>

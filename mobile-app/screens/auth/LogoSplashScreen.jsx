@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Image, Animated, Dimensions, InteractionManager } from 'react-native';
+import { View, StyleSheet, Image, Animated, Dimensions } from 'react-native';
 import Colors from '../../constants/Colors';
 import { getLogoForLightBlue } from '../../utils/logoUtils';
 
@@ -9,16 +9,18 @@ const LogoSplashScreen = ({ navigation }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const containerOpacity = useRef(new Animated.Value(1)).current;
+  const hasNavigated = useRef(false);
+
+  const navigateToSplash = () => {
+    if (hasNavigated.current) return;
+    hasNavigated.current = true;
+    navigation.replace('Splash');
+  };
 
   useEffect(() => {
-    // Pre-load the next screen to avoid lag
-    const prepareNextScreen = InteractionManager.runAfterInteractions(() => {
-      // This ensures the next screen is ready before navigation
-    });
-
     // Animation sequence: Fade in + Scale up, Hold, Fade out
     const animationSequence = Animated.sequence([
-      // Phase 1: Fade in and scale up (0.7s - faster)
+      // Phase 1: Fade in and scale up
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -32,9 +34,9 @@ const LogoSplashScreen = ({ navigation }) => {
           useNativeDriver: true,
         }),
       ]),
-      // Phase 2: Hold for 1 second (reduced from 1.2s)
+      // Phase 2: Hold
       Animated.delay(1000),
-      // Phase 3: Fade out (0.4s - faster)
+      // Phase 3: Fade out
       Animated.timing(containerOpacity, {
         toValue: 0,
         duration: 400,
@@ -42,26 +44,14 @@ const LogoSplashScreen = ({ navigation }) => {
       }),
     ]);
 
-    // Start the animation
+    const fallbackTimer = setTimeout(() => navigateToSplash(), 2500);
+
     animationSequence.start(() => {
-      // Use InteractionManager to ensure smooth transition
-      InteractionManager.runAfterInteractions(() => {
-        // Navigate to the feature screens splash after animation completes
-        navigation.replace('Splash');
-      });
+      clearTimeout(fallbackTimer);
+      navigateToSplash();
     });
 
-    // Fallback timeout in case animation doesn't complete
-    const fallbackTimer = setTimeout(() => {
-      InteractionManager.runAfterInteractions(() => {
-        navigation.replace('Splash');
-      });
-    }, 2500);
-
-    return () => {
-      clearTimeout(fallbackTimer);
-      prepareNextScreen.cancel();
-    };
+    return () => clearTimeout(fallbackTimer);
   }, [navigation]);
 
   return (

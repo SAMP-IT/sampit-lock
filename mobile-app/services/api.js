@@ -1,8 +1,17 @@
 import axios from 'axios';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import secureStorage from './secureStorage';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, BACKEND_API_URL } from '@env';
 import { getToastManager } from '../context/ToastContext';
+
+// In debug builds on Android: use local backend ONLY if BACKEND_API_URL is already a local URL.
+// If BACKEND_API_URL is production (https), use it so login works without running backend locally.
+// Emulator: 10.0.2.2. Physical device: set BACKEND_API_URL in .env to your PC IP (e.g. http://192.168.1.100:3009/api)
+const isLocalUrl = (url) => url && /localhost|10\.0\.2\.2|192\.168\.|^10\.\d+\./.test(url);
+const DEBUG_LOCAL_API = __DEV__ && Platform.OS === 'android' && isLocalUrl(BACKEND_API_URL)
+  ? BACKEND_API_URL
+  : null;
 
 const API_URL = `${SUPABASE_URL}/rest/v1`;
 
@@ -30,12 +39,14 @@ const getBackendApiUrl = async () => {
   } catch (error) {
     console.warn('Failed to check dev mode:', error);
   }
+  // Debug build on Android: use local server so debug APK works with local backend (emulator: 10.0.2.2; physical device: use Dev Mode in Settings to set your PC IP)
+  if (DEBUG_LOCAL_API) return DEBUG_LOCAL_API;
   // Production URL from environment or default
   return BACKEND_API_URL || 'https://awakey-project.onrender.com/api';
 };
 
 // Initialize with default URL, will be updated when dev mode is checked
-const defaultBackendApiUrl = BACKEND_API_URL || 'https://awakey-project.onrender.com/api';
+const defaultBackendApiUrl = DEBUG_LOCAL_API || BACKEND_API_URL || 'https://awakey-project.onrender.com/api';
 
 // Backend API client (for custom endpoints - primary API for auth and all features)
 const backendApi = axios.create({
