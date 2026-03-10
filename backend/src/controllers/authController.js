@@ -889,14 +889,38 @@ export const deleteAccount = async (req, res) => {
       }
     }
 
-    // Delete all user data in a single atomic transaction via RPC
-    // This ensures all-or-nothing: locks, user_locks, activity_logs, guest_codes,
-    // guest_access, notifications, access_codes, invite_codes, and the user record
-    const { data: deleteResult, error: rpcError } = await supabase
-      .rpc('delete_user_account', { p_user_id: userId });
+    // Delete all user data using cascaded deletes.
+    // The DB schema has ON DELETE CASCADE on all child tables:
+    //   users -> locks (owner_id CASCADE) -> lock_settings, user_locks, activity_logs,
+    //            access_codes, invites, notifications, guest_access (all CASCADE from locks)
+    //   users -> user_locks (user_id CASCADE)
+    //   users -> notifications (user_id CASCADE)
+    // So deleting from `users` cleans up everything automatically.
 
-    if (rpcError) {
-      logger.error('[AUTH] Transactional account deletion failed:', { error: rpcError.message, userId });
+    // Step 1: Remove user from any locks they were shared on (but don't own)
+    const { error: userLocksError } = await supabase
+      .from('user_locks')
+      .delete()
+      .eq('user_id', userId);
+
+    if (userLocksError) {
+      logger.error('[AUTH] Failed to delete user_locks:', { error: userLocksError.message, userId });
+      // Non-fatal - cascade will handle it
+    }
+
+    // Step 2: Delete the user record - cascades to owned locks and all related data
+    const { error: userDeleteError } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', userId);
+
+    if (userDeleteError) {
+      logger.error('[AUTH] Failed to delete user record:', {
+        error: userDeleteError.message,
+        code: userDeleteError.code,
+        details: userDeleteError.details,
+        userId
+      });
       return res.status(500).json({
         success: false,
         error: {
@@ -906,7 +930,7 @@ export const deleteAccount = async (req, res) => {
       });
     }
 
-    logger.info('[AUTH] User data deleted via transaction:', { userId, result: deleteResult });
+    logger.info('[AUTH] User data deleted successfully via cascade:', { userId });
 
     // Audit trail: log account deletion BEFORE removing auth user
     // (do this before auth deletion so the row exists in the DB)

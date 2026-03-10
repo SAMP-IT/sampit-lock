@@ -216,6 +216,14 @@ export const updateLockSettings = async (req, res) => {
       .single();
 
     if (error) {
+      console.error('[LockSettings] Supabase update error:', {
+        lockId,
+        updates,
+        error: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
       return res.status(500).json({
         success: false,
         error: {
