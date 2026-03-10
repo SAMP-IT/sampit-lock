@@ -178,6 +178,15 @@ const EditUserAccessScreen = ({ route, navigation }) => {
   };
 
   const handleRemoveUser = () => {
+    // lockId may be null when navigated from "All Locks" view (no lock filter active).
+    // In that case, fall back to the user's first lock.
+    const effectiveLockId = lockId || (user.locks && user.locks.length > 0 ? user.locks[0].lock_id : null);
+
+    if (!effectiveLockId) {
+      Alert.alert('Error', 'Could not determine which lock to remove this user from. Please try from a specific lock.');
+      return;
+    }
+
     Alert.alert(
       'Remove User',
       `Are you sure you want to remove ${user.name} from this lock?\n\nThis will revoke their access immediately.`,
@@ -189,7 +198,7 @@ const EditUserAccessScreen = ({ route, navigation }) => {
           onPress: async () => {
             setIsLoading(true);
             try {
-              await removeUserFromLock(lockId, user.id);
+              await removeUserFromLock(effectiveLockId, user.id);
               Alert.alert(
                 'User Removed',
                 `${user.name} has been removed from the lock.`,

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clearLockDataCache } from '../screens/LockDetailScreen';
 import secureStorage from '../services/secureStorage';
 import { validateAuthToken } from '../services/api';
 
@@ -130,9 +131,12 @@ export const RoleProvider = ({ children }) => {
       // Clear tokens from secure storage, user data from AsyncStorage
       await secureStorage.multiRemove(['authToken', 'refreshToken', 'ttlock_access_token', 'ttlock_refresh_token']);
       await AsyncStorage.multiRemove(['user', 'userRole']);
+      // Clear lock data cache so stale data doesn't persist across account switches
+      clearLockDataCache();
       setRole(null);
     } catch (error) {
       console.error('Error during logout:', error);
+      clearLockDataCache();
       setRole(null);
     }
   };

@@ -479,9 +479,20 @@ export const schemas = {
     auto_lock_delay: Joi.number().integer().min(0).max(3600).optional(),
     passage_mode: Joi.boolean().optional(),
     sound_enabled: Joi.boolean().optional(),
+    sound_volume: Joi.number().integer().min(0).max(100).optional(),
     led_enabled: Joi.boolean().optional(),
     security_mode: Joi.boolean().optional(),
-    one_touch_lock: Joi.boolean().optional()
+    one_touch_lock: Joi.boolean().optional(),
+    one_touch_locking: Joi.boolean().optional(),
+    reset_button_enabled: Joi.boolean().optional(),
+    tamper_alert: Joi.boolean().optional(),
+    wrong_code_lockout: Joi.number().integer().min(0).max(10).optional(),
+    anti_peep_password: Joi.boolean().optional(),
+    privacy_lock: Joi.boolean().optional(),
+    remote_unlock_enabled: Joi.boolean().optional(),
+    passage_mode_enabled: Joi.boolean().optional(),
+    passage_mode_start: Joi.string().allow(null).optional(),
+    passage_mode_end: Joi.string().allow(null).optional()
   }),
 
   autoLockSetting: Joi.object({

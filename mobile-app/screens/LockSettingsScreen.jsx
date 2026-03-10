@@ -291,6 +291,10 @@ const LockSettingsScreen = ({ navigation, route }) => {
   // AUTO LOCK - Works via Bluetooth (when near) or Gateway (remote)
   // =====================================================
   const handleAutoLockToggle = async () => {
+    if (!isAdminOrOwner) {
+      Alert.alert('Permission Denied', 'Only lock owners and administrators can change lock settings.');
+      return;
+    }
     const newEnabled = !coerceBoolean(settings.autoLockEnabled);
     const originalSettings = settings;
 
@@ -433,6 +437,10 @@ const LockSettingsScreen = ({ navigation, route }) => {
   // PASSAGE MODE - Works via Bluetooth (when near) or Gateway (remote)
   // =====================================================
   const handlePassageModeToggle = async () => {
+    if (!isAdminOrOwner) {
+      Alert.alert('Permission Denied', 'Only lock owners and administrators can change lock settings.');
+      return;
+    }
     const newEnabled = !coerceBoolean(settings.passageModeEnabled);
 
     if (newEnabled) {
@@ -622,6 +630,10 @@ const LockSettingsScreen = ({ navigation, route }) => {
   // RESET BUTTON - Works via Bluetooth ONLY
   // =====================================================
   const handleResetButtonToggle = async () => {
+    if (!isAdminOrOwner) {
+      Alert.alert('Permission Denied', 'Only lock owners and administrators can change lock settings.');
+      return;
+    }
     const lockData = await checkBluetoothAndGetLockData();
     if (!lockData) return;
 
@@ -674,6 +686,10 @@ const LockSettingsScreen = ({ navigation, route }) => {
   // TAMPER ALERT - Works via Bluetooth ONLY
   // =====================================================
   const handleTamperAlertToggle = async () => {
+    if (!isAdminOrOwner) {
+      Alert.alert('Permission Denied', 'Only lock owners and administrators can change lock settings.');
+      return;
+    }
     const lockData = await checkBluetoothAndGetLockData();
     if (!lockData) return;
 

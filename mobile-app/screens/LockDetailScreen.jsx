@@ -18,6 +18,13 @@ import { useLockDetail, useLocks, useLockActivity } from '../hooks/useQueryHooks
 // Module-level cache for lock data to enable instant display on re-navigation
 const lockDataCache = new Map();
 
+// Export a function to clear the cache on logout so stale data
+// doesn't persist across account switches
+export const clearLockDataCache = () => {
+  lockDataCache.clear();
+  console.log('[LockDetailScreen] Cache cleared');
+};
+
 const LockSwitcher = ({ currentLock, locks, onLockChange }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -429,6 +436,36 @@ const LockDetailScreen = ({ navigation, route }) => {
   // Handle UNLOCK action
   const handleUnlock = async () => {
     if (!currentLock) return;
+
+    // Enforce time restrictions BEFORE attempting Bluetooth (Bluetooth bypasses the API check)
+    if (currentLock.time_restricted || currentLock.userRole === 'scheduled') {
+      const now = new Date();
+      const currentDay = now.getDay();
+      const currentHours = now.getHours();
+      const currentMinutes = now.getMinutes();
+      const currentTime = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`;
+
+      const allowedDays = currentLock.days_of_week || [0, 1, 2, 3, 4, 5, 6];
+      if (allowedDays.length > 0 && !allowedDays.includes(currentDay)) {
+        Alert.alert('Access Restricted', 'You do not have access on this day.');
+        return;
+      }
+
+      if (currentLock.time_restriction_start && currentLock.time_restriction_end) {
+        const startTime = currentLock.time_restriction_start.slice(0, 5);
+        const endTime = currentLock.time_restriction_end.slice(0, 5);
+        if (currentTime < startTime || currentTime > endTime) {
+          Alert.alert('Access Restricted', `You can only unlock between ${startTime} and ${endTime}.`);
+          return;
+        }
+      }
+    }
+
+    // Check access_valid_until expiry
+    if (currentLock.access_valid_until && new Date(currentLock.access_valid_until) < new Date()) {
+      Alert.alert('Access Expired', 'Your access to this lock has expired.');
+      return;
+    }
 
     try {
       setIsUnlocking(true);
