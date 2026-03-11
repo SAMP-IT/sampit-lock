@@ -139,77 +139,301 @@ const ConsumerNavigator = () => (
     />
 
     {/* New elder-friendly screens */}
-    <Stack.Screen name="MinimalHome" component={MinimalHomeScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="Help" component={HelpScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="Glossary" component={GlossaryScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="SimpleModeSettings" component={SimpleModeSettingsScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="TrustedContacts" component={TrustedContactsScreen} options={{ headerShown: false }} />
+    <Stack.Screen
+      name="MinimalHome"
+      component={MinimalHomeScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="Help"
+      component={HelpScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="Glossary"
+      component={GlossaryScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="SimpleModeSettings"
+      component={SimpleModeSettingsScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="TrustedContacts"
+      component={TrustedContactsScreen}
+      options={{ headerShown: false }}
+    />
 
     {/* Emergency and optional screens */}
-    <Stack.Screen name="EmergencyNotification" component={EmergencyNotificationScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="PersonalizeApp" component={PersonalizeAppScreen} options={{ headerShown: false }} />
+    <Stack.Screen
+      name="EmergencyNotification"
+      component={EmergencyNotificationScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="PersonalizeApp"
+      component={PersonalizeAppScreen}
+      options={{ headerShown: false }}
+    />
 
     {/* Add Lock Wizard steps */}
-    <Stack.Screen name="PairLock" component={PairLockScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="NameDoor" component={NameDoorScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="SafetyBackup" component={SafetyBackupScreen} options={{ headerShown: false }} />
+    <Stack.Screen
+      name="PairLock"
+      component={PairLockScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="NameDoor"
+      component={NameDoorScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="SafetyBackup"
+      component={SafetyBackupScreen}
+      options={{ headerShown: false }}
+    />
 
     {/* Existing screens */}
-    <Stack.Screen name="LockDetail" component={LockDetailScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="ActivityList" component={ActivityListScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="LiveView" component={LiveViewScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="SendCode" component={SendCodeScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="AccessLogs" component={AccessLogsScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="GuestOtp" component={GuestOTPScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="AddLockWizard" component={AddLockWizardScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="AddLockConfirmation" component={AddLockConfirmationScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="DeviceDiagnostics" component={DeviceDiagnosticsScreen} options={{ headerShown: false }} />
+    <Stack.Screen
+      name="LockDetail"
+      component={LockDetailScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="Notifications"
+      component={NotificationsScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="ActivityList"
+      component={ActivityListScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="LiveView"
+      component={LiveViewScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="SendCode"
+      component={SendCodeScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="AccessLogs"
+      component={AccessLogsScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="GuestOtp"
+      component={GuestOTPScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="AddLockWizard"
+      component={AddLockWizardScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="AddLockConfirmation"
+      component={AddLockConfirmationScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="DeviceDiagnostics"
+      component={DeviceDiagnosticsScreen}
+      options={{ headerShown: false }}
+    />
     <Stack.Screen
       name="DeviceDiagnosticsSummary"
       component={DeviceDiagnosticsSummaryScreen}
       options={{ headerShown: false }}
     />
-    <Stack.Screen name="AddUser" component={AddUserScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="UserHistory" component={UserHistoryScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="EditUserAccess" component={EditUserAccessScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="LockSettings" component={LockSettingsScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="ConnectTTLock" component={ConnectTTLockScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="AddLockMethod" component={AddLockMethodScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="TTLockCloudLogin" component={TTLockCloudLoginScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="BluetoothLockPairing" component={BluetoothLockPairingScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="UserManagementLock" component={UserManagementScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="AccessMethodsManagement" component={AccessMethodsManagementScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="InviteManagement" component={InviteManagementScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="ActivityStats" component={ActivityStatsScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="SecurityDashboard" component={SecurityDashboardScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="DebugLogs" component={DebugLogsScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="LockSoundSettings" component={LockSoundSettingsScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="EmergencyUnlock" component={EmergencyUnlockScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="GuestAccessHistory" component={GuestAccessHistoryScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="UserActivityHistory" component={UserActivityHistoryScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="LockPairing" component={LockPairingScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="FingerprintManagement" component={FingerprintManagementScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="CardManagement" component={CardManagementScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="OfflinePasscode" component={OfflinePasscodeScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="FactoryReset" component={FactoryResetScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="RecoveryKeys" component={RecoveryKeysScreen} options={{ headerShown: false }} />
+    <Stack.Screen
+      name="AddUser"
+      component={AddUserScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="UserHistory"
+      component={UserHistoryScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="EditUserAccess"
+      component={EditUserAccessScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="LockSettings"
+      component={LockSettingsScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="ConnectTTLock"
+      component={ConnectTTLockScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="AddLockMethod"
+      component={AddLockMethodScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="TTLockCloudLogin"
+      component={TTLockCloudLoginScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="BluetoothLockPairing"
+      component={BluetoothLockPairingScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="UserManagementLock"
+      component={UserManagementScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="Profile"
+      component={ProfileScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="NotificationPreferences"
+      component={NotificationPreferencesScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="AccessMethodsManagement"
+      component={AccessMethodsManagementScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="InviteManagement"
+      component={InviteManagementScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="ActivityStats"
+      component={ActivityStatsScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="SecurityDashboard"
+      component={SecurityDashboardScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="DebugLogs"
+      component={DebugLogsScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="LockSoundSettings"
+      component={LockSoundSettingsScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="EmergencyUnlock"
+      component={EmergencyUnlockScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="GuestAccessHistory"
+      component={GuestAccessHistoryScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="UserActivityHistory"
+      component={UserActivityHistoryScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="LockPairing"
+      component={LockPairingScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="FingerprintManagement"
+      component={FingerprintManagementScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="CardManagement"
+      component={CardManagementScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="OfflinePasscode"
+      component={OfflinePasscodeScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="FactoryReset"
+      component={FactoryResetScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="RecoveryKeys"
+      component={RecoveryKeysScreen}
+      options={{ headerShown: false }}
+    />
 
     {/* Settings Sub-screens */}
-    <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="AppearanceSettings" component={AppearanceSettingsScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="SecuritySettings" component={SecuritySettingsScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="HelpSupport" component={HelpSupportScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="About" component={AboutScreen} options={{ headerShown: false }} />
+    <Stack.Screen
+      name="NotificationSettings"
+      component={NotificationSettingsScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="AppearanceSettings"
+      component={AppearanceSettingsScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="SecuritySettings"
+      component={SecuritySettingsScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="HelpSupport"
+      component={HelpSupportScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="About"
+      component={AboutScreen}
+      options={{ headerShown: false }}
+    />
 
     {/* AI Features */}
-    <Stack.Screen name="AIInsights" component={AIInsightsScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="ChatAssistant" component={ChatAssistantScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="SmartRules" component={SmartRulesScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="HomeMode" component={HomeModeScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="BatteryPrediction" component={BatteryPredictionScreen} options={{ headerShown: false }} />
+    <Stack.Screen
+      name="AIInsights"
+      component={AIInsightsScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="ChatAssistant"
+      component={ChatAssistantScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="SmartRules"
+      component={SmartRulesScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="HomeMode"
+      component={HomeModeScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="BatteryPrediction"
+      component={BatteryPredictionScreen}
+      options={{ headerShown: false }}
+    />
 
     <Stack.Screen
       name="Menu"
@@ -232,7 +456,7 @@ const ConsumerNavigator = () => (
           };
         },
         gestureEnabled: true,
-        gestureDirection: "horizontal-inverted"
+        gestureDirection: "horizontal-inverted",
       }}
     />
   </Stack.Navigator>
