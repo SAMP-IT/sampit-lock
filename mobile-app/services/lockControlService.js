@@ -538,7 +538,7 @@ class LockControlService {
       // Get battery level after unlock
       let batteryLevel = null;
       try {
-        const status = await TTLockService.getLockStatus(lockMac);
+        const status = await TTLockService.getLockStatus(encryptedLockData);
         batteryLevel = status?.batteryLevel;
         console.log(`🔋 Battery level after unlock: ${batteryLevel}%`);
       } catch (statusError) {
@@ -651,7 +651,7 @@ class LockControlService {
       // Get battery level after lock
       let batteryLevel = null;
       try {
-        const status = await TTLockService.getLockStatus(lockMac);
+        const status = await TTLockService.getLockStatus(encryptedLockData);
         batteryLevel = status?.batteryLevel;
         console.log(`🔋 Battery level after lock: ${batteryLevel}%`);
       } catch (statusError) {

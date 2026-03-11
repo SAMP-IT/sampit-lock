@@ -915,8 +915,8 @@ const LockDetailScreen = ({ navigation, route }) => {
         </Section>
       ))}
 
-      {/* Quick Actions - Hidden for guest, scheduled, and guest_longterm roles */}
-      {!['guest', 'guest_otp', 'scheduled', 'guest_longterm'].includes(currentLock.userRole) && (
+      {/* Quick Actions - Hidden for guest roles only */}
+      {!['guest', 'guest_otp'].includes(currentLock.userRole) && (
         <Section
           title="Quick Actions"
           subtitle="Manage access and settings"
@@ -928,12 +928,16 @@ const LockDetailScreen = ({ navigation, route }) => {
                 ...(currentLock.userRole === 'owner'
                   ? [{ id: 1, icon: 'people-outline', text: 'User Management', onPress: handleUserManagement }]
                   : []),
-                // Passcode - available to owner, admin, family
-                { id: 2, icon: 'keypad-outline', text: 'Passcode', onPress: () => navigation.navigate('SendCode', { lockId: currentLock.id, lock: currentLock }) },
-                // Fingerprints - available to owner, admin, family
+                // Passcode - only owner and admin can create passcodes
+                ...(currentLock.userRole === 'owner' || currentLock.userRole === 'admin'
+                  ? [{ id: 2, icon: 'keypad-outline', text: 'Passcode', onPress: () => navigation.navigate('SendCode', { lockId: currentLock.id, lock: currentLock }) }]
+                  : []),
+                // Fingerprints - available to all non-guest roles (own fingerprints only for family/resident/scheduled/guest_longterm)
                 { id: 3, icon: 'finger-print-outline', text: 'Fingerprints', onPress: () => navigation.navigate('FingerprintManagement', { lockId: currentLock.id, lock: currentLock }) },
-                // IC Cards - available to owner, admin, family
-                { id: 4, icon: 'card-outline', text: 'IC Cards', onPress: () => navigation.navigate('CardManagement', { lockId: currentLock.id, lock: currentLock }) },
+                // IC Cards - available to owner, admin, family, resident
+                ...(!['scheduled', 'guest_longterm'].includes(currentLock.userRole)
+                  ? [{ id: 4, icon: 'card-outline', text: 'IC Cards', onPress: () => navigation.navigate('CardManagement', { lockId: currentLock.id, lock: currentLock }) }]
+                  : []),
                 // Settings - only for admin/owner or users with can_modify_settings
                 ...(currentLock.userRole === 'admin' || currentLock.userRole === 'owner' || currentLock.can_modify_settings
                   ? [{ id: 5, icon: 'settings-outline', text: 'Settings', onPress: handleSettings }]

@@ -88,21 +88,7 @@ const ConsumerTabs = () => (
           iconName = "group";
           color = focused ? Colors.iconbackground : Colors.subtitlecolor;
         } else if (route.name === "Devices") {
-          return (
-            <View
-              style={{
-                backgroundColor: Colors.iconbackground,
-                borderRadius: 25,
-                width: 50,
-                height: 50,
-                justifyContent: "center",
-                alignItems: "center",
-                marginBottom: 20,
-              }}
-            >
-              <Ionicons name="add" size={28} color="white" />
-            </View>
-          );
+          iconName = focused ? "hardware-chip" : "hardware-chip-outline";
         } else if (route.name === "History") {
           iconName = focused ? "time" : "time-outline";
         } else if (route.name === "Settings") {
@@ -137,7 +123,7 @@ const ConsumerTabs = () => (
     <Tab.Screen
       name="Devices"
       component={DevicesScreen}
-      options={{ tabBarLabel: () => null }}
+      options={{ tabBarLabel: "Devices" }}
     />
     <Tab.Screen name="History" component={HistoryScreen} />
     <Tab.Screen name="Settings" component={SettingsScreen} />

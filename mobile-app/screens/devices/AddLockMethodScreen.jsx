@@ -58,9 +58,6 @@ const AddLockMethodScreen = ({ navigation }) => {
     navigation.navigate('BluetoothLockPairing');
   };
 
-  const handleCloudLogin = () => {
-    navigation.navigate('TTLockCloudLogin');
-  };
 
   return (
     <View style={styles.container}>
@@ -143,50 +140,7 @@ const AddLockMethodScreen = ({ navigation }) => {
           <Ionicons name="chevron-forward" size={24} color={Colors.subtitlecolor} />
         </TouchableOpacity>
 
-        {/* Option 2: Cloud Login */}
-        <TouchableOpacity
-          style={styles.optionCard}
-          onPress={handleCloudLogin}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.iconCircle, { backgroundColor: '#007AFF15' }]}>
-            <Ionicons name="cloud" size={32} color="#007AFF" />
-          </View>
 
-          <View style={styles.optionContent}>
-            <Text style={styles.optionTitle}>Connect Cloud</Text>
-            <Text style={styles.optionDescription}>
-              Sync locks from your cloud account
-            </Text>
-
-            <View style={styles.featuresList}>
-              <View style={styles.featureItem}>
-                <Ionicons name="checkmark-circle-outline" size={16} color="#34C759" />
-                <Text style={styles.featureText}>Remote control (anywhere)</Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Ionicons name="checkmark-circle-outline" size={16} color="#34C759" />
-                <Text style={styles.featureText}>Auto-sync existing locks</Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Ionicons name="checkmark-circle-outline" size={16} color="#34C759" />
-                <Text style={styles.featureText}>Bluetooth fallback</Text>
-              </View>
-            </View>
-
-            <View style={styles.requiresContainer}>
-              <Ionicons name="information-circle-outline" size={16} color="#FF9500" />
-              <Text style={styles.requiresText}>Requires Gateway for remote control</Text>
-            </View>
-
-            <View style={styles.bestForContainer}>
-              <Text style={styles.bestForLabel}>Best for:</Text>
-              <Text style={styles.bestForText}>Existing users, remote control</Text>
-            </View>
-          </View>
-
-          <Ionicons name="chevron-forward" size={24} color={Colors.subtitlecolor} />
-        </TouchableOpacity>
 
         {/* Info Box */}
         <View style={styles.infoBox}>

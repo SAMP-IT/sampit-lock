@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -32,7 +33,25 @@ const MIN_OPERATION_INTERVAL = 3000; // Minimum 3 seconds between operations
 const FingerprintManagementScreen = ({ route, navigation }) => {
   const { lock } = route.params;
   const queryClient = useQueryClient();
-  const { data: fingerprints = [], isLoading: loading, refetch: refetchFingerprints } = useFingerprints(lock.id);
+  const { data: fingerprintsRaw = [], isLoading: loading, refetch: refetchFingerprints } = useFingerprints(lock.id);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const userRole = lock.userRole || 'owner';
+  const isAdminOrOwner = userRole === 'owner' || userRole === 'admin';
+
+  // Load current user ID on mount
+  useEffect(() => {
+    AsyncStorage.getItem('user').then(stored => {
+      if (stored) {
+        try { setCurrentUserId(JSON.parse(stored).id); } catch (_) {}
+      }
+    });
+  }, []);
+
+  // Non-admin/owner roles only see their own fingerprints
+  const fingerprints = isAdminOrOwner
+    ? fingerprintsRaw
+    : fingerprintsRaw.filter(fp => fp.user_id === currentUserId);
+
   const [adding, setAdding] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newFingerprintName, setNewFingerprintName] = useState('');
@@ -475,12 +494,14 @@ const FingerprintManagementScreen = ({ route, navigation }) => {
           </Text>
         )}
       </View>
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => handleDeleteFingerprint(item)}
-      >
-        <Ionicons name="trash-outline" size={24} color={Colors.error} />
-      </TouchableOpacity>
+      {(isAdminOrOwner || item.user_id === currentUserId) && (
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleDeleteFingerprint(item)}
+        >
+          <Ionicons name="trash-outline" size={24} color={Colors.error} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 
