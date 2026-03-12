@@ -14,3 +14,7 @@ local.properties
 
 # Bundle artifacts
 *.jsbundle
+
+
+# React settings plugin build output
+react-settings-plugin/bin/
