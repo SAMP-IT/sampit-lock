@@ -1,6 +1,6 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
-import { checkLockAccess } from '../middleware/lockAccess.js';
+import { checkLockAccess, requirePermission } from '../middleware/rbac.js';
 import {
   getFingerprints,
   addFingerprint,
@@ -27,7 +27,8 @@ router.use(authenticateToken);
 router.get(
   '/locks/:lockId/fingerprints',
   validateParams(params.lockId),
-  checkLockAccess('can_view_logs'),
+  checkLockAccess,
+  requirePermission('view_logs'),
   asyncHandler(getFingerprints)
 );
 
@@ -35,7 +36,8 @@ router.get(
 router.post(
   '/locks/:lockId/fingerprints',
   validateParams(params.lockId),
-  checkLockAccess('can_modify_settings'),
+  checkLockAccess,
+  requirePermission('modify_settings'),
   validate(schemas.addFingerprint),
   asyncHandler(addFingerprint)
 );
@@ -44,7 +46,8 @@ router.post(
 router.patch(
   '/locks/:lockId/fingerprints/:fingerprintId',
   validateParams(params.fingerprintId),
-  checkLockAccess('can_modify_settings'),
+  checkLockAccess,
+  requirePermission('modify_settings'),
   validate(schemas.updateFingerprint),
   asyncHandler(updateFingerprint)
 );
@@ -53,7 +56,8 @@ router.patch(
 router.delete(
   '/locks/:lockId/fingerprints/:fingerprintId',
   validateParams(params.fingerprintId),
-  checkLockAccess('can_modify_settings'),
+  checkLockAccess,
+  requirePermission('modify_settings'),
   asyncHandler(deleteFingerprint)
 );
 
@@ -65,7 +69,8 @@ router.delete(
 router.get(
   '/locks/:lockId/cards',
   validateParams(params.lockId),
-  checkLockAccess('can_view_logs'),
+  checkLockAccess,
+  requirePermission('view_logs'),
   asyncHandler(getCards)
 );
 
@@ -73,7 +78,8 @@ router.get(
 router.post(
   '/locks/:lockId/cards',
   validateParams(params.lockId),
-  checkLockAccess('can_modify_settings'),
+  checkLockAccess,
+  requirePermission('modify_settings'),
   validate(schemas.addICCard),
   asyncHandler(addCard)
 );
@@ -82,7 +88,8 @@ router.post(
 router.patch(
   '/locks/:lockId/cards/:cardId',
   validateParams(params.cardId),
-  checkLockAccess('can_modify_settings'),
+  checkLockAccess,
+  requirePermission('modify_settings'),
   validate(schemas.updateICCard),
   asyncHandler(updateCard)
 );
@@ -91,7 +98,8 @@ router.patch(
 router.delete(
   '/locks/:lockId/cards/:cardId',
   validateParams(params.cardId),
-  checkLockAccess('can_modify_settings'),
+  checkLockAccess,
+  requirePermission('modify_settings'),
   asyncHandler(deleteCard)
 );
 

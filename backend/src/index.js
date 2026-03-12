@@ -148,45 +148,18 @@ app.get('/api', (req, res) => {
 
 // Health check endpoint with comprehensive system status
 app.get('/health', async (req, res) => {
+  // Minimal public health check — no config or stack details exposed
   const healthStatus = {
     success: true,
     status: 'healthy',
-    message: 'Awakey Smart Lock API is running',
     timestamp: new Date().toISOString(),
-    version: '1.0.0',
-    environment: process.env.NODE_ENV || 'development',
-    uptime: process.uptime(),
-    memory: {
-      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
-      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
-      unit: 'MB'
-    },
-    services: {
-      database: 'unknown',
-      ttlock_crypto: !!process.env.TTLOCK_ENCRYPTION_KEY,
-      openai: !!process.env.OPENAI_API_KEY,
-      supabase: !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
-    },
-    ai_features: {
-      background_worker: 'running',
-      natural_language_logs: !!process.env.OPENAI_API_KEY,
-      chat_assistant: !!process.env.OPENAI_API_KEY,
-      smart_insights: true,
-      risk_scores: true,
-      predictive_battery: true,
-      fraud_detection: true,
-      auto_rules: true,
-      smart_scheduling: true
-    }
   };
 
   // Test database connection
   try {
-    const { data, error } = await supabase.from('locks').select('id').limit(1);
+    const { error } = await supabase.from('locks').select('id').limit(1);
     if (error) throw error;
-    healthStatus.services.database = 'connected';
   } catch (error) {
-    healthStatus.services.database = 'error';
     healthStatus.status = 'degraded';
     healthStatus.success = false;
   }

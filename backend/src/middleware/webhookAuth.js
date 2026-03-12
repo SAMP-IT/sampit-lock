@@ -37,8 +37,16 @@ const MAX_EVENT_AGE_MS = 5 * 60 * 1000;
  * For non-TTLock callers, prefer X-Webhook-Token header.
  */
 const verifyWebhookToken = (req, res, next) => {
-  // If no secret is configured, log a warning and allow through (graceful degradation for dev)
+  // In production, a missing secret is a misconfiguration — reject all requests
   if (!WEBHOOK_SECRET) {
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('[WEBHOOK-AUTH] TTLOCK_WEBHOOK_SECRET is not set in production — rejecting all webhook requests.');
+      return res.status(403).json({
+        success: false,
+        error: 'Webhook authentication is not configured'
+      });
+    }
+    // In development/test, warn and allow through for easier local testing
     logger.warn('[WEBHOOK-AUTH] TTLOCK_WEBHOOK_SECRET is not set — webhook authentication is DISABLED. Set it in .env for production.');
     return next();
   }

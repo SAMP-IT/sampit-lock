@@ -572,8 +572,39 @@ export const resetPassword = async (req, res) => {
   try {
     const { reset_token, new_password } = req.body;
 
-    // Update password
-    const { data, error } = await supabase.auth.updateUser({
+    if (!reset_token) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'MISSING_TOKEN',
+          message: 'Reset token is required'
+        }
+      });
+    }
+
+    // Exchange the recovery token for a session, then update the password
+    // using that session — this is the only correct way to honour the token
+    const { data: sessionData, error: sessionError } = await supabaseAnon.auth.exchangeCodeForSession(reset_token);
+
+    if (sessionError || !sessionData?.session) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_TOKEN',
+          message: 'Reset token is invalid or has expired'
+        }
+      });
+    }
+
+    // Create a client scoped to this session so updateUser acts on the right user
+    const { createClient } = await import('@supabase/supabase-js');
+    const sessionClient = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_ANON_KEY,
+      { global: { headers: { Authorization: `Bearer ${sessionData.session.access_token}` } } }
+    );
+
+    const { data, error } = await sessionClient.auth.updateUser({
       password: new_password
     });
 
@@ -682,7 +713,15 @@ export const getCurrentUser = async (req, res) => {
   try {
     // User is already attached by auth middleware
     const user = { ...req.user };
-    delete user.password_hash;
+
+    // Strip all sensitive fields before returning
+    const SENSITIVE_FIELDS = [
+      'password_hash',
+      'ttlock_access_token',
+      'ttlock_refresh_token',
+      'ttlock_token_expires_at',
+    ];
+    SENSITIVE_FIELDS.forEach(field => delete user[field]);
 
     res.json({
       success: true,
