@@ -94,11 +94,19 @@ const PairLockScreen = ({ navigation }) => {
     if (Platform.OS === 'android') {
       try {
         console.log('[PairLock] Requesting Bluetooth permissions...');
-        const permissions = [
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        ];
+
+        const androidVersion = Platform.Version;
+
+        // Android 12+ (API 31+): request new Bluetooth permissions + fine location
+        // Android 11 and below: only request fine location for BLE
+        const permissions =
+          androidVersion >= 31
+            ? [
+                PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+                PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+                PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+              ]
+            : [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION];
 
         const granted = await PermissionsAndroid.requestMultiple(permissions);
         const allGranted = Object.values(granted).every(
