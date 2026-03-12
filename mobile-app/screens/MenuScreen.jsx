@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   Alert,
   ScrollView,
   Image,
+  Animated,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
@@ -15,6 +17,9 @@ import { useRole } from "../context/RoleContext";
 import { logout } from "../services/api";
 import { useTTLockStatus } from "../hooks/useQueryHooks";
 import { getLogoForLightBlue } from "../utils/logoUtils";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const DRAWER_WIDTH = SCREEN_WIDTH * 0.7;
 
 const menuItems = [
   // Main Navigation
@@ -64,6 +69,16 @@ const menuItems = [
 const MenuScreen = ({ navigation }) => {
   const { setRole } = useRole();
   const { data: ttlockStatus = null } = useTTLockStatus();
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 11,
+    }).start();
+  }, [slideAnim]);
 
   const handleLogout = async () => {
     await logout();
@@ -125,9 +140,16 @@ const MenuScreen = ({ navigation }) => {
     }, 100);
   };
 
+  const drawerTranslateX = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-DRAWER_WIDTH, 0],
+  });
+
   return (
     <View style={styles.overlay}>
-      <View style={styles.drawer}>
+      <Animated.View
+        style={[styles.drawer, { transform: [{ translateX: drawerTranslateX }] }]}
+      >
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.logoContainer}>
             <Image
@@ -136,8 +158,6 @@ const MenuScreen = ({ navigation }) => {
               resizeMode="contain"
             />
           </View>
-          <Text style={styles.menuSubtitle}>Navigate</Text>
-
           {/* Main Navigation */}
           <View style={styles.menuList}>
             {menuItems.map((item) => (
@@ -177,8 +197,8 @@ const MenuScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </ScrollView>
-      </View>
-      <TouchableOpacity style={styles.backdrop} onPress={closeMenu} />
+      </Animated.View>
+      <TouchableOpacity style={styles.backdrop} onPress={closeMenu} activeOpacity={1} />
     </View>
   );
 };
@@ -194,10 +214,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: "70%",
     right: 0,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "transparent",
   },
   drawer: {
-    width: "70%",
+    width: DRAWER_WIDTH,
     backgroundColor: Colors.backgroundwhite,
     paddingTop: Theme.spacing.xl + 40,
     paddingHorizontal: Theme.spacing.lg,

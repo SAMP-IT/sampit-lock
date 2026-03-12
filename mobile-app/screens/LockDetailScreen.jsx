@@ -836,11 +836,8 @@ const LockDetailScreen = ({ navigation, route }) => {
               )}
             </View>
 
-            {/* Center: Lock Icon with Battery */}
+            {/* Center: Battery */}
             <View style={styles.lockCenterDisplay}>
-              <View style={styles.lockIconContainer}>
-                <Ionicons name="lock-closed" size={48} color={Colors.iconbackground} />
-              </View>
               <BatteryIndicator level={currentLock.battery} />
             </View>
 
