@@ -328,7 +328,7 @@ const LockCard = ({
           onPress={() => onPress(lock)}
           activeOpacity={0.9}
         >
-          {/* Top Row: Edit Icon + Lock Name (Left) | Battery Level (Right) */}
+          {/* Top Row: Edit Icon + Lock Name | Passage Mode Indicator (when on) | Battery Level */}
           <View style={styles.topRow}>
             <View style={styles.nameWithEditContainer}>
               <TouchableOpacity
@@ -342,6 +342,12 @@ const LockCard = ({
                 {getLockDisplayName()}
               </Text>
             </View>
+            {(lock.passage_mode_enabled || lock.passageModeEnabled) && (
+              <View style={styles.passageModeIndicator}>
+                <Ionicons name="swap-horizontal" size={14} color={Colors.iconbackground} />
+                <Text style={styles.passageModeLabel}>Passage</Text>
+              </View>
+            )}
             <View style={styles.batteryBadgeCompact}>
               <Ionicons
                 name={batteryLevel <= 25 ? "battery-dead" : batteryLevel <= 50 ? "battery-half" : "battery-full"}
@@ -527,6 +533,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.titlecolor,
     flex: 1,
+  },
+  passageModeIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFEBEE',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: Theme.radius.pill,
+    marginRight: Theme.spacing.sm,
+    borderWidth: 1.5,
+    borderColor: Colors.red || '#FF3B30',
+  },
+  passageModeLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.titlecolor,
   },
   batteryBadgeCompact: {
     flexDirection: 'row',

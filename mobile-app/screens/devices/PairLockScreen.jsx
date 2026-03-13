@@ -128,22 +128,7 @@ const PairLockScreen = ({ navigation }) => {
     return true; // iOS
   };
 
-  const handleStartPairing = async () => {
-    if (!isBluetoothReady(bluetoothState)) {
-      Alert.alert(
-        'Bluetooth Required',
-        `Bluetooth is ${getBluetoothStateText(bluetoothState)}. Please turn on Bluetooth to scan for locks.`,
-        [
-          { text: 'OK' },
-          {
-            text: 'Check Again',
-            onPress: () => checkBluetoothSetup()
-          }
-        ]
-      );
-      return;
-    }
-
+  const doStartScanning = async () => {
     setConnectionStatus('scanning');
     setIsScanning(true);
     setDiscoveredLocks([]);
@@ -171,6 +156,32 @@ const PairLockScreen = ({ navigation }) => {
       setConnectionStatus('failed');
       setErrorMessage(error.message || 'Failed to scan for locks. Please try again.');
     }
+  };
+
+  const handleStartPairing = async () => {
+    if (!isBluetoothReady(bluetoothState)) {
+      Alert.alert(
+        'Bluetooth Required',
+        `Bluetooth is ${getBluetoothStateText(bluetoothState)}. Please turn on Bluetooth to scan for locks.`,
+        [
+          { text: 'OK' },
+          {
+            text: 'Check Again',
+            onPress: () => checkBluetoothSetup()
+          }
+        ]
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Ready to pair',
+      'Before you begin, please wake up the lock by touching its screen and make sure you are standing close to the lock.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Scan Now', onPress: () => doStartScanning() }
+      ]
+    );
   };
 
   const handleSelectLock = async (lock) => {

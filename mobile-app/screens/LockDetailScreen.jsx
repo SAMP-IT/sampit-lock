@@ -54,12 +54,13 @@ const LockSwitcher = ({ currentLock, locks, onLockChange }) => {
               }}
             >
               <View style={styles.switcherOptionContent}>
-                <View style={[
-                  styles.lockStatusDot,
-                  { backgroundColor: lock.isConnected ? Colors.iconbackground : '#FF3B30' }
-                ]} />
+                <Ionicons
+                  name="lock-closed"
+                  size={16}
+                  color={Colors.iconbackground}
+                />
                 <Text style={styles.switcherOptionText}>{lock.name}</Text>
-                <Text style={styles.switcherOptionLocation}>{lock.location}</Text>
+                {/* <Text style={styles.switcherOptionLocation}>{lock.location}</Text> */}
               </View>
             </TouchableOpacity>
           ))}
@@ -270,8 +271,16 @@ const LockDetailScreen = ({ navigation, route }) => {
         throw new Error('Lock not found');
       }
 
+      // Merge passage_mode_enabled from lock_settings (API returns it in data.settings, not on lock).
+      // lockWithSettings = lock + passage_mode_enabled; all other lock fields unchanged so no feature is affected.
+      const settings = lockDetailsData?.settings || {};
+      const lockWithSettings = {
+        ...lock,
+        passage_mode_enabled: settings.passage_mode_enabled ?? lock.passage_mode_enabled
+      };
+
       const permissions = lockDetailsData?.permissions || {};
-      const transformedLock = transformLockData(lock, permissions);
+      const transformedLock = transformLockData(lockWithSettings, permissions);
       const locksArray = unwrapResponseArray(allLocksData);
 
       console.log('[LockDetailScreen] Critical data loaded:', lock.name);
@@ -407,14 +416,11 @@ const LockDetailScreen = ({ navigation, route }) => {
         navigation.setParams({ forceRefresh: undefined });
       }
 
-      // If same lock and not initial load, don't reload (use cache)
+      // If same lock and not initial load, still refetch critical data so passage_mode and other
+      // settings stay in sync when returning from Lock Settings (indicator updates immediately).
       if (lastLoadedLockId.current === lockId && !isInitialLoad.current) {
-        console.log('[LockDetailScreen] Same lock, using cache');
-        // Just refresh background data silently
-        const cached = lockDataCache.get(lockId);
-        if (cached?.lock) {
-          loadBackgroundData(cached.lock);
-        }
+        console.log('[LockDetailScreen] Same lock, refetching for fresh settings');
+        fetchData(true);
         return;
       }
 
@@ -819,12 +825,19 @@ const LockDetailScreen = ({ navigation, route }) => {
       <Section gapless>
         <AppCard style={styles.lockCard}>
           <View style={styles.lockInfo}>
-            {/* Lock Header with Name and Edit Button */}
+            {/* Lock Header with Name, Passage Mode Indicator, and Edit Button */}
             <View style={styles.lockHeader}>
               <View style={styles.lockTitleContainer}>
                 <Text style={styles.lockName}>{getLockDisplayName(currentLock, 'My Lock')}</Text>
                 <Text style={styles.lockLocation}>{currentLock.location}</Text>
               </View>
+              {/* Passage mode indicator - only when enabled */}
+              {(currentLock.passage_mode_enabled || currentLock.passageModeEnabled) && (
+                <View style={styles.passageModeIndicator}>
+                  <Ionicons name="swap-horizontal" size={16} color={Colors.iconbackground} />
+                  <Text style={styles.passageModeLabel}>Passage</Text>
+                </View>
+              )}
               {/* Edit button - only for owners/admins */}
               {(currentLock.userRole === 'owner' || currentLock.userRole === 'admin' || currentLock.can_modify_settings) && (
                 <TouchableOpacity
@@ -1130,13 +1143,14 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   switcherOptionText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '500',
     color: Colors.titlecolor,
+    opacity: 0.7,
     flex: 1,
   },
   switcherOptionLocation: {
-    fontSize: 12,
+    fontSize: 14,
     color: Colors.subtitlecolor,
   },
   lockCard: {
@@ -1152,6 +1166,23 @@ const styles = StyleSheet.create({
   },
   lockTitleContainer: {
     flex: 1,
+  },
+  passageModeIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFEBEE',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Theme.radius.pill,
+    marginRight: Theme.spacing.sm,
+    borderWidth: 1.5,
+    borderColor: Colors.red || '#FF3B30',
+  },
+  passageModeLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.titlecolor,
   },
   lockName: {
     fontSize: 22,

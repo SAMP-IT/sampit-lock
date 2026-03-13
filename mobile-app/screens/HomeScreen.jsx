@@ -14,6 +14,7 @@ import ActivityItem from "../components/ActivityItem";
 import Theme from "../constants/Theme";
 import Colors from "../constants/Colors";
 import LockControlService from "../services/lockControlService";
+import { getLockSettings } from "../services/api";
 import { getLockDisplayName } from "../utils/lockDisplayUtils";
 import { useLocks, useRecentActivity, useTTLockStatus } from "../hooks/useQueryHooks";
 
@@ -69,6 +70,31 @@ const HomeScreen = ({ navigation }) => {
   const { data: ttlockStatus = null, refetch: refetchStatus } = useTTLockStatus();
   const isLoading = locksLoading;
   const error = locksError;
+
+  // Merge passage_mode_enabled from lock settings (same idea as Lock Detail: lock + settings)
+  const [passageModeByLockId, setPassageModeByLockId] = useState({});
+  useEffect(() => {
+    if (!locks || locks.length === 0) {
+      setPassageModeByLockId({});
+      return;
+    }
+    let cancelled = false;
+    Promise.all(
+      locks.map((lock) =>
+        getLockSettings(lock.id)
+          .then((res) => ({ id: lock.id, data: res?.data?.data ?? res?.data }))
+          .catch(() => ({ id: lock.id, data: null }))
+      )
+    ).then((results) => {
+      if (cancelled) return;
+      const next = {};
+      results.forEach(({ id, data }) => {
+        next[id] = data?.passage_mode_enabled === true;
+      });
+      setPassageModeByLockId(next);
+    });
+    return () => { cancelled = true; };
+  }, [locks]);
 
   // Update selected lock when locks data changes
   useEffect(() => {
@@ -347,10 +373,13 @@ const HomeScreen = ({ navigation }) => {
             actionLabel="Add Lock"
             onActionPress={handleAddLock}
           >
-            {/* Main Prominent Lock Card */}
+            {/* Main Prominent Lock Card - merge passage_mode_enabled from settings (like Lock Detail) */}
             {selectedLock && (
               <LockCard
-                lock={selectedLock}
+                lock={{
+                  ...selectedLock,
+                  passage_mode_enabled: passageModeByLockId[selectedLock.id] ?? selectedLock.passage_mode_enabled
+                }}
                 onPress={handleLockPress}
                 onLock={handleLock}
                 onUnlock={handleUnlock}
