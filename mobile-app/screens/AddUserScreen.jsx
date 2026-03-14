@@ -20,6 +20,7 @@ import Colors from '../constants/Colors';
 import Theme from '../constants/Theme';
 import { addUserToMultipleLocks, getLocks } from '../services/api';
 
+//for now only admin role is available
 const userRoles = [
   {
     id: 'admin',
@@ -34,42 +35,43 @@ const userRoles = [
       'Change settings (except factory reset)'
     ]
   },
-  {
-    id: 'family',
-    title: 'Family / Resident',
-    subtitle: 'Household member with transparency',
-    icon: 'people-outline',
-    permissions: [
-      'Unlock/lock access',
-      'Manage own fingerprint',
-      'View assigned passcode',
-      'View full household history'
-    ]
-  },
-  {
-    id: 'scheduled',
-    title: 'Scheduled',
-    subtitle: 'Staff, drivers, cleaners, office team',
-    icon: 'time-outline',
-    permissions: [
-      'Unlock only during assigned times',
-      'Manage own fingerprint',
-      'View only own access history'
-    ],
-    requiresSchedule: true
-  },
-  {
-    id: 'guest_longterm',
-    title: 'Long Term Guest',
-    subtitle: 'Airbnb, rental, tenant',
-    icon: 'calendar-outline',
-    permissions: [
-      'Unlock/lock through app',
-      'Manage own fingerprint/PIN',
-      'Credentials auto-expire on end date'
-    ],
-    requiresEndDate: true
-  }
+  //disable Other options for now 
+  // {
+  //   id: 'family',
+  //   title: 'Family / Resident',
+  //   subtitle: 'Household member with transparency',
+  //   icon: 'people-outline',
+  //   permissions: [
+  //     'Unlock/lock access',
+  //     'Manage own fingerprint',
+  //     'View assigned passcode',
+  //     'View full household history'
+  //   ]
+  // },
+  // {
+  //   id: 'scheduled',
+  //   title: 'Scheduled',
+  //   subtitle: 'Staff, drivers, cleaners, office team',
+  //   icon: 'time-outline',
+  //   permissions: [
+  //     'Unlock only during assigned times',
+  //     'Manage own fingerprint',
+  //     'View only own access history'
+  //   ],
+  //   requiresSchedule: true
+  // },
+  // {
+  //   id: 'guest_longterm',
+  //   title: 'Long Term Guest',
+  //   subtitle: 'Airbnb, rental, tenant',
+  //   icon: 'calendar-outline',
+  //   permissions: [
+  //     'Unlock/lock through app',
+  //     'Manage own fingerprint/PIN',
+  //     'Credentials auto-expire on end date'
+  //   ],
+  //   requiresEndDate: true
+  // }
 ];
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
