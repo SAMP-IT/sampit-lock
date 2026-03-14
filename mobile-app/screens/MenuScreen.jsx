@@ -1,25 +1,84 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import Colors from '../constants/Colors';
-import Theme from '../constants/Theme';
-import { useRole } from '../context/RoleContext';
-import { logout } from '../services/api';
-import { useTTLockStatus } from '../hooks/useQueryHooks';
+import React, { useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+  Image,
+  Animated,
+  Dimensions,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import Colors from "../constants/Colors";
+import Theme from "../constants/Theme";
+import { useRole } from "../context/RoleContext";
+import { logout } from "../services/api";
+import { useTTLockStatus } from "../hooks/useQueryHooks";
+import { getLogoForLightBlue } from "../utils/logoUtils";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const DRAWER_WIDTH = SCREEN_WIDTH * 0.7;
 
 const menuItems = [
   // Main Navigation
-  { label: 'Home', icon: 'home-outline', navigateTo: { stack: 'ConsumerTabs', screen: 'Home' } },
-  { label: 'Devices', icon: 'hardware-chip-outline', navigateTo: { stack: 'ConsumerTabs', screen: 'Devices' } },
-  { label: 'Users', icon: 'people-outline', navigateTo: { stack: 'ConsumerTabs', screen: 'UserManagement' } },
-  { label: 'History', icon: 'time-outline', navigateTo: { stack: 'ConsumerTabs', screen: 'History' } },
-  { label: 'Settings', icon: 'settings-outline', navigateTo: { stack: 'ConsumerTabs', screen: 'Settings' } },
-  { label: 'Add new lock', icon: 'add-circle-outline', navigateTo: { stack: 'PairLock' }, requiresTTLock: true },
+  {
+    label: "Account",
+    icon: "person-outline",
+    navigateTo: { stack: "Profile" },
+  },
+  {
+    label: "Help & Support",
+    icon: "help-circle-outline",
+    navigateTo: { stack: "HelpSupport" },
+  },
+  {
+    label: "About",
+    icon: "information-circle-outline",
+    navigateTo: { stack: "About" },
+  },
+  // {
+  //   label: "Home",
+  //   icon: "home-outline",
+  //   navigateTo: { stack: "ConsumerTabs", screen: "Home" },
+  // },
+  // {
+  //   label: "Devices",
+  //   icon: "hardware-chip-outline",
+  //   navigateTo: { stack: "ConsumerTabs", screen: "Devices" },
+  // },
+  // {
+  //   label: "Users",
+  //   icon: "people-outline",
+  //   navigateTo: { stack: "ConsumerTabs", screen: "UserManagement" },
+  // },
+  // {
+  //   label: "History",
+  //   icon: "time-outline",
+  //   navigateTo: { stack: "ConsumerTabs", screen: "History" },
+  // },
+  // {
+  //   label: "Settings",
+  //   icon: "settings-outline",
+  //   navigateTo: { stack: "ConsumerTabs", screen: "Settings" },
+  // },
+  // { label: 'Add new lock', icon: 'add-circle-outline', navigateTo: { stack: 'PairLock' }, requiresTTLock: true },
 ];
 
 const MenuScreen = ({ navigation }) => {
   const { setRole } = useRole();
   const { data: ttlockStatus = null } = useTTLockStatus();
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 11,
+    }).start();
+  }, [slideAnim]);
 
   const handleLogout = async () => {
     await logout();
@@ -38,20 +97,20 @@ const MenuScreen = ({ navigation }) => {
     // Check if this item requires TTLock connection
     if (item.requiresTTLock && !ttlockStatus?.connected) {
       Alert.alert(
-        'Cloud Account Required',
-        'To add a lock, you need to connect your cloud account first.',
+        "Cloud Account Required",
+        "To add a lock, you need to connect your cloud account first.",
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: "Cancel", style: "cancel" },
           {
-            text: 'Connect Cloud',
+            text: "Connect Cloud",
             onPress: () => {
               closeMenu();
               setTimeout(() => {
-                navigation.navigate('ConnectTTLock');
+                navigation.navigate("ConnectTTLock");
               }, 100);
-            }
-          }
-        ]
+            },
+          },
+        ],
       );
       return;
     }
@@ -81,20 +140,44 @@ const MenuScreen = ({ navigation }) => {
     }, 100);
   };
 
+  const drawerTranslateX = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-DRAWER_WIDTH, 0],
+  });
+
   return (
     <View style={styles.overlay}>
-      <View style={styles.drawer}>
+      <Animated.View
+        style={[styles.drawer, { transform: [{ translateX: drawerTranslateX }] }]}
+      >
         <ScrollView showsVerticalScrollIndicator={false}>
-          <Text style={styles.menuTitle}>Awakey</Text>
-          <Text style={styles.menuSubtitle}>Navigate</Text>
-
+          <View style={styles.logoContainer}>
+            <Image
+              source={getLogoForLightBlue()}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
           {/* Main Navigation */}
           <View style={styles.menuList}>
             {menuItems.map((item) => (
-              <TouchableOpacity key={item.label} style={styles.menuItem} onPress={() => handleNavigate(item)}>
-                <Ionicons name={item.icon} size={20} color={Colors.iconbackground} style={styles.itemIcon} />
+              <TouchableOpacity
+                key={item.label}
+                style={styles.menuItem}
+                onPress={() => handleNavigate(item)}
+              >
+                <Ionicons
+                  name={item.icon}
+                  size={20}
+                  color={Colors.iconbackground}
+                  style={styles.itemIcon}
+                />
                 <Text style={styles.itemLabel}>{item.label}</Text>
-                <Ionicons name="chevron-forward" size={18} color={Colors.subtitlecolor} />
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={Colors.subtitlecolor}
+                />
               </TouchableOpacity>
             ))}
           </View>
@@ -102,13 +185,20 @@ const MenuScreen = ({ navigation }) => {
           {/* Logout */}
           <View style={[styles.menuList, { marginTop: Theme.spacing.xl }]}>
             <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={20} color={Colors.red} style={styles.itemIcon} />
-              <Text style={[styles.itemLabel, { color: Colors.red }]}>Logout</Text>
+              <Ionicons
+                name="log-out-outline"
+                size={20}
+                color={Colors.red}
+                style={styles.itemIcon}
+              />
+              <Text style={[styles.itemLabel, { color: Colors.red }]}>
+                Logout
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
-      </View>
-      <TouchableOpacity style={styles.backdrop} onPress={closeMenu} />
+      </Animated.View>
+      <TouchableOpacity style={styles.backdrop} onPress={closeMenu} activeOpacity={1} />
     </View>
   );
 };
@@ -116,27 +206,27 @@ const MenuScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   backdrop: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     bottom: 0,
-    left: '70%',
+    left: "70%",
     right: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: "transparent",
   },
   drawer: {
-    width: '70%',
+    width: DRAWER_WIDTH,
     backgroundColor: Colors.backgroundwhite,
     paddingTop: Theme.spacing.xl + 40,
     paddingHorizontal: Theme.spacing.lg,
     paddingBottom: Theme.spacing.xl,
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     top: 0,
     bottom: 0,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 2,
       height: 0,
@@ -145,9 +235,16 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
+  logoContainer: {
+    marginBottom: Theme.spacing.sm,
+  },
+  logo: {
+    width: 120,
+    height: 50,
+  },
   menuTitle: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.titlecolor,
   },
   menuSubtitle: {
@@ -159,8 +256,8 @@ const styles = StyleSheet.create({
     gap: Theme.spacing.sm,
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Theme.spacing.md,
   },
   itemIcon: {

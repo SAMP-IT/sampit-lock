@@ -9,7 +9,7 @@ import QuickActionButton from "../components/QuickActionButton";
 import Colors from "../constants/Colors";
 import Theme from "../constants/Theme";
 import { deleteLock } from "../services/api";
-import { useLocks, useTTLockStatus } from "../hooks/useQueryHooks";
+import { useLocks } from "../hooks/useQueryHooks";
 
 const DeviceTile = ({ device, onSettingsPress, onLongPress }) => {
   // Get the user-given name as main title, model number as subtitle
@@ -77,25 +77,10 @@ const DeviceTile = ({ device, onSettingsPress, onLongPress }) => {
 const DevicesScreen = ({ navigation }) => {
   const queryClient = useQueryClient();
   const { data: devices = [], isLoading } = useLocks();
-  const { data: ttlockStatus = null } = useTTLockStatus();
 
   const handleAddLock = () => {
-    // Check if TTLock account is connected
-    if (!ttlockStatus?.connected) {
-      Alert.alert(
-        'Cloud Account Required',
-        'To add a lock, you need to connect your cloud account first.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Connect Cloud',
-            onPress: () => navigation.navigate('ConnectTTLock')
-          }
-        ]
-      );
-      return;
-    }
-    navigation.navigate("AddLockMethod");
+    // Go to Pair to lock Step 1 of 2 flow (same as + Add Lock button)
+    navigation.navigate("PairLock");
   };
 
   const handleOpenLockDetail = (device) => {

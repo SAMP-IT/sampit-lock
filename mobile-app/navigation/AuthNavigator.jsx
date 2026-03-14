@@ -1,5 +1,6 @@
-﻿import React from 'react';
+import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
+import LogoSplashScreen from '../screens/auth/LogoSplashScreen';
 import SplashScreen from '../screens/auth/SplashScreen';
 import WelcomeScreen from '../screens/auth/WelcomeScreen';
 import AuthFlowScreen from '../screens/auth/AuthFlowScreen';
@@ -26,7 +27,8 @@ const Stack = createStackNavigator();
 
 const AuthNavigator = () => {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="LogoSplash">
+      <Stack.Screen name="LogoSplash" component={LogoSplashScreen} />
       <Stack.Screen name="Splash" component={SplashScreen} />
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="AuthFlow" component={AuthFlowScreen} />
