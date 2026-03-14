@@ -73,17 +73,19 @@ const HomeScreen = ({ navigation }) => {
 
   // Merge passage_mode_enabled from lock settings (same idea as Lock Detail: lock + settings)
   const [passageModeByLockId, setPassageModeByLockId] = useState({});
+  const lockIdsKey = locks.length ? locks.map((l) => l.id).join(',') : '';
   useEffect(() => {
-    if (!locks || locks.length === 0) {
+    if (!lockIdsKey) {
       setPassageModeByLockId({});
       return;
     }
+    const lockIds = lockIdsKey.split(',');
     let cancelled = false;
     Promise.all(
-      locks.map((lock) =>
-        getLockSettings(lock.id)
-          .then((res) => ({ id: lock.id, data: res?.data?.data ?? res?.data }))
-          .catch(() => ({ id: lock.id, data: null }))
+      lockIds.map((id) =>
+        getLockSettings(id)
+          .then((res) => ({ id, data: res?.data?.data ?? res?.data }))
+          .catch(() => ({ id, data: null }))
       )
     ).then((results) => {
       if (cancelled) return;
@@ -94,7 +96,7 @@ const HomeScreen = ({ navigation }) => {
       setPassageModeByLockId(next);
     });
     return () => { cancelled = true; };
-  }, [locks]);
+  }, [lockIdsKey]);
 
   // Update selected lock when locks data changes
   useEffect(() => {

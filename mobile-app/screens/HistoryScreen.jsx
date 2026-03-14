@@ -192,35 +192,6 @@ const HistoryScreen = ({ navigation }) => {
         </ScrollView>
       </Section>
 
-      {/* Sort & Filter Controls */}
-      <View style={styles.controlsRow}>
-        {/* Sort Toggle */}
-        <TouchableOpacity
-          style={styles.sortButton}
-          onPress={() => setSortNewest(!sortNewest)}
-        >
-          <Ionicons
-            name={sortNewest ? "arrow-down" : "arrow-up"}
-            size={16}
-            color={Colors.iconbackground}
-          />
-          <Text style={styles.sortText}>
-            {sortNewest ? "Newest First" : "Oldest First"}
-          </Text>
-        </TouchableOpacity>
-
-        {/* More Filters Button */}
-        {/* <TouchableOpacity
-          style={[styles.filterButton, activeFilterCount > 0 && styles.filterButtonActive]}
-          onPress={() => setShowFiltersModal(true)}
-        >
-          <Ionicons name="options-outline" size={18} color={activeFilterCount > 0 ? Colors.textwhite : Colors.iconbackground} />
-          <Text style={[styles.filterButtonText, activeFilterCount > 0 && styles.filterButtonTextActive]}>
-            Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ""}
-          </Text>
-        </TouchableOpacity> */}
-      </View>
-
       {/* Results Summary */}
       <View style={styles.resultsSummary}>
         <Text style={styles.resultsText}>
@@ -235,8 +206,26 @@ const HistoryScreen = ({ navigation }) => {
         )}
       </View>
 
-      {/* Activity List */}
-      <Section title="Activity Log" gapless>
+      {/* Activity List - heading left, sort (Newest/Oldest First) right at same level */}
+      <Section
+        title="Activity Log"
+        gapless
+        rightAccessory={
+          <TouchableOpacity
+            style={styles.sortButton}
+            onPress={() => setSortNewest(!sortNewest)}
+          >
+            <Ionicons
+              name={sortNewest ? "arrow-down" : "arrow-up"}
+              size={16}
+              color={Colors.iconbackground}
+            />
+            <Text style={styles.sortText}>
+              {sortNewest ? "Newest First" : "Oldest First"}
+            </Text>
+          </TouchableOpacity>
+        }
+      >
         <AppCard padding="none" elevated={false}>
           {isLoading && (
             <Text style={styles.loadingText}>Loading history...</Text>
@@ -396,12 +385,6 @@ const styles = StyleSheet.create({
   },
   filterTextActive: {
     color: Colors.textwhite,
-  },
-  controlsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: Theme.spacing.lg,
   },
   sortButton: {
     flexDirection: "row",
