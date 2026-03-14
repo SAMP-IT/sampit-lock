@@ -1039,7 +1039,7 @@ export const removeUserFromLock = async (req, res) => {
     // Get target user's role and TTLock eKey info
     const { data: targetUserLock, error: lookupError } = await supabase
       .from('user_locks')
-      .select('role, ttlock_ekey_id')
+      .select('role')
       .eq('user_id', targetUserId)
       .eq('lock_id', lockId)
       .maybeSingle();
