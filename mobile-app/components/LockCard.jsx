@@ -512,6 +512,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    minWidth: 0,
     marginRight: Theme.spacing.sm,
   },
   editButtonInline: {
@@ -545,6 +546,7 @@ const styles = StyleSheet.create({
     marginRight: Theme.spacing.sm,
     borderWidth: 1.5,
     borderColor: Colors.red || '#FF3B30',
+    flexShrink: 0,
   },
   passageModeLabel: {
     fontSize: 11,
@@ -559,6 +561,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Theme.spacing.sm,
     paddingVertical: 4,
     borderRadius: Theme.radius.sm,
+    flexShrink: 0,
   },
   batteryBadgeTextCompact: {
     fontSize: 13,

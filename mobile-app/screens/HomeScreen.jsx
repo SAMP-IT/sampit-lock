@@ -74,29 +74,49 @@ const HomeScreen = ({ navigation }) => {
   // Merge passage_mode_enabled from lock settings (same idea as Lock Detail: lock + settings)
   const [passageModeByLockId, setPassageModeByLockId] = useState({});
   const lockIdsKey = locks.length ? locks.map((l) => l.id).join(',') : '';
+
+  const fetchPassageModeForLocks = useCallback((lockIds) => {
+    if (!lockIds || lockIds.length === 0) {
+      setPassageModeByLockId({});
+      return;
+    }
+    let cancelled = false;
+    Promise.all(
+      lockIds.map((id) =>
+        getLockSettings(id)
+          .then((res) => {
+            const settings = res?.data?.data ?? res?.data;
+            return { id, passage_mode_enabled: settings?.passage_mode_enabled === true };
+          })
+          .catch(() => ({ id, passage_mode_enabled: false }))
+      )
+    ).then((results) => {
+      if (cancelled) return;
+      const next = {};
+      results.forEach(({ id, passage_mode_enabled }) => {
+        next[id] = passage_mode_enabled;
+      });
+      setPassageModeByLockId(next);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   useEffect(() => {
     if (!lockIdsKey) {
       setPassageModeByLockId({});
       return;
     }
-    const lockIds = lockIdsKey.split(',');
-    let cancelled = false;
-    Promise.all(
-      lockIds.map((id) =>
-        getLockSettings(id)
-          .then((res) => ({ id, data: res?.data?.data ?? res?.data }))
-          .catch(() => ({ id, data: null }))
-      )
-    ).then((results) => {
-      if (cancelled) return;
-      const next = {};
-      results.forEach(({ id, data }) => {
-        next[id] = data?.passage_mode_enabled === true;
-      });
-      setPassageModeByLockId(next);
-    });
-    return () => { cancelled = true; };
-  }, [lockIdsKey]);
+    fetchPassageModeForLocks(lockIdsKey.split(','));
+  }, [lockIdsKey, fetchPassageModeForLocks]);
+
+  // Refetch passage mode when screen gains focus so indicator updates immediately when user turns it off (e.g. in Lock Settings)
+  useFocusEffect(
+    useCallback(() => {
+      if (lockIdsKey) {
+        fetchPassageModeForLocks(lockIdsKey.split(','));
+      }
+    }, [lockIdsKey, fetchPassageModeForLocks])
+  );
 
   // Update selected lock when locks data changes
   useEffect(() => {
@@ -380,7 +400,7 @@ const HomeScreen = ({ navigation }) => {
               <LockCard
                 lock={{
                   ...selectedLock,
-                  passage_mode_enabled: passageModeByLockId[selectedLock.id] ?? selectedLock.passage_mode_enabled
+                  passage_mode_enabled: passageModeByLockId[selectedLock.id] === true || selectedLock.passage_mode_enabled === true
                 }}
                 onPress={handleLockPress}
                 onLock={handleLock}
