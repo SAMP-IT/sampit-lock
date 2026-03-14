@@ -226,11 +226,11 @@ export const addICCard = async (req, res) => {
     if (addType === 1) {
       logger.info('[IC_CARD] Bluetooth enrollment - card already on lock, saving to database only');
 
-      // For Bluetooth additions, we use the resolvedCardNumber as a unique identifier
-      // since there's no cloud API call to get a cardId
-      // IMPORTANT: Don't use parseInt() - these can be very large numbers (e.g., 3216951435)
-      // that may exceed JavaScript's safe integer range. Store as string and let PostgreSQL BIGINT handle it.
-      ttlockCardId = resolvedCardNumber;
+      // For Bluetooth additions, ttlock_card_id is only meaningful when the card number
+      // is a pure numeric string that fits in BIGINT. Generated fallback IDs (BT_xxx)
+      // are NOT valid BIGINT values and must be stored as NULL to avoid a cast error.
+      const numericCardNumber = /^\d+$/.test(resolvedCardNumber) ? BigInt(resolvedCardNumber) : null;
+      ttlockCardId = numericCardNumber !== null ? resolvedCardNumber : null;
 
     } else {
       // addType is Gateway (2) - need to call TTLock cloud API
@@ -279,6 +279,24 @@ export const addICCard = async (req, res) => {
       logger.info(`[IC_CARD] ✅ IC card added to TTLock cloud: ID ${ttlockCardId}`);
     }
 
+    // Check for duplicate card on this lock before inserting
+    const { data: existingCard } = await supabase
+      .from('ic_cards')
+      .select('id, card_name')
+      .eq('lock_id', lockId)
+      .eq('card_number', resolvedCardNumber)
+      .maybeSingle();
+
+    if (existingCard) {
+      return res.status(409).json({
+        success: false,
+        error: {
+          code: 'CARD_ALREADY_EXISTS',
+          message: `This card is already registered to this lock as "${existingCard.card_name}"`
+        }
+      });
+    }
+
     // Store in our database
     // IMPORTANT: Use correct column names that match the database schema:
     // - valid_from (not start_date)
@@ -304,6 +322,17 @@ export const addICCard = async (req, res) => {
 
     if (dbError) {
       logger.error('[IC_CARD] Database insert failed:', dbError);
+
+      // Unique constraint violation — card already exists for this lock
+      if (dbError.code === '23505') {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'CARD_ALREADY_EXISTS',
+            message: 'This card is already registered to this lock'
+          }
+        });
+      }
 
       // Log failed IC card enrollment to activity logs
       await logEvent({

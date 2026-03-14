@@ -23,6 +23,8 @@ import LiveViewScreen from '../screens/quickActions/LiveViewScreen';
 import SendCodeScreen from '../screens/quickActions/SendCodeScreen';
 import AccessLogsScreen from '../screens/quickActions/AccessLogsScreen';
 import GuestOTPScreen from '../screens/quickActions/GuestOTPScreen';
+import AccessCodeManagementScreen from '../screens/AccessCodeManagementScreen';
+import FingerprintManagementScreen from '../screens/FingerprintManagementScreen';
 
 const Stack = createStackNavigator();
 
@@ -50,6 +52,8 @@ const FamilyNavigator = () => {
       <Stack.Screen name="SendCode" component={SendCodeScreen} />
       <Stack.Screen name="AccessLogs" component={AccessLogsScreen} />
       <Stack.Screen name="GuestOtp" component={GuestOTPScreen} />
+      <Stack.Screen name="AccessCodeManagement" component={AccessCodeManagementScreen} />
+      <Stack.Screen name="FingerprintManagement" component={FingerprintManagementScreen} />
 
       {/* Shared screens */}
       <Stack.Screen name="LockDetail" component={LockDetailScreen} />

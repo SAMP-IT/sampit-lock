@@ -56,6 +56,7 @@ import UserActivityHistoryScreen from "../screens/UserActivityHistoryScreen";
 import LockPairingScreen from "../screens/LockPairingScreen";
 import FingerprintManagementScreen from "../screens/FingerprintManagementScreen";
 import CardManagementScreen from "../screens/CardManagementScreen";
+import AccessCodeManagementScreen from "../screens/AccessCodeManagementScreen";
 import OfflinePasscodeScreen from "../screens/OfflinePasscodeScreen";
 import FactoryResetScreen from "../screens/FactoryResetScreen";
 import RecoveryKeysScreen from "../screens/RecoveryKeysScreen";
@@ -250,136 +251,34 @@ const ConsumerNavigator = () => (
       component={DeviceDiagnosticsSummaryScreen}
       options={{ headerShown: false }}
     />
-    <Stack.Screen
-      name="AddUser"
-      component={AddUserScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="UserHistory"
-      component={UserHistoryScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="EditUserAccess"
-      component={EditUserAccessScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="LockSettings"
-      component={LockSettingsScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="ConnectTTLock"
-      component={ConnectTTLockScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="AddLockMethod"
-      component={AddLockMethodScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="TTLockCloudLogin"
-      component={TTLockCloudLoginScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="BluetoothLockPairing"
-      component={BluetoothLockPairingScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="UserManagementLock"
-      component={UserManagementScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="Profile"
-      component={ProfileScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="NotificationPreferences"
-      component={NotificationPreferencesScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="AccessMethodsManagement"
-      component={AccessMethodsManagementScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="InviteManagement"
-      component={InviteManagementScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="ActivityStats"
-      component={ActivityStatsScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="SecurityDashboard"
-      component={SecurityDashboardScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="DebugLogs"
-      component={DebugLogsScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="LockSoundSettings"
-      component={LockSoundSettingsScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="EmergencyUnlock"
-      component={EmergencyUnlockScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="GuestAccessHistory"
-      component={GuestAccessHistoryScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="UserActivityHistory"
-      component={UserActivityHistoryScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="LockPairing"
-      component={LockPairingScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="FingerprintManagement"
-      component={FingerprintManagementScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="CardManagement"
-      component={CardManagementScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="OfflinePasscode"
-      component={OfflinePasscodeScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="FactoryReset"
-      component={FactoryResetScreen}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="RecoveryKeys"
-      component={RecoveryKeysScreen}
-      options={{ headerShown: false }}
-    />
+
+    <Stack.Screen name="AddUser" component={AddUserScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="UserHistory" component={UserHistoryScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="EditUserAccess" component={EditUserAccessScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="LockSettings" component={LockSettingsScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="ConnectTTLock" component={ConnectTTLockScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="AddLockMethod" component={AddLockMethodScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="TTLockCloudLogin" component={TTLockCloudLoginScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="BluetoothLockPairing" component={BluetoothLockPairingScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="UserManagementLock" component={UserManagementScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="AccessMethodsManagement" component={AccessMethodsManagementScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="InviteManagement" component={InviteManagementScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="ActivityStats" component={ActivityStatsScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="SecurityDashboard" component={SecurityDashboardScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="DebugLogs" component={DebugLogsScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="LockSoundSettings" component={LockSoundSettingsScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="EmergencyUnlock" component={EmergencyUnlockScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="GuestAccessHistory" component={GuestAccessHistoryScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="UserActivityHistory" component={UserActivityHistoryScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="LockPairing" component={LockPairingScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="FingerprintManagement" component={FingerprintManagementScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="CardManagement" component={CardManagementScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="AccessCodeManagement" component={AccessCodeManagementScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="OfflinePasscode" component={OfflinePasscodeScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="FactoryReset" component={FactoryResetScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="RecoveryKeys" component={RecoveryKeysScreen} options={{ headerShown: false }} />
 
     {/* Settings Sub-screens */}
     <Stack.Screen

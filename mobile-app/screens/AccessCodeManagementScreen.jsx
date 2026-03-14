@@ -24,7 +24,7 @@ import {
 import { useAccessCodes } from '../hooks/useQueryHooks';
 
 const AccessCodeManagementScreen = ({ navigation, route }) => {
-  const { lockId, lockName } = route.params;
+  const { lockId, lockName, readOnly = false } = route.params;
   const queryClient = useQueryClient();
 
   const { data: accessCodes = [], isLoading: loading } = useAccessCodes(lockId);
@@ -209,8 +209,9 @@ const AccessCodeManagementScreen = ({ navigation, route }) => {
           <AppCard style={styles.infoCard}>
             <Ionicons name="information-circle-outline" size={24} color={Colors.iconbackground} />
             <Text style={styles.infoText}>
-              Create PIN codes to unlock your door. Permanent codes never expire, temporary codes
-              expire after a set time, and one-time codes can only be used once.
+              {readOnly
+                ? 'These are the PIN codes available for this lock. Contact the lock owner or admin to add or change codes.'
+                : 'Create PIN codes to unlock your door. Permanent codes never expire, temporary codes expire after a set time, and one-time codes can only be used once.'}
             </Text>
           </AppCard>
         </Section>
@@ -251,18 +252,22 @@ const AccessCodeManagementScreen = ({ navigation, route }) => {
                   </View>
 
                   <View style={styles.codeActions}>
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={() => handleEditCode(code)}
-                    >
-                      <Ionicons name="create-outline" size={20} color={Colors.iconbackground} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={() => handleDeleteCode(code)}
-                    >
-                      <Ionicons name="trash-outline" size={20} color={Colors.red} />
-                    </TouchableOpacity>
+                    {!readOnly && (
+                      <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={() => handleEditCode(code)}
+                      >
+                        <Ionicons name="create-outline" size={20} color={Colors.iconbackground} />
+                      </TouchableOpacity>
+                    )}
+                    {!readOnly && (
+                      <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={() => handleDeleteCode(code)}
+                      >
+                        <Ionicons name="trash-outline" size={20} color={Colors.red} />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
               ))}
@@ -398,6 +403,7 @@ const AccessCodeManagementScreen = ({ navigation, route }) => {
             </AppCard>
           </Section>
         ) : (
+          !readOnly && (
           <Section>
             <TouchableOpacity
               style={styles.addButton}
@@ -408,6 +414,7 @@ const AccessCodeManagementScreen = ({ navigation, route }) => {
               <Text style={styles.addButtonText}>Add Access Code</Text>
             </TouchableOpacity>
           </Section>
+          )
         )}
       </ScrollView>
     </AppScreen>

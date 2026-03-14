@@ -1016,6 +1016,8 @@ export const removeUserFromLock = async (req, res) => {
     const { lockId, userId: targetUserId } = req.params;
     const requesterId = req.user.id;
 
+    console.log('[removeUserFromLock] Request:', { lockId, targetUserId, requesterId });
+
     // Get lock to check ownership
     const { data: lock } = await supabase
       .from('locks')
@@ -1035,14 +1037,19 @@ export const removeUserFromLock = async (req, res) => {
     }
 
     // Get target user's role and TTLock eKey info
-    const { data: targetUserLock } = await supabase
+    const { data: targetUserLock, error: lookupError } = await supabase
       .from('user_locks')
       .select('role, ttlock_ekey_id')
       .eq('user_id', targetUserId)
       .eq('lock_id', lockId)
-      .single();
+      .maybeSingle();
+
+    if (lookupError) {
+      console.error('[removeUserFromLock] user_locks lookup error:', lookupError, { targetUserId, lockId });
+    }
 
     if (!targetUserLock) {
+      console.warn('[removeUserFromLock] No user_locks record found:', { targetUserId, lockId });
       return res.status(404).json({
         success: false,
         error: {

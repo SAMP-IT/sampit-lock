@@ -163,7 +163,7 @@ const HomeScreen = ({ navigation }) => {
         setIsLocking(op === 'lock');
         setIsUnlocking(op === 'unlock');
       }
-    }, [queryClient, selectedLock])
+    }, [queryClient])
   );
 
   // Pull-to-refresh handler

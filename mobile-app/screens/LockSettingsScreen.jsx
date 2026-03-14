@@ -363,6 +363,10 @@ const LockSettingsScreen = ({ navigation, route }) => {
   };
 
   const handleAutoLockDelayPress = () => {
+    if (!isAdminOrOwner) {
+      Alert.alert('Permission Denied', 'Only lock owners and administrators can change lock settings.');
+      return;
+    }
     const delayOptions = [
       { label: '5 seconds', value: 5 },
       { label: '15 seconds', value: 15 },
@@ -532,6 +536,10 @@ const LockSettingsScreen = ({ navigation, route }) => {
   // ANTI-PEEP PASSWORD - Works via Cloud Gateway
   // =====================================================
   const handleAntiPeepToggle = async () => {
+    if (!isAdminOrOwner) {
+      Alert.alert('Permission Denied', 'Only lock owners and administrators can change lock settings.');
+      return;
+    }
     if (!currentLock?.ttlock_lock_id) {
       Alert.alert('Not Available', 'This feature requires cloud connection');
       return;
@@ -565,6 +573,10 @@ const LockSettingsScreen = ({ navigation, route }) => {
   // LOCK SOUND - Works via Bluetooth ONLY
   // =====================================================
   const handleLockSoundToggle = async () => {
+    if (!isAdminOrOwner) {
+      Alert.alert('Permission Denied', 'Only lock owners and administrators can change lock settings.');
+      return;
+    }
     const lockData = await checkBluetoothAndGetLockData();
     if (!lockData) return;
 

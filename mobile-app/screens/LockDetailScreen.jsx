@@ -228,6 +228,12 @@ const LockDetailScreen = ({ navigation, route }) => {
       can_manage_users: permissions.can_manage_users,
       can_modify_settings: permissions.can_modify_settings,
       remote_unlock_enabled: permissions.remote_unlock_enabled,
+      time_restricted: permissions.time_restricted,
+      days_of_week: permissions.days_of_week,
+      time_restriction_start: permissions.time_restriction_start,
+      time_restriction_end: permissions.time_restriction_end,
+      access_valid_from: permissions.access_valid_from,
+      access_valid_until: permissions.access_valid_until,
       ttlock_mac: lock.ttlock_mac,
       ttlock_data: lock.ttlock_data,
       ttlock_lock_id: lock.ttlock_lock_id,
@@ -381,7 +387,7 @@ const LockDetailScreen = ({ navigation, route }) => {
 
       setIsLoadingActivities(false);
     }).catch((err) => {
-      console.log('Background data load error:', err);
+      console.error('Background data load error:', err?.message || err, err?.stack || '');
       setIsLoadingActivities(false);
     });
   }, [lockId]);
@@ -487,6 +493,11 @@ const LockDetailScreen = ({ navigation, route }) => {
 
       if (result.success) {
         console.log(`[LockDetailScreen] Unlock successful via ${result.method}`);
+        // Update is_locked state immediately so both screens stay in sync
+        const updatedLock = { ...currentLock, is_locked: false };
+        setCurrentLock(updatedLock);
+        const cached = lockDataCache.get(lockId);
+        if (cached) lockDataCache.set(lockId, { ...cached, lock: updatedLock });
         setResultModal({
           visible: true,
           type: 'unlock',
@@ -544,6 +555,11 @@ const LockDetailScreen = ({ navigation, route }) => {
 
       if (result.success) {
         console.log(`[LockDetailScreen] Lock successful via ${result.method}`);
+        // Update is_locked state immediately so both screens stay in sync
+        const updatedLock = { ...currentLock, is_locked: true };
+        setCurrentLock(updatedLock);
+        const cached = lockDataCache.get(lockId);
+        if (cached) lockDataCache.set(lockId, { ...cached, lock: updatedLock });
         setResultModal({
           visible: true,
           type: 'lock',
@@ -938,9 +954,11 @@ const LockDetailScreen = ({ navigation, route }) => {
                 ...(currentLock.userRole === 'owner'
                   ? [{ id: 1, icon: 'people-outline', text: 'User Management', onPress: handleUserManagement }]
                   : []),
-                // Passcode - only owner and admin can create passcodes
+                // Passcode - owner and admin can create; family can view list only
                 ...(currentLock.userRole === 'owner' || currentLock.userRole === 'admin'
                   ? [{ id: 2, icon: 'keypad-outline', text: 'Passcode', onPress: () => navigation.navigate('SendCode', { lockId: currentLock.id, lock: currentLock }) }]
+                  : currentLock.userRole === 'family'
+                  ? [{ id: 2, icon: 'keypad-outline', text: 'Passcode', onPress: () => navigation.navigate('AccessCodeManagement', { lockId: currentLock.id, lockName: currentLock.name || currentLock.location, readOnly: true }) }]
                   : []),
                 // Fingerprints - available to all non-guest roles (own fingerprints only for family/resident/scheduled/guest_longterm)
                 { id: 3, icon: 'finger-print-outline', text: 'Fingerprints', onPress: () => navigation.navigate('FingerprintManagement', { lockId: currentLock.id, lock: currentLock }) },
