@@ -56,6 +56,7 @@ import UserActivityHistoryScreen from "../screens/UserActivityHistoryScreen";
 import LockPairingScreen from "../screens/LockPairingScreen";
 import FingerprintManagementScreen from "../screens/FingerprintManagementScreen";
 import CardManagementScreen from "../screens/CardManagementScreen";
+import AccessCodeManagementScreen from "../screens/AccessCodeManagementScreen";
 import OfflinePasscodeScreen from "../screens/OfflinePasscodeScreen";
 import FactoryResetScreen from "../screens/FactoryResetScreen";
 import RecoveryKeysScreen from "../screens/RecoveryKeysScreen";
@@ -193,6 +194,7 @@ const ConsumerNavigator = () => (
     <Stack.Screen name="LockPairing" component={LockPairingScreen} options={{ headerShown: false }} />
     <Stack.Screen name="FingerprintManagement" component={FingerprintManagementScreen} options={{ headerShown: false }} />
     <Stack.Screen name="CardManagement" component={CardManagementScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="AccessCodeManagement" component={AccessCodeManagementScreen} options={{ headerShown: false }} />
     <Stack.Screen name="OfflinePasscode" component={OfflinePasscodeScreen} options={{ headerShown: false }} />
     <Stack.Screen name="FactoryReset" component={FactoryResetScreen} options={{ headerShown: false }} />
     <Stack.Screen name="RecoveryKeys" component={RecoveryKeysScreen} options={{ headerShown: false }} />

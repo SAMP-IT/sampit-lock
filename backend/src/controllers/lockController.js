@@ -120,7 +120,7 @@ export const getLockDetails = async (req, res) => {
     // Get lock with user's access information
     const { data: userLock, error: accessError } = await supabase
       .from('user_locks')
-      .select('role, can_unlock, can_lock, can_view_logs, can_manage_users, can_modify_settings, remote_unlock_enabled')
+      .select('role, can_unlock, can_lock, can_view_logs, can_manage_users, can_modify_settings, remote_unlock_enabled, time_restricted, days_of_week, time_restriction_start, time_restriction_end, access_valid_from, access_valid_until')
       .eq('user_id', userId)
       .eq('lock_id', lockId)
       .eq('is_active', true)

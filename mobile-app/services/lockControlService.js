@@ -426,9 +426,10 @@ class LockControlService {
 
     try {
       // Try Bluetooth first (always works if lock is nearby)
-      if (lock.ttlock_mac) {
+      if (lock.ttlock_mac && lock.ttlock_data) {
         try {
-          const status = await TTLockService.getLockStatus(lock.ttlock_mac);
+          const encryptedLockData = extractLockData(lock.ttlock_data);
+          const status = await TTLockService.getLockStatus(encryptedLockData);
           console.log('✅ Got status via Bluetooth');
           return {
             success: true,
@@ -538,8 +539,7 @@ class LockControlService {
       // Get battery level after unlock
       let batteryLevel = null;
       try {
-        const status = await TTLockService.getLockStatus(encryptedLockData);
-        batteryLevel = status?.batteryLevel;
+        batteryLevel = await TTLockService.getBatteryLevel(encryptedLockData);
         console.log(`🔋 Battery level after unlock: ${batteryLevel}%`);
       } catch (statusError) {
         console.warn('⚠️ Could not get battery level:', statusError.message);
@@ -651,8 +651,7 @@ class LockControlService {
       // Get battery level after lock
       let batteryLevel = null;
       try {
-        const status = await TTLockService.getLockStatus(encryptedLockData);
-        batteryLevel = status?.batteryLevel;
+        batteryLevel = await TTLockService.getBatteryLevel(encryptedLockData);
         console.log(`🔋 Battery level after lock: ${batteryLevel}%`);
       } catch (statusError) {
         console.warn('⚠️ Could not get battery level:', statusError.message);
