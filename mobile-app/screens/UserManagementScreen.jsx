@@ -21,6 +21,7 @@ import {
   removeUserFromMultipleLocks,
 } from "../services/api";
 import { useAllUsersForAllLocks } from "../hooks/useQueryHooks";
+import { useToast } from "../context/ToastContext";
 
 const roleFilters = [
   { id: "all", label: "All" },
@@ -35,9 +36,11 @@ const roleFilters = [
 const UserManagementScreen = ({ navigation, route }) => {
   const { lockId, lock, refresh } = route.params || {};
   const queryClient = useQueryClient();
+  const { showSuccess } = useToast();
 
   const [roleFilter, setRoleFilter] = useState("all");
   const [lockFilter, setLockFilter] = useState(lockId || null);
+  const [deletingUserId, setDeletingUserId] = useState(null);
 
   // Refetch when navigating back from AddUserScreen (refresh timestamp changes)
   useEffect(() => {
@@ -158,16 +161,20 @@ const UserManagementScreen = ({ navigation, route }) => {
             text: "Remove",
             style: "destructive",
             onPress: async () => {
+              setDeletingUserId(user.id);
               try {
                 await removeUserFromLock(locksToRemove[0].lock_id, user.id);
                 queryClient.invalidateQueries({
                   queryKey: ["allUsersForAllLocks"],
                 });
+                showSuccess("User removed successfully.");
               } catch (err) {
                 const errorMsg =
                   err.response?.data?.error?.message ||
                   "Failed to remove user. Please try again.";
                 Alert.alert("Error", errorMsg);
+              } finally {
+                setDeletingUserId(null);
               }
             },
           },
@@ -184,17 +191,21 @@ const UserManagementScreen = ({ navigation, route }) => {
             text: "Remove from All",
             style: "destructive",
             onPress: async () => {
+              setDeletingUserId(user.id);
               try {
                 const lockIds = locksToRemove.map((l) => l.lock_id);
                 await removeUserFromMultipleLocks(user.id, lockIds);
                 queryClient.invalidateQueries({
                   queryKey: ["allUsersForAllLocks"],
                 });
+                showSuccess("User removed from all locks successfully.");
               } catch (err) {
                 const errorMsg =
                   err.response?.data?.error?.message ||
                   "Failed to remove user. Please try again.";
                 Alert.alert("Error", errorMsg);
+              } finally {
+                setDeletingUserId(null);
               }
             },
           },
@@ -351,10 +362,15 @@ const UserManagementScreen = ({ navigation, route }) => {
               (!lockFilter ||
                 userLocks.some((l) => l.lock_id === lockFilter)) && (
                 <TouchableOpacity
-                  style={styles.removeButton}
+                  style={[styles.removeButton, deletingUserId === user.id && styles.removeButtonDisabled]}
                   onPress={() => handleRemoveUser(user)}
+                  disabled={deletingUserId === user.id}
                 >
-                  <Ionicons name="trash-outline" size={18} color="#dc2626" />
+                  {deletingUserId === user.id ? (
+                    <ActivityIndicator size="small" color="#dc2626" />
+                  ) : (
+                    <Ionicons name="trash-outline" size={18} color="#dc2626" />
+                  )}
                 </TouchableOpacity>
               )}
           </View>
@@ -798,6 +814,9 @@ const styles = StyleSheet.create({
   },
   removeButton: {
     padding: Theme.spacing.xs,
+  },
+  removeButtonDisabled: {
+    opacity: 0.8,
   },
 });
 
