@@ -132,30 +132,32 @@ const HomeScreen = ({ navigation }) => {
     }
   }, [locks]);
 
-  // Load user name from storage
-  useEffect(() => {
-    const loadUserName = async () => {
-      try {
-        const storedUser = await AsyncStorage.getItem('user');
-        if (storedUser) {
-          const user = JSON.parse(storedUser);
-          const firstName = user.user_metadata?.first_name || user.first_name || '';
-          const lastName = user.user_metadata?.last_name || user.last_name || '';
-          const fullName = `${firstName} ${lastName}`.trim();
-          setUserName(fullName || 'User');
-        }
-      } catch (err) {
-        console.warn('Failed to load user name:', err);
+  // Load user name from storage (used on mount and when screen gains focus)
+  const loadUserName = useCallback(async () => {
+    try {
+      const storedUser = await AsyncStorage.getItem('user');
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        const firstName = user.user_metadata?.first_name || user.first_name || '';
+        const lastName = user.user_metadata?.last_name || user.last_name || '';
+        const fullName = `${firstName} ${lastName}`.trim();
+        setUserName(fullName || 'User');
       }
-    };
-    loadUserName();
+    } catch (err) {
+      console.warn('Failed to load user name:', err);
+    }
   }, []);
 
-  // Refetch on screen focus and sync lock operation state
+  useEffect(() => {
+    loadUserName();
+  }, [loadUserName]);
+
+  // Refetch on screen focus and sync lock operation state + refresh welcome name
   useFocusEffect(
     useCallback(() => {
       queryClient.invalidateQueries({ queryKey: ['locks'] });
       queryClient.invalidateQueries({ queryKey: ['recentActivity'] });
+      loadUserName();
 
       // Sync button state from service (in case operation started on another screen)
       if (selectedLock) {
@@ -163,7 +165,7 @@ const HomeScreen = ({ navigation }) => {
         setIsLocking(op === 'lock');
         setIsUnlocking(op === 'unlock');
       }
-    }, [queryClient])
+    }, [queryClient, loadUserName])
   );
 
   // Pull-to-refresh handler
