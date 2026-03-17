@@ -8,6 +8,7 @@ import Theme from '../../constants/Theme';
 import { SimpleModeText, SimpleModeButton } from '../../components/ui/SimpleMode';
 import TTLockService from '../../services/ttlockService';
 import { addLock, logLockActivity } from '../../services/api';
+import { useLocks } from '../../hooks/useQueryHooks';
 
 // TTLock Bluetooth State constants (from native module)
 const BluetoothState = {
@@ -46,8 +47,12 @@ const getBluetoothStateText = (state) => {
   }
 };
 
+// Normalize MAC for comparison (uppercase, no colons)
+const normalizeMac = (mac) => (mac || '').replace(/:/g, '').toUpperCase();
+
 const PairLockScreen = ({ navigation }) => {
-  const [connectionStatus, setConnectionStatus] = useState('waiting'); // waiting, checking, scanning, selecting, pairing, connected, failed
+  const { data: userLocks = [] } = useLocks();
+  const [connectionStatus, setConnectionStatus] = useState('waiting'); // waiting, checking, scanning, selecting, pairing, connected, no_new_locks, failed
   const [bluetoothState, setBluetoothState] = useState('unknown');
   const [discoveredLocks, setDiscoveredLocks] = useState([]);
   const [selectedLock, setSelectedLock] = useState(null);
@@ -142,11 +147,8 @@ const PairLockScreen = ({ navigation }) => {
       setIsScanning(false);
 
       if (locks.length === 0) {
-        setConnectionStatus('failed');
+        setConnectionStatus('no_new_locks');
         setErrorMessage('No locks found nearby. Make sure your lock is powered on and within range.');
-      } else if (locks.length === 1) {
-        // Auto-select if only one lock found
-        handleSelectLock(locks[0]);
       } else {
         setConnectionStatus('selecting');
       }
@@ -193,13 +195,15 @@ const PairLockScreen = ({ navigation }) => {
     setSelectedLock(lock);
 
     if (lock.isInitialized) {
-      Alert.alert(
-        'Lock Already Paired',
-        'This lock is already paired with another account. Please select a different lock that is available for pairing.',
-        [
-          { text: 'OK', style: 'cancel' }
-        ]
+      const scannedMac = normalizeMac(lock.lockMac);
+      const isOwnLock = userLocks.some(
+        (u) => normalizeMac(u.ttlock_mac || u.mac_address) === scannedMac
       );
+      const title = isOwnLock ? 'Lock Already in Your Account' : 'Lock Already Paired';
+      const message = isOwnLock
+        ? "You already have this lock in your account. To add a different lock, wake it up by touching its screen, then scan again."
+        : 'This lock is already paired with another account. Please select a different lock that is available for pairing.';
+      Alert.alert(title, message, [{ text: 'OK', style: 'cancel' }]);
       return;
     }
 
@@ -313,7 +317,12 @@ const PairLockScreen = ({ navigation }) => {
     } catch (error) {
       console.error('[PairLock] Pairing failed:', error);
       setConnectionStatus('failed');
-      setErrorMessage(error.message || 'Failed to pair with lock. Please try again.');
+      let msg = error.message || 'Failed to pair with lock. Please try again.';
+      if (msg.includes('Non-setting mode') || msg.includes('notInSettingMode') || msg.includes('(7)') ||
+          msg.includes('connect time out') || msg.includes('connection is disconnected') || msg.includes('(34)')) {
+        msg = "The lock wasn't ready. Touch the lock's keypad or screen to wake it, then try again.";
+      }
+      setErrorMessage(msg);
     }
   };
 
@@ -328,9 +337,29 @@ const PairLockScreen = ({ navigation }) => {
     } catch (error) {
       console.error('[PairLock] Reset/pair failed:', error);
       setConnectionStatus('failed');
-      setErrorMessage(error.message || 'Failed to reset lock. Please try again.');
+      let msg = error.message || 'Failed to reset lock. Please try again.';
+      if (msg.includes('Non-setting mode') || msg.includes('notInSettingMode') || msg.includes('(7)') ||
+          msg.includes('connect time out') || msg.includes('connection is disconnected') || msg.includes('(34)')) {
+        msg = "The lock wasn't ready. Touch the lock's keypad or screen to wake it, then try again.";
+      }
+      setErrorMessage(msg);
     }
   };
+
+  const renderAlreadyPairedLockItem = ({ item }) => (
+    <View style={[styles.lockCard, styles.lockCardAlreadyPaired]}>
+      <View style={styles.lockIconContainer}>
+        <Ionicons name="lock-closed" size={24} color={Colors.subtitlecolor} />
+      </View>
+      <View style={styles.lockInfo}>
+        <Text style={styles.lockName}>{item.name || 'Lock'}</Text>
+        <View style={styles.lockStatusRow}>
+          <Ionicons name="checkmark-circle" size={16} color={Colors.subtitlecolor} />
+          <Text style={styles.lockStatus}>Already Paired</Text>
+        </View>
+      </View>
+    </View>
+  );
 
   const renderLockItem = ({ item, isNearest = false }) => {
     const isAvailable = !item.isInitialized;
@@ -405,7 +434,7 @@ const PairLockScreen = ({ navigation }) => {
             styles.signalText,
             isAvailable && styles.signalTextAvailable
           ]}>
-            {item.rssi} dBm
+            {item.rssi != null ? `${item.rssi} dBm` : 'Not in range'}
           </Text>
           {isAvailable && item.rssi > -70 && (
             <Text style={styles.signalStrengthLabel}>STRONG</Text>
@@ -448,18 +477,26 @@ const PairLockScreen = ({ navigation }) => {
           </View>
         );
 
-      case 'selecting':
-        // Sort locks: available first, then by signal strength (highest RSSI = nearest)
-        const sortedLocks = [...discoveredLocks].sort((a, b) => {
-          // Available locks first
+      case 'selecting': {
+        // Merge: discovered locks from scan + user's already paired locks not in scan
+        const scannedMacs = new Set(discoveredLocks.map((l) => normalizeMac(l.lockMac)));
+        const userLocksNotInScan = userLocks
+          .filter((u) => !scannedMacs.has(normalizeMac(u.ttlock_mac || u.mac_address)))
+          .map((u) => ({
+            lockMac: u.ttlock_mac || u.mac_address,
+            lockName: u.name || 'Lock',
+            rssi: null,
+            isInitialized: true,
+            lockData: null,
+          }));
+        const combinedLocks = [...discoveredLocks, ...userLocksNotInScan];
+        // Sort: available first, then by signal strength (highest RSSI = nearest)
+        const sortedLocks = [...combinedLocks].sort((a, b) => {
           if (!a.isInitialized && b.isInitialized) return -1;
           if (a.isInitialized && !b.isInitialized) return 1;
-          // Then sort by RSSI (higher = closer)
           return (b.rssi || -100) - (a.rssi || -100);
         });
-        
-        // Find the nearest available lock
-        const nearestAvailableLock = sortedLocks.find(lock => !lock.isInitialized);
+        const nearestAvailableLock = sortedLocks.find((lock) => !lock.isInitialized);
         const nearestLockMac = nearestAvailableLock?.lockMac;
 
         return (
@@ -468,7 +505,7 @@ const PairLockScreen = ({ navigation }) => {
               <Ionicons name="search" size={32} color={Colors.iconbackground} />
             </View>
             <SimpleModeText variant="title" style={styles.statusTitle}>
-              {discoveredLocks.length} Lock{discoveredLocks.length > 1 ? 's' : ''} Found
+              {combinedLocks.length} Lock{combinedLocks.length > 1 ? 's' : ''} Found
             </SimpleModeText>
             <SimpleModeText style={styles.statusDescription}>
               Select the lock you want to pair
@@ -479,7 +516,7 @@ const PairLockScreen = ({ navigation }) => {
               renderItem={({ item }) => renderLockItem({ item, isNearest: item.lockMac === nearestLockMac })}
               keyExtractor={(item) => item.lockMac}
               style={styles.locksList}
-              scrollEnabled={false}
+              scrollEnabled={combinedLocks.length > 3}
             />
 
             <SimpleModeButton
@@ -491,6 +528,7 @@ const PairLockScreen = ({ navigation }) => {
             </SimpleModeButton>
           </View>
         );
+      }
 
       case 'pairing':
         return (
@@ -534,6 +572,40 @@ const PairLockScreen = ({ navigation }) => {
             <SimpleModeText style={styles.statusDescription}>
               Your lock is paired. Moving to next step...
             </SimpleModeText>
+          </View>
+        );
+
+      case 'no_new_locks':
+        return (
+          <View style={styles.statusContainer}>
+            <View style={styles.errorIconWrap}>
+              <Ionicons name="search-outline" size={32} color="#FF6B6B" />
+            </View>
+            <SimpleModeText variant="title" style={styles.statusTitle}>
+              No new locks found
+            </SimpleModeText>
+            <SimpleModeText style={styles.statusDescription}>
+              {errorMessage}
+            </SimpleModeText>
+            {userLocks.length > 0 && (
+              <>
+                <Text style={styles.alreadyPairedSectionTitle}>Already in your account</Text>
+                <FlatList
+                  data={userLocks}
+                  renderItem={renderAlreadyPairedLockItem}
+                  keyExtractor={(item) => String(item.id || item.ttlock_mac || item.mac_address)}
+                  style={styles.locksList}
+                  scrollEnabled={userLocks.length > 2}
+                />
+              </>
+            )}
+            <SimpleModeButton
+              onPress={handleStartPairing}
+              icon="refresh-outline"
+              style={styles.rescanButton}
+            >
+              Scan Again
+            </SimpleModeButton>
           </View>
         );
 
@@ -766,6 +838,13 @@ const styles = StyleSheet.create({
     maxHeight: 300,
     marginTop: Theme.spacing.md,
   },
+  alreadyPairedSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.subtitlecolor,
+    marginTop: Theme.spacing.lg,
+    marginBottom: Theme.spacing.sm,
+  },
   lockCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -794,6 +873,11 @@ const styles = StyleSheet.create({
   lockCardSelected: {
     borderColor: Colors.iconbackground,
     backgroundColor: `${Colors.iconbackground}15`,
+  },
+  lockCardAlreadyPaired: {
+    backgroundColor: Colors.cardbackground,
+    borderColor: 'transparent',
+    opacity: 0.9,
   },
   lockIconContainer: {
     width: 40,
