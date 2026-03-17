@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,13 +9,17 @@ import {
   PermissionsAndroid,
   Linking,
   AppState,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Notifications from 'expo-notifications';
-import Colors from '../constants/Colors';
-import TTLockService from '../services/ttlockService';
+  ScrollView,
+  useWindowDimensions,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Notifications from "expo-notifications";
+import Colors from "../constants/Colors";
+import TTLockService from "../services/ttlockService";
 
 const PermissionsScreen = ({ navigation, onPermissionsGranted }) => {
+  const { height: screenHeight } = useWindowDimensions();
+  const isSmallScreen = screenHeight < 700;
   const [isChecking, setIsChecking] = useState(true);
   const [permissions, setPermissions] = useState({
     notifications: { granted: false, checking: false },
@@ -30,9 +34,11 @@ const PermissionsScreen = ({ navigation, onPermissionsGranted }) => {
     checkAllPermissions();
 
     // Listen for app state changes to recheck when app comes to foreground
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active') {
-        console.log('[Permissions] App came to foreground, rechecking permissions...');
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (nextAppState === "active") {
+        console.log(
+          "[Permissions] App came to foreground, rechecking permissions...",
+        );
         checkAllPermissions();
       }
     });
@@ -44,7 +50,7 @@ const PermissionsScreen = ({ navigation, onPermissionsGranted }) => {
 
   const checkAllPermissions = async () => {
     setIsChecking(true);
-    console.log('[Permissions] Checking all permissions...');
+    console.log("[Permissions] Checking all permissions...");
 
     try {
       // Check all permissions in parallel
@@ -54,7 +60,7 @@ const PermissionsScreen = ({ navigation, onPermissionsGranted }) => {
         checkBluetoothState(),
       ]);
 
-      console.log('[Permissions] Results:', {
+      console.log("[Permissions] Results:", {
         notifications: notifStatus,
         bluetoothPermissions: btPerms,
         bluetoothEnabled: btState,
@@ -62,13 +68,15 @@ const PermissionsScreen = ({ navigation, onPermissionsGranted }) => {
 
       // If all permissions are granted AND Bluetooth is on, proceed
       if (notifStatus && btPerms && btState) {
-        console.log('[Permissions] All permissions granted and Bluetooth is ON!');
+        console.log(
+          "[Permissions] All permissions granted and Bluetooth is ON!",
+        );
         if (onPermissionsGranted) {
           onPermissionsGranted();
         }
       }
     } catch (error) {
-      console.error('[Permissions] Error checking permissions:', error);
+      console.error("[Permissions] Error checking permissions:", error);
     } finally {
       setIsChecking(false);
     }
@@ -77,20 +85,20 @@ const PermissionsScreen = ({ navigation, onPermissionsGranted }) => {
   const checkNotificationPermission = async () => {
     try {
       const { status } = await Notifications.getPermissionsAsync();
-      const granted = status === 'granted';
-      setPermissions(prev => ({
+      const granted = status === "granted";
+      setPermissions((prev) => ({
         ...prev,
-        notifications: { granted, checking: false }
+        notifications: { granted, checking: false },
       }));
       return granted;
     } catch (error) {
-      console.error('[Permissions] Notification check error:', error);
+      console.error("[Permissions] Notification check error:", error);
       return false;
     }
   };
 
   const checkBluetoothPermissions = async () => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS === "android") {
       try {
         // Android 12+ (API 31+) requires BLUETOOTH_SCAN and BLUETOOTH_CONNECT
         // Older versions only need ACCESS_FINE_LOCATION for BLE scanning
@@ -99,45 +107,51 @@ const PermissionsScreen = ({ navigation, onPermissionsGranted }) => {
         if (androidVersion >= 31) {
           // Android 12+
           const bluetoothScan = await PermissionsAndroid.check(
-            PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN
+            PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
           );
           const bluetoothConnect = await PermissionsAndroid.check(
-            PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT
+            PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
           );
           const fineLocation = await PermissionsAndroid.check(
-            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
           );
 
           const granted = bluetoothScan && bluetoothConnect && fineLocation;
-          setPermissions(prev => ({
+          setPermissions((prev) => ({
             ...prev,
             bluetooth: { granted: bluetoothConnect, checking: false },
-            nearbyDevices: { granted: bluetoothScan && fineLocation, checking: false }
+            nearbyDevices: {
+              granted: bluetoothScan && fineLocation,
+              checking: false,
+            },
           }));
           return granted;
         } else {
           // Android 11 and below - only location needed for BLE
           const fineLocation = await PermissionsAndroid.check(
-            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
           );
 
-          setPermissions(prev => ({
+          setPermissions((prev) => ({
             ...prev,
             bluetooth: { granted: true, checking: false }, // No separate BT permission needed
-            nearbyDevices: { granted: fineLocation, checking: false }
+            nearbyDevices: { granted: fineLocation, checking: false },
           }));
           return fineLocation;
         }
       } catch (error) {
-        console.error('[Permissions] Bluetooth permissions check error:', error);
+        console.error(
+          "[Permissions] Bluetooth permissions check error:",
+          error,
+        );
         return false;
       }
     } else {
       // iOS handles Bluetooth permissions differently
-      setPermissions(prev => ({
+      setPermissions((prev) => ({
         ...prev,
         bluetooth: { granted: true, checking: false },
-        nearbyDevices: { granted: true, checking: false }
+        nearbyDevices: { granted: true, checking: false },
       }));
       return true;
     }
@@ -147,30 +161,30 @@ const PermissionsScreen = ({ navigation, onPermissionsGranted }) => {
     try {
       setCheckingBluetooth(true);
       const state = await TTLockService.getBluetoothState();
-      const isOn = state === 'poweredOn';
+      const isOn = state === "poweredOn";
       setBluetoothEnabled(isOn);
       setCheckingBluetooth(false);
       return isOn;
     } catch (error) {
-      console.error('[Permissions] Bluetooth state check error:', error);
+      console.error("[Permissions] Bluetooth state check error:", error);
       setCheckingBluetooth(false);
       return false;
     }
   };
 
   const requestNotificationPermission = async () => {
-    setPermissions(prev => ({
+    setPermissions((prev) => ({
       ...prev,
-      notifications: { ...prev.notifications, checking: true }
+      notifications: { ...prev.notifications, checking: true },
     }));
 
     try {
       const { status } = await Notifications.requestPermissionsAsync();
-      const granted = status === 'granted';
+      const granted = status === "granted";
 
-      setPermissions(prev => ({
+      setPermissions((prev) => ({
         ...prev,
-        notifications: { granted, checking: false }
+        notifications: { granted, checking: false },
       }));
 
       if (!granted) {
@@ -180,24 +194,24 @@ const PermissionsScreen = ({ navigation, onPermissionsGranted }) => {
 
       return granted;
     } catch (error) {
-      console.error('[Permissions] Notification request error:', error);
-      setPermissions(prev => ({
+      console.error("[Permissions] Notification request error:", error);
+      setPermissions((prev) => ({
         ...prev,
-        notifications: { granted: false, checking: false }
+        notifications: { granted: false, checking: false },
       }));
       return false;
     }
   };
 
   const requestBluetoothPermissions = async () => {
-    if (Platform.OS !== 'android') {
+    if (Platform.OS !== "android") {
       return true;
     }
 
-    setPermissions(prev => ({
+    setPermissions((prev) => ({
       ...prev,
       bluetooth: { ...prev.bluetooth, checking: true },
-      nearbyDevices: { ...prev.nearbyDevices, checking: true }
+      nearbyDevices: { ...prev.nearbyDevices, checking: true },
     }));
 
     try {
@@ -213,16 +227,25 @@ const PermissionsScreen = ({ navigation, onPermissionsGranted }) => {
 
         const results = await PermissionsAndroid.requestMultiple(permissions);
 
-        const bluetoothScan = results[PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN] === PermissionsAndroid.RESULTS.GRANTED;
-        const bluetoothConnect = results[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] === PermissionsAndroid.RESULTS.GRANTED;
-        const fineLocation = results[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
+        const bluetoothScan =
+          results[PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN] ===
+          PermissionsAndroid.RESULTS.GRANTED;
+        const bluetoothConnect =
+          results[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] ===
+          PermissionsAndroid.RESULTS.GRANTED;
+        const fineLocation =
+          results[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] ===
+          PermissionsAndroid.RESULTS.GRANTED;
 
         const allGranted = bluetoothScan && bluetoothConnect && fineLocation;
 
-        setPermissions(prev => ({
+        setPermissions((prev) => ({
           ...prev,
           bluetooth: { granted: bluetoothConnect, checking: false },
-          nearbyDevices: { granted: bluetoothScan && fineLocation, checking: false }
+          nearbyDevices: {
+            granted: bluetoothScan && fineLocation,
+            checking: false,
+          },
         }));
 
         if (!allGranted) {
@@ -233,15 +256,15 @@ const PermissionsScreen = ({ navigation, onPermissionsGranted }) => {
       } else {
         // Android 11 and below - only location needed
         const result = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
         );
 
         const fineLocation = result === PermissionsAndroid.RESULTS.GRANTED;
 
-        setPermissions(prev => ({
+        setPermissions((prev) => ({
           ...prev,
           bluetooth: { granted: true, checking: false },
-          nearbyDevices: { granted: fineLocation, checking: false }
+          nearbyDevices: { granted: fineLocation, checking: false },
         }));
 
         if (!fineLocation) {
@@ -251,21 +274,24 @@ const PermissionsScreen = ({ navigation, onPermissionsGranted }) => {
         return fineLocation;
       }
     } catch (error) {
-      console.error('[Permissions] Bluetooth permissions request error:', error);
-      setPermissions(prev => ({
+      console.error(
+        "[Permissions] Bluetooth permissions request error:",
+        error,
+      );
+      setPermissions((prev) => ({
         ...prev,
         bluetooth: { granted: false, checking: false },
-        nearbyDevices: { granted: false, checking: false }
+        nearbyDevices: { granted: false, checking: false },
       }));
       return false;
     }
   };
 
   const openBluetoothSettings = () => {
-    if (Platform.OS === 'android') {
-      Linking.sendIntent('android.settings.BLUETOOTH_SETTINGS');
+    if (Platform.OS === "android") {
+      Linking.sendIntent("android.settings.BLUETOOTH_SETTINGS");
     } else {
-      Linking.openURL('App-Prefs:Bluetooth');
+      Linking.openURL("App-Prefs:Bluetooth");
     }
   };
 
@@ -281,19 +307,33 @@ const PermissionsScreen = ({ navigation, onPermissionsGranted }) => {
 
   const canProceed = allPermissionsGranted && bluetoothEnabled;
 
-  const renderPermissionItem = (icon, title, description, granted, checking, onPress) => (
+  const renderPermissionItem = (
+    icon,
+    title,
+    description,
+    granted,
+    checking,
+    onPress,
+  ) => (
     <TouchableOpacity
       style={[
         styles.permissionItem,
-        granted ? styles.permissionGranted : styles.permissionPending
+        granted ? styles.permissionGranted : styles.permissionPending,
+        isSmallScreen && styles.permissionItemCompact,
       ]}
       onPress={onPress}
       disabled={checking || granted}
     >
-      <View style={[styles.iconContainer, granted ? styles.iconGranted : styles.iconPending]}>
+      <View
+        style={[
+          styles.iconContainer,
+          granted ? styles.iconGranted : styles.iconPending,
+          isSmallScreen && styles.iconContainerCompact,
+        ]}
+      >
         <Ionicons
           name={icon}
-          size={28}
+          size={isSmallScreen ? 24 : 28}
           color={granted ? Colors.green : Colors.subtitlecolor}
         />
       </View>
@@ -326,83 +366,124 @@ const PermissionsScreen = ({ navigation, onPermissionsGranted }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerIcon}>
-          <Ionicons name="shield-checkmark" size={48} color={Colors.primary} />
-        </View>
-        <Text style={styles.title}>Permissions Required</Text>
-        <Text style={styles.subtitle}>
-          To use all features of this app, please grant the following permissions and enable Bluetooth.
-        </Text>
-      </View>
-
-      <View style={styles.permissionsList}>
-        {renderPermissionItem(
-          'notifications',
-          'Notifications',
-          'Receive alerts about lock activity and security events',
-          permissions.notifications.granted,
-          permissions.notifications.checking,
-          requestNotificationPermission
-        )}
-
-        {renderPermissionItem(
-          'bluetooth',
-          'Bluetooth',
-          'Connect to and control your smart locks',
-          permissions.bluetooth.granted,
-          permissions.bluetooth.checking,
-          requestBluetoothPermissions
-        )}
-
-        {renderPermissionItem(
-          'location',
-          'Nearby Devices',
-          'Discover and pair with nearby locks',
-          permissions.nearbyDevices.granted,
-          permissions.nearbyDevices.checking,
-          requestBluetoothPermissions
-        )}
-      </View>
-
-      {/* Bluetooth Status Card */}
-      <View style={[
-        styles.bluetoothStatusCard,
-        bluetoothEnabled ? styles.bluetoothOn : styles.bluetoothOff
-      ]}>
-        <View style={styles.bluetoothStatusContent}>
+      {/* Sticky header - always visible */}
+      <View style={[styles.header, isSmallScreen && styles.headerCompact]}>
+        <View
+          style={[styles.headerIcon, isSmallScreen && styles.headerIconCompact]}
+        >
           <Ionicons
-            name="bluetooth"
-            size={32}
-            color={bluetoothEnabled ? Colors.green : Colors.red}
+            name="shield-checkmark"
+            size={isSmallScreen ? 40 : 48}
+            color={Colors.primary}
           />
-          <View style={styles.bluetoothStatusInfo}>
-            <Text style={styles.bluetoothStatusTitle}>
-              Bluetooth is {bluetoothEnabled ? 'ON' : 'OFF'}
-            </Text>
-            <Text style={styles.bluetoothStatusSubtitle}>
-              {bluetoothEnabled
-                ? 'Ready to connect to your locks'
-                : 'Please turn on Bluetooth to continue'}
-            </Text>
-          </View>
-          {!bluetoothEnabled && (
-            <TouchableOpacity
-              style={styles.enableBluetoothButton}
-              onPress={openBluetoothSettings}
-            >
-              <Text style={styles.enableBluetoothText}>Enable</Text>
-            </TouchableOpacity>
-          )}
-          {bluetoothEnabled && (
-            <Ionicons name="checkmark-circle" size={28} color={Colors.green} />
-          )}
+        </View>
+        <Text style={[styles.title, isSmallScreen && styles.titleCompact]}>
+          Permissions Required
+        </Text>
+        <Text
+          style={[styles.subtitle, isSmallScreen && styles.subtitleCompact]}
+        >
+          To use all features of this app, please grant the following
+          permissions and enable Bluetooth.
+        </Text>
+        <View style={styles.scrollHint}>
+          <Ionicons
+            name="chevron-down"
+            size={16}
+            color={Colors.subtitlecolor}
+          />
+          <Text style={styles.scrollHintText}>
+            Scroll down to see all permissions
+          </Text>
         </View>
       </View>
 
-      <View style={styles.footer}>
+      {/* Scrollable permissions list only */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isSmallScreen && styles.scrollContentCompact,
+        ]}
+        showsVerticalScrollIndicator={true}
+        bounces={false}
+      >
+        <View style={styles.permissionsList}>
+          {renderPermissionItem(
+            "notifications",
+            "Notifications",
+            "Receive alerts about lock activity and security events",
+            permissions.notifications.granted,
+            permissions.notifications.checking,
+            requestNotificationPermission,
+          )}
+
+          {renderPermissionItem(
+            "bluetooth",
+            "Bluetooth",
+            "Connect to and control your smart locks",
+            permissions.bluetooth.granted,
+            permissions.bluetooth.checking,
+            requestBluetoothPermissions,
+          )}
+
+          {renderPermissionItem(
+            "location",
+            "Nearby Devices",
+            "Discover and pair with nearby locks",
+            permissions.nearbyDevices.granted,
+            permissions.nearbyDevices.checking,
+            requestBluetoothPermissions,
+          )}
+        </View>
+
+        {/* Bluetooth Status Card */}
+        <View
+          style={[
+            styles.bluetoothStatusCard,
+            bluetoothEnabled ? styles.bluetoothOn : styles.bluetoothOff,
+          ]}
+        >
+          <View style={styles.bluetoothStatusContent}>
+            <Ionicons
+              name="bluetooth"
+              size={28}
+              color={bluetoothEnabled ? Colors.green : Colors.red}
+            />
+            <View style={styles.bluetoothStatusInfo}>
+              <Text style={styles.bluetoothStatusTitle}>
+                Bluetooth is {bluetoothEnabled ? "ON" : "OFF"}
+              </Text>
+              <Text style={styles.bluetoothStatusSubtitle}>
+                {bluetoothEnabled
+                  ? "Ready to connect to your locks"
+                  : "Turn on Bluetooth to continue"}
+              </Text>
+            </View>
+            {!bluetoothEnabled && (
+              <TouchableOpacity
+                style={styles.enableBluetoothButton}
+                onPress={openBluetoothSettings}
+              >
+                <Text style={styles.enableBluetoothText}>Enable</Text>
+              </TouchableOpacity>
+            )}
+            {bluetoothEnabled && (
+              <Ionicons
+                name="checkmark-circle"
+                size={24}
+                color={Colors.green}
+              />
+            )}
+          </View>
+        </View>
+
+        <View style={styles.scrollBottomSpacer} />
+      </ScrollView>
+
+      <View style={[styles.footer, isSmallScreen && styles.footerCompact]}>
         {!canProceed && (
-          <Text style={styles.warningText}>
+          <Text style={styles.warningText} numberOfLines={2}>
             Please grant all permissions and enable Bluetooth to continue.
           </Text>
         )}
@@ -410,20 +491,20 @@ const PermissionsScreen = ({ navigation, onPermissionsGranted }) => {
         <TouchableOpacity
           style={[
             styles.continueButton,
-            !canProceed && styles.continueButtonDisabled
+            !canProceed && styles.continueButtonDisabled,
           ]}
           onPress={handleContinue}
-          disabled={!canProceed}
+          disabled={checkingBluetooth}
         >
           {checkingBluetooth ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <>
               <Text style={styles.continueButtonText}>
-                {canProceed ? 'Continue' : 'Check Again'}
+                {canProceed ? "Continue" : "Check Again"}
               </Text>
               <Ionicons
-                name={canProceed ? 'arrow-forward' : 'refresh'}
+                name={canProceed ? "arrow-forward" : "refresh"}
                 size={20}
                 color="#fff"
               />
@@ -450,8 +531,8 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: Colors.background,
   },
   loadingText: {
@@ -459,73 +540,123 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.subtitlecolor,
   },
-  header: {
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 60,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     paddingBottom: 24,
+  },
+  scrollContentCompact: {
+    paddingBottom: 16,
+  },
+  header: {
+    flexShrink: 0,
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingTop: 40,
+    paddingBottom: 16,
+    backgroundColor: Colors.background,
+  },
+  headerCompact: {
+    paddingTop: 24,
+    paddingBottom: 12,
   },
   headerIcon: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Colors.primary + '20',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: Colors.primary + "20",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 16,
+  },
+  headerIconCompact: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    marginBottom: 12,
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.titlecolor,
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: "center",
+  },
+  titleCompact: {
+    fontSize: 22,
+    marginBottom: 6,
   },
   subtitle: {
     fontSize: 15,
     color: Colors.subtitlecolor,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 22,
+  },
+  subtitleCompact: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  scrollHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 12,
+  },
+  scrollHintText: {
+    fontSize: 13,
+    color: Colors.subtitlecolor,
   },
   permissionsList: {
     paddingHorizontal: 16,
-    gap: 12,
+    gap: 10,
   },
   permissionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
     borderRadius: 12,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderWidth: 2,
   },
   permissionGranted: {
     borderColor: Colors.green,
-    backgroundColor: Colors.green + '10',
+    backgroundColor: Colors.green + "10",
   },
   permissionPending: {
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
+  },
+  permissionItemCompact: {
+    padding: 12,
   },
   iconContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 12,
   },
   iconGranted: {
-    backgroundColor: Colors.green + '20',
+    backgroundColor: Colors.green + "20",
   },
   iconPending: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
+  },
+  iconContainerCompact: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
   },
   permissionInfo: {
     flex: 1,
   },
   permissionTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.titlecolor,
     marginBottom: 4,
   },
@@ -544,28 +675,28 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   grantButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   bluetoothStatusCard: {
     marginHorizontal: 16,
-    marginTop: 20,
+    marginTop: 16,
     borderRadius: 12,
-    padding: 16,
+    padding: 14,
     borderWidth: 2,
   },
   bluetoothOn: {
-    backgroundColor: Colors.green + '10',
+    backgroundColor: Colors.green + "10",
     borderColor: Colors.green,
   },
   bluetoothOff: {
-    backgroundColor: Colors.red + '10',
+    backgroundColor: Colors.red + "10",
     borderColor: Colors.red,
   },
   bluetoothStatusContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   bluetoothStatusInfo: {
     flex: 1,
@@ -573,7 +704,7 @@ const styles = StyleSheet.create({
   },
   bluetoothStatusTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.titlecolor,
     marginBottom: 4,
   },
@@ -588,28 +719,41 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   enableBluetoothText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
+  },
+  scrollBottomSpacer: {
+    height: 16,
   },
   footer: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    padding: 16,
-    paddingBottom: 32,
+    flexShrink: 0,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingBottom: Platform.OS === "ios" ? 34 : 24,
+    backgroundColor: Colors.background,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.06)",
+  },
+  footerCompact: {
+    paddingVertical: 12,
+    paddingBottom: Platform.OS === "ios" ? 28 : 20,
   },
   warningText: {
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.red,
-    textAlign: 'center',
-    marginBottom: 16,
+    textAlign: "center",
+    marginBottom: 12,
+    paddingHorizontal: 8,
   },
   continueButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: Colors.primary,
-    padding: 16,
+    minHeight: 52,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
     borderRadius: 12,
     gap: 8,
   },
@@ -617,21 +761,23 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.subtitlecolor,
   },
   continueButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   refreshButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
+    paddingVertical: 12,
+    minHeight: 44,
     gap: 8,
   },
   refreshButtonText: {
     color: Colors.primary,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 });
 
