@@ -1181,9 +1181,7 @@ const LockSettingsScreen = ({ navigation, route }) => {
             <View style={styles.settingContent}>
               <Text style={styles.settingTitle}>Passage Mode</Text>
               <Text style={styles.settingSubtitle}>
-                {settings.passageModeEnabled
-                  ? "Lock stays unlocked"
-                  : "Normal locking"}
+                Lock stays unlocked
               </Text>
             </View>
             {passageModeLoading ? (
