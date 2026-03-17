@@ -326,30 +326,39 @@ const SendCodeScreen = ({ navigation, route }) => {
           </View>
         </View>
         {item.valid_until && item.code_type !== 'permanent' && (
-          <Text style={styles.codeExpiry}>
-            {item.status === 'expired' ? 'Expired' : 
-             item.code_type === 'one_time' ? 
-               (() => {
-                 const now = new Date();
-                 const expiry = new Date(item.valid_until);
-                 const diff = expiry - now;
-                 if (diff <= 0) return 'Expired';
-                 const hours = Math.floor(diff / (1000 * 60 * 60));
-                 const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                 return hours > 0 ? `Expires in ${hours}h ${minutes}m (one-time use)` : `Expires in ${minutes}m (one-time use)`;
-               })() :
-               (() => {
-                 const expiryStr = `Expires: ${new Date(item.valid_until).toLocaleDateString()}`;
-                 if (item.code_type === 'temporary' && item.valid_from && item.valid_until) {
-                   const from = new Date(item.valid_from).getTime();
-                   const to = new Date(item.valid_until).getTime();
-                   const durationHours = Math.round((to - from) / (1000 * 60 * 60));
-                   return `Valid for ${durationHours} hr · ${expiryStr}`;
-                 }
-                 return expiryStr;
-               })()
-            }
-          </Text>
+          item.code_type === 'temporary' && item.valid_from && item.valid_until ? (
+            <View style={styles.codeExpiryRow}>
+              <Text style={styles.codeExpiry} numberOfLines={1}>Valid for </Text>
+              <View style={styles.validForBadge}>
+                <Text style={styles.validForBadgeText}>
+                  {(() => {
+                    const from = new Date(item.valid_from).getTime();
+                    const to = new Date(item.valid_until).getTime();
+                    return Math.round((to - from) / (1000 * 60 * 60));
+                  })()} hr
+                </Text>
+              </View>
+              <Text style={styles.codeExpiry} numberOfLines={1} ellipsizeMode="tail">
+                {' · Expires: '}{new Date(item.valid_until).toLocaleDateString()}
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.codeExpiry}>
+              {item.status === 'expired' ? 'Expired' : 
+               item.code_type === 'one_time' ? 
+                 (() => {
+                   const now = new Date();
+                   const expiry = new Date(item.valid_until);
+                   const diff = expiry - now;
+                   if (diff <= 0) return 'Expired';
+                   const hours = Math.floor(diff / (1000 * 60 * 60));
+                   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                   return hours > 0 ? `Expires in ${hours}h ${minutes}m (one-time use)` : `Expires in ${minutes}m (one-time use)`;
+                 })() :
+                 `Expires: ${new Date(item.valid_until).toLocaleDateString()}`
+              }
+            </Text>
+          )
         )}
       </View>
       <TouchableOpacity
@@ -851,6 +860,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.subtitlecolor,
     marginTop: 2,
+    flexShrink: 1,
+  },
+  codeExpiryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'nowrap',
+    marginTop: 2,
+    gap: 4,
+  },
+  validForBadge: {
+    backgroundColor: 'rgba(220, 38, 38, 0.12)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  validForBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#b91c1c',
   },
   deleteButton: {
     width: 36,

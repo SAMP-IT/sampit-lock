@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  RefreshControl,
   Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -36,7 +35,7 @@ const roleFilters = [
 const UserManagementScreen = ({ navigation, route }) => {
   const { lockId, lock, refresh } = route.params || {};
   const queryClient = useQueryClient();
-  const { showSuccess } = useToast();
+  const { showSuccess, showError } = useToast();
 
   const [roleFilter, setRoleFilter] = useState("all");
   const [lockFilter, setLockFilter] = useState(lockId || null);
@@ -60,6 +59,7 @@ const UserManagementScreen = ({ navigation, route }) => {
   const {
     data,
     isLoading,
+    isFetching,
     error: queryError,
     refetch,
   } = useAllUsersForAllLocks(filters);
@@ -77,9 +77,16 @@ const UserManagementScreen = ({ navigation, route }) => {
   const canManageUsers = locksData.length > 0;
   const error = queryError ? "Failed to load users. Please try again." : null;
 
-  const onRefresh = useCallback(() => {
-    refetch();
-  }, [refetch]);
+  const onRefresh = useCallback(async () => {
+    try {
+      const result = await refetch();
+      if (result?.isError) {
+        showError('Failed to refresh user list. Please try again.');
+      }
+    } catch (err) {
+      showError('Failed to refresh user list. Please try again.');
+    }
+  }, [refetch, showError]);
 
   const handleAddUser = () => {
     // Navigate to AddUser screen, optionally with pre-selected lock
@@ -382,14 +389,8 @@ const UserManagementScreen = ({ navigation, route }) => {
   return (
     <AppScreen
       contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl
-          refreshing={isLoading}
-          onRefresh={onRefresh}
-          colors={[Colors.iconbackground]}
-          tintColor={Colors.iconbackground}
-        />
-      }
+      refreshing={isFetching && !isLoading}
+      onRefresh={onRefresh}
     >
       {/* Header */}
       <View style={styles.header}>
