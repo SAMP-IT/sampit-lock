@@ -425,7 +425,14 @@ const UserManagementScreen = ({ navigation, route }) => {
               <Text style={styles.statNumber}>
                 {(stats.total_users || 0).toString().padStart(2, "0")}
               </Text>
-              <Text style={styles.statLabel}>Users</Text>
+              <Text style={styles.statLabel}>Total Users</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>
+                {(stats.owners || 0).toString().padStart(2, "0")}
+              </Text>
+              <Text style={styles.statLabel}>Owners</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
@@ -433,13 +440,6 @@ const UserManagementScreen = ({ navigation, route }) => {
                 {(stats.admins || 0).toString().padStart(2, "0")}
               </Text>
               <Text style={styles.statLabel}>Admins</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>
-                {(stats.family || 0).toString().padStart(2, "0")}
-              </Text>
-              <Text style={styles.statLabel}>Family</Text>
             </View>
           </View>
         </AppCard>
