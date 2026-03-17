@@ -1,7 +1,6 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useQueryClient } from '@tanstack/react-query';
 import AppScreen from "../components/ui/AppScreen";
 import Section from "../components/ui/Section";
 import AppCard from "../components/ui/AppCard";
@@ -10,6 +9,7 @@ import Colors from "../constants/Colors";
 import Theme from "../constants/Theme";
 import { deleteLock } from "../services/api";
 import { useLocks } from "../hooks/useQueryHooks";
+import { invalidateCacheAfterLockDelete } from "../utils/queryClient";
 
 const DeviceTile = ({ device, onSettingsPress, onLongPress }) => {
   // Get the user-given name as main title, model number as subtitle
@@ -75,7 +75,6 @@ const DeviceTile = ({ device, onSettingsPress, onLongPress }) => {
 };
 
 const DevicesScreen = ({ navigation }) => {
-  const queryClient = useQueryClient();
   const { data: devices = [], isLoading } = useLocks();
 
   const handleAddLock = () => {
@@ -99,7 +98,7 @@ const DevicesScreen = ({ navigation }) => {
           onPress: async () => {
             try {
               await deleteLock(device.id);
-              queryClient.invalidateQueries({ queryKey: ['locks'] });
+              invalidateCacheAfterLockDelete(device.id);
               Alert.alert('Success', 'Lock deleted successfully');
             } catch (error) {
               console.error('Delete lock error:', error);

@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import secureStorage from './secureStorage';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, BACKEND_API_URL } from '@env';
 import { getToastManager } from '../context/ToastContext';
+import { clearQueryCacheOnLogout } from '../utils/queryClient';
 
 // In debug builds on Android: use local backend ONLY if BACKEND_API_URL is already a local URL.
 // If BACKEND_API_URL is production (https), use it so login works without running backend locally.
@@ -358,10 +359,11 @@ backendApi.interceptors.response.use(
 
     // Check if this is an expected error that should NOT show a toast
     const isExpectedError = (
-      // Expected 404s: no locks, TTLock not connected
+      // Expected 404s: no locks, TTLock not connected, lock not found (e.g. after deletion)
       (status === 404 && (
         (url.includes('/locks') && !url.includes('/locks/')) ||
-        url.includes('/ttlock/status')
+        url.includes('/ttlock/status') ||
+        /locks\/[^/]+/.test(url) // GET /locks/:id or /locks/:id/... - lock not found (e.g. after deletion)
       )) ||
       // Expected 401s: TTLock not connected, AI features not configured, etc.
       (status === 401 && (
@@ -369,7 +371,9 @@ backendApi.interceptors.response.use(
         url.includes('/ai/risk-scores') ||
         url.includes('/ai/insights') ||
         url.includes('/ai/chat')
-      ))
+      )) ||
+      // Expected 403s: lock settings read when user has limited access (e.g. newly added user, or stale cache after account switch)
+      (status === 403 && url.includes('/locks/') && url.includes('/settings'))
     );
 
     // Only log unexpected errors (use console.warn instead of console.error to avoid LogBox)
@@ -560,6 +564,9 @@ export const completeProfile = async (profileData) => {
 
 export const logout = async () => {
   console.log('🔓 Logging out...');
+
+  // Clear React Query cache so stale data from previous user doesn't cause permission errors for new user
+  clearQueryCacheOnLogout();
 
   // Clear TTLock cloud service tokens
   const TTLockCloudService = require('./ttlockCloudService').default;
