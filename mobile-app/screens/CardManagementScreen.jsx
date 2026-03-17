@@ -133,13 +133,12 @@ const CardManagementScreen = ({ route, navigation }) => {
             text: 'Start',
             onPress: async () => {
               try {
+                setStatusMessage('Connecting to lock...');
                 // Stop any previous Bluetooth scan to release the connection
                 TTLockService.stopScan();
 
                 // Wait for lock to be ready
                 await waitForLockReady();
-
-                setStatusMessage('Connecting to lock...');
 
                 // Add card via Bluetooth
                 const result = await TTLockService.addCard(
@@ -359,10 +358,20 @@ const CardManagementScreen = ({ route, navigation }) => {
         </View>
       )}
 
-      {/* Card List */}
+      {/* Card List / Scanning state in center */}
       {(loading || operationLoading) ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      ) : adding ? (
+        <View style={styles.scanningCenter}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.scanningTitle}>
+            {statusMessage || 'Connecting to lock...'}
+          </Text>
+          <Text style={styles.scanningSubtext}>
+            Hold your card on the reader...
+          </Text>
         </View>
       ) : cards.length === 0 ? (
         <View style={styles.emptyState}>
@@ -381,8 +390,8 @@ const CardManagementScreen = ({ route, navigation }) => {
         />
       )}
 
-      {/* Status Message */}
-      {statusMessage ? (
+      {/* Status Message - hide when adding so center shows it */}
+      {statusMessage && !adding ? (
         <View style={styles.statusBanner}>
           <ActivityIndicator size="small" color={Colors.primary} />
           <Text style={styles.statusText}>{statusMessage}</Text>
@@ -543,6 +552,25 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
     marginTop: 8,
+  },
+  scanningCenter: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  scanningTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.text,
+    marginTop: 20,
+    textAlign: 'center',
+  },
+  scanningSubtext: {
+    fontSize: 15,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 12,
   },
   list: {
     padding: 16,

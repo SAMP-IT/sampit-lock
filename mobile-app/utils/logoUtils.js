@@ -10,11 +10,11 @@ export const getLogoForBackground = (backgroundColor) => {
   // logo3.jpeg - for dark backgrounds
   
   const logoMap = {
-    white: require('../assets/logos/logo1.jpeg'),
-    lightBlue: require('../assets/logos/logo2.jpeg'),
-    cardBackground: require('../assets/logos/logo2.jpeg'),
-    dark: require('../assets/logos/logo3.jpeg'),
-    default: require('../assets/logos/logo1.jpeg'),
+    white: require('../assets/logos/awakey-02.png'),
+    lightBlue: require('../assets/logos/awakey-03.png'),
+    cardBackground: require('../assets/logos/awakey-03.png'),
+    dark: require('../assets/logos/awakey-04.png'),
+    default: require('../assets/logos/awakey-02.png'),
   };
 
   return logoMap[backgroundColor] || logoMap.default;
