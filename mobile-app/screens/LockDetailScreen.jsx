@@ -369,9 +369,10 @@ const LockDetailScreen = ({ navigation, route }) => {
 
       setActivities(recentActivities);
 
-      // Process recommendations
+      // Process recommendations (ensure we handle non-array responses safely)
       const recsData = recsResponse?.data?.data ?? recsResponse?.data;
-      const pendingRecs = recsData?.filter(r => r.status === 'pending') || [];
+      const recsArray = Array.isArray(recsData) ? recsData : [];
+      const pendingRecs = recsArray.filter(r => r.status === 'pending');
       setRecommendations(pendingRecs);
 
       // Update cache with background data

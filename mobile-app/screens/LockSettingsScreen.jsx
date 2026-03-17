@@ -24,9 +24,16 @@ import {
   toggleAutoLock,
   togglePassageMode,
   updateLockConfig,
+<<<<<<< Updated upstream
 } from "../services/api";
 import { extractLockData } from "../services/lockControlService";
 import TTLockService from "../services/ttlockService";
+=======
+  updateSecuritySettings,
+} from '../services/api';
+import { extractLockData } from '../services/lockControlService';
+import TTLockService from '../services/ttlockService';
+>>>>>>> Stashed changes
 
 const LockSettingsScreen = ({ navigation, route }) => {
   const { lockId } = route.params;
@@ -952,8 +959,10 @@ const LockSettingsScreen = ({ navigation, route }) => {
       );
 
       await TTLockService.setTamperAlert(newValue, lockData);
-      await updateLockSettings(lockId, { tamper_alert_enabled: newValue });
+      // Use dedicated security settings endpoint so backend validation (enabled) and tamper_alert flag are both satisfied
+      await updateSecuritySettings(lockId, { enabled: newValue, tamper_alert: newValue });
 
+<<<<<<< Updated upstream
       console.log(
         "[LockSettings] Tamper alert updated via Bluetooth successfully",
       );
@@ -961,6 +970,10 @@ const LockSettingsScreen = ({ navigation, route }) => {
         "Success",
         `Tamper alert ${newValue ? "enabled" : "disabled"} via Bluetooth`,
       );
+=======
+      console.log('[LockSettings] Tamper alert updated via Bluetooth + security settings successfully');
+      Alert.alert('Success', `Tamper alert ${newValue ? 'enabled' : 'disabled'} via Bluetooth`);
+>>>>>>> Stashed changes
     } catch (err) {
       setSettings(originalSettings);
       console.error("[LockSettings] Tamper alert error:", err);
