@@ -328,7 +328,10 @@ const SendCodeScreen = ({ navigation, route }) => {
         {item.valid_until && item.code_type !== 'permanent' && (
           item.code_type === 'temporary' && item.valid_from && item.valid_until ? (
             <View style={styles.codeExpiryRow}>
-              <Text style={styles.codeExpiry} numberOfLines={1}>Valid for </Text>
+              <Text style={styles.codeExpiry} numberOfLines={1} ellipsizeMode="tail">
+                {'Expires: '}{new Date(item.valid_until).toLocaleDateString()}
+              </Text>
+              <Text style={styles.codeExpiry} numberOfLines={1}> · </Text>
               <View style={styles.validForBadge}>
                 <Text style={styles.validForBadgeText}>
                   {(() => {
@@ -338,9 +341,6 @@ const SendCodeScreen = ({ navigation, route }) => {
                   })()} hr
                 </Text>
               </View>
-              <Text style={styles.codeExpiry} numberOfLines={1} ellipsizeMode="tail">
-                {' · Expires: '}{new Date(item.valid_until).toLocaleDateString()}
-              </Text>
             </View>
           ) : (
             <Text style={styles.codeExpiry}>
