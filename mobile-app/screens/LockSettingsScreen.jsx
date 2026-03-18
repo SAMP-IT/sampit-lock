@@ -25,9 +25,11 @@ import {
   togglePassageMode,
   updateLockConfig,
   updateSecuritySettings,
-} from '../services/api';
-import { extractLockData } from '../services/lockControlService';
-import TTLockService from '../services/ttlockService';
+} from "../services/api";
+import { extractLockData } from "../services/lockControlService";
+import TTLockService from "../services/ttlockService";
+
+const PASSAGE_MODE_SUPPORTED_KEY = (id) => `lock_${id}_passage_mode_supported`;
 
 const LockSettingsScreen = ({ navigation, route }) => {
   const { lockId } = route.params;
@@ -54,6 +56,8 @@ const LockSettingsScreen = ({ navigation, route }) => {
   const [tamperAlertLoading, setTamperAlertLoading] = useState(false);
   const [syncingFromLock, setSyncingFromLock] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
+  // null = unknown (show), true = supported, false = lock doesn't support (TTLock error 18)
+  const [passageModeSupported, setPassageModeSupported] = useState(null);
 
   // Check if user is admin or owner
   const isAdminOrOwner = userRole === "owner" || userRole === "admin";
@@ -130,6 +134,20 @@ const LockSettingsScreen = ({ navigation, route }) => {
         if (permissions?.role) {
           setUserRole(permissions.role);
         }
+
+        // Load cached passage mode support (frontend-only, AsyncStorage)
+        try {
+          const cached = await AsyncStorage.getItem(PASSAGE_MODE_SUPPORTED_KEY(lockId));
+          if (cached === "false") {
+            setPassageModeSupported(false);
+          } else if (cached === "true") {
+            setPassageModeSupported(true);
+          } else {
+            setPassageModeSupported(null);
+          }
+        } catch (e) {
+          console.warn("[LockSettings] Failed to load passage mode support cache:", e);
+        }
       } catch (err) {
         console.error("[LockSettingsScreen] Error loading settings:", err);
         setError("Failed to load settings.");
@@ -139,6 +157,13 @@ const LockSettingsScreen = ({ navigation, route }) => {
     };
     fetchSettings();
   }, [lockId]);
+
+  // TTLock error 18 = "lock doesn't support this operation"
+  const isPassageModeNotSupportedError = (err) => {
+    const msg = (err?.message || String(err)).toLowerCase();
+    return (msg.includes("18") && msg.includes("doesn't support")) ||
+      msg.includes("lock doesn't support this operation");
+  };
 
   // =====================================================
   // HELPER: Check Bluetooth state before operations
@@ -230,11 +255,25 @@ const LockSettingsScreen = ({ navigation, route }) => {
       // Process Passage Mode result
       if (results.passageMode.success) {
         syncedSettings.passageModeEnabled = results.passageMode.enabled;
+        setPassageModeSupported(true);
+        try {
+          await AsyncStorage.setItem(PASSAGE_MODE_SUPPORTED_KEY(lockId), "true");
+        } catch (e) {
+          console.warn("[LockSettings] Failed to cache passage mode supported:", e);
+        }
         settingsList.push(
           `• Passage Mode: ${results.passageMode.enabled ? "Enabled" : "Disabled"}`,
         );
       } else if (results.passageMode.error) {
         errors.push("Passage Mode");
+        if (isPassageModeNotSupportedError(results.passageMode.error)) {
+          setPassageModeSupported(false);
+          try {
+            await AsyncStorage.setItem(PASSAGE_MODE_SUPPORTED_KEY(lockId), "false");
+          } catch (e) {
+            console.warn("[LockSettings] Failed to cache passage mode unsupported:", e);
+          }
+        }
       }
 
       // Process Lock Sound result
@@ -656,6 +695,22 @@ const LockSettingsScreen = ({ navigation, route }) => {
             "[LockSettings] Bluetooth SDK method failed, trying Gateway API with Bluetooth sync:",
             btError.message,
           );
+          // If lock doesn't support passage mode (TTLock error 18), hide it and don't save to DB
+          if (isPassageModeNotSupportedError(btError)) {
+            setPassageModeSupported(false);
+            setSettings(originalSettings);
+            try {
+              await AsyncStorage.setItem(PASSAGE_MODE_SUPPORTED_KEY(lockId), "false");
+            } catch (e) {
+              console.warn("[LockSettings] Failed to cache passage mode unsupported:", e);
+            }
+            Alert.alert(
+              "Not Supported",
+              "This lock model does not support passage mode.",
+            );
+            setPassageModeLoading(false);
+            return;
+          }
           // Fallback to Gateway API with type: 1 (Bluetooth sync)
           try {
             const response = await togglePassageMode(lockId, newEnabled, {
@@ -954,10 +1009,18 @@ const LockSettingsScreen = ({ navigation, route }) => {
 
       await TTLockService.setTamperAlert(newValue, lockData);
       // Use dedicated security settings endpoint so backend validation (enabled) and tamper_alert flag are both satisfied
-      await updateSecuritySettings(lockId, { enabled: newValue, tamper_alert: newValue });
+      await updateSecuritySettings(lockId, {
+        enabled: newValue,
+        tamper_alert: newValue,
+      });
 
-      console.log('[LockSettings] Tamper alert updated via Bluetooth + security settings successfully');
-      Alert.alert('Success', `Tamper alert ${newValue ? 'enabled' : 'disabled'} via Bluetooth`);
+      console.log(
+        "[LockSettings] Tamper alert updated via Bluetooth + security settings successfully",
+      );
+      Alert.alert(
+        "Success",
+        `Tamper alert ${newValue ? "enabled" : "disabled"} via Bluetooth`,
+      );
     } catch (err) {
       setSettings(originalSettings);
       console.error("[LockSettings] Tamper alert error:", err);
@@ -1165,39 +1228,39 @@ const LockSettingsScreen = ({ navigation, route }) => {
             </TouchableOpacity>
           )}
 
-          {/* Passage Mode */}
-          <TouchableOpacity
-            style={styles.settingItem}
-            onPress={handlePassageModeToggle}
-            disabled={passageModeLoading}
-          >
-            <View style={styles.settingIcon}>
-              <Ionicons
-                name="lock-open-outline"
-                size={20}
-                color={Colors.iconbackground}
-              />
-            </View>
-            <View style={styles.settingContent}>
-              <Text style={styles.settingTitle}>Passage Mode</Text>
-              <Text style={styles.settingSubtitle}>
-                Lock stays unlocked
-              </Text>
-            </View>
-            {passageModeLoading ? (
-              <ActivityIndicator size="small" color={Colors.iconbackground} />
-            ) : (
-              <Switch
-                value={coerceBoolean(settings.passageModeEnabled)}
-                onValueChange={handlePassageModeToggle}
-                trackColor={{
-                  false: Colors.bordercolor,
-                  true: Colors.iconbackground,
-                }}
-                thumbColor={Colors.textwhite}
-              />
-            )}
-          </TouchableOpacity>
+          {/* Passage Mode - hidden when lock doesn't support it */}
+          {passageModeSupported !== false && (
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={handlePassageModeToggle}
+              disabled={passageModeLoading}
+            >
+              <View style={styles.settingIcon}>
+                <Ionicons
+                  name="lock-open-outline"
+                  size={20}
+                  color={Colors.iconbackground}
+                />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={styles.settingTitle}>Passage Mode</Text>
+                <Text style={styles.settingSubtitle}>Lock stays unlocked</Text>
+              </View>
+              {passageModeLoading ? (
+                <ActivityIndicator size="small" color={Colors.iconbackground} />
+              ) : (
+                <Switch
+                  value={coerceBoolean(settings.passageModeEnabled)}
+                  onValueChange={handlePassageModeToggle}
+                  trackColor={{
+                    false: Colors.bordercolor,
+                    true: Colors.iconbackground,
+                  }}
+                  thumbColor={Colors.textwhite}
+                />
+              )}
+            </TouchableOpacity>
+          )}
 
           {/* Lock Sound */}
           <TouchableOpacity
