@@ -259,15 +259,32 @@ class TTLockService {
     });
   }
 
-  async getOperationRecords(lockData) {
+  /**
+   * Get operation records from the lock via Bluetooth.
+   * @param {string} lockData - Encrypted lock data string
+   * @param {number} [type=1] - 0 = Latest only, 1 = All records
+   * @returns {Promise<Array>} Parsed operation records
+   */
+  async getOperationRecords(lockData, type = 1) {
     if (!TTLOCK_AVAILABLE) {
       return [];
     }
     return new Promise((resolve, reject) => {
       TtlockNative.getLockOperationRecord(
+        type,
         lockData,
-        (records) => resolve(records),
-        (errorCode, errorDesc) => reject(new Error(`Get records failed: ${errorDesc} (${errorCode})`))
+        (records) => {
+          try {
+            const parsed = typeof records === 'string' ? JSON.parse(records) : records;
+            let arr = Array.isArray(parsed) ? parsed : parsed?.records || parsed?.list || [];
+            if (!Array.isArray(arr)) arr = [];
+            resolve(arr);
+          } catch (e) {
+            resolve([]);
+          }
+        },
+        (errorCode, errorDesc) =>
+          reject(new Error(`Get records failed: ${errorDesc} (${errorCode})`))
       );
     });
   }
