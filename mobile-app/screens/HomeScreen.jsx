@@ -14,6 +14,7 @@ import ActivityItem from "../components/ActivityItem";
 import Theme from "../constants/Theme";
 import Colors from "../constants/Colors";
 import LockControlService from "../services/lockControlService";
+import { getLockSettings } from "../services/api";
 import { getLockDisplayName } from "../utils/lockDisplayUtils";
 import { useLocks, useRecentActivity, useTTLockStatus } from "../hooks/useQueryHooks";
 
@@ -70,6 +71,53 @@ const HomeScreen = ({ navigation }) => {
   const isLoading = locksLoading;
   const error = locksError;
 
+  // Merge passage_mode_enabled from lock settings (same idea as Lock Detail: lock + settings)
+  const [passageModeByLockId, setPassageModeByLockId] = useState({});
+  const lockIdsKey = locks.length ? locks.map((l) => l.id).join(',') : '';
+
+  const fetchPassageModeForLocks = useCallback((lockIds) => {
+    if (!lockIds || lockIds.length === 0) {
+      setPassageModeByLockId({});
+      return;
+    }
+    let cancelled = false;
+    Promise.all(
+      lockIds.map((id) =>
+        getLockSettings(id)
+          .then((res) => {
+            const settings = res?.data?.data ?? res?.data;
+            return { id, passage_mode_enabled: settings?.passage_mode_enabled === true };
+          })
+          .catch(() => ({ id, passage_mode_enabled: false }))
+      )
+    ).then((results) => {
+      if (cancelled) return;
+      const next = {};
+      results.forEach(({ id, passage_mode_enabled }) => {
+        next[id] = passage_mode_enabled;
+      });
+      setPassageModeByLockId(next);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!lockIdsKey) {
+      setPassageModeByLockId({});
+      return;
+    }
+    fetchPassageModeForLocks(lockIdsKey.split(','));
+  }, [lockIdsKey, fetchPassageModeForLocks]);
+
+  // Refetch passage mode when screen gains focus so indicator updates immediately when user turns it off (e.g. in Lock Settings)
+  useFocusEffect(
+    useCallback(() => {
+      if (lockIdsKey) {
+        fetchPassageModeForLocks(lockIdsKey.split(','));
+      }
+    }, [lockIdsKey, fetchPassageModeForLocks])
+  );
+
   // Update selected lock when locks data changes
   useEffect(() => {
     if (locks.length > 0 && !selectedLock) {
@@ -84,30 +132,32 @@ const HomeScreen = ({ navigation }) => {
     }
   }, [locks]);
 
-  // Load user name from storage
-  useEffect(() => {
-    const loadUserName = async () => {
-      try {
-        const storedUser = await AsyncStorage.getItem('user');
-        if (storedUser) {
-          const user = JSON.parse(storedUser);
-          const firstName = user.user_metadata?.first_name || user.first_name || '';
-          const lastName = user.user_metadata?.last_name || user.last_name || '';
-          const fullName = `${firstName} ${lastName}`.trim();
-          setUserName(fullName || 'User');
-        }
-      } catch (err) {
-        console.warn('Failed to load user name:', err);
+  // Load user name from storage (used on mount and when screen gains focus)
+  const loadUserName = useCallback(async () => {
+    try {
+      const storedUser = await AsyncStorage.getItem('user');
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        const firstName = user.user_metadata?.first_name || user.first_name || '';
+        const lastName = user.user_metadata?.last_name || user.last_name || '';
+        const fullName = `${firstName} ${lastName}`.trim();
+        setUserName(fullName || 'User');
       }
-    };
-    loadUserName();
+    } catch (err) {
+      console.warn('Failed to load user name:', err);
+    }
   }, []);
 
-  // Refetch on screen focus and sync lock operation state
+  useEffect(() => {
+    loadUserName();
+  }, [loadUserName]);
+
+  // Refetch on screen focus and sync lock operation state + refresh welcome name
   useFocusEffect(
     useCallback(() => {
       queryClient.invalidateQueries({ queryKey: ['locks'] });
       queryClient.invalidateQueries({ queryKey: ['recentActivity'] });
+      loadUserName();
 
       // Sync button state from service (in case operation started on another screen)
       if (selectedLock) {
@@ -115,7 +165,7 @@ const HomeScreen = ({ navigation }) => {
         setIsLocking(op === 'lock');
         setIsUnlocking(op === 'unlock');
       }
-    }, [queryClient])
+    }, [queryClient, loadUserName])
   );
 
   // Pull-to-refresh handler
@@ -347,10 +397,13 @@ const HomeScreen = ({ navigation }) => {
             actionLabel="Add Lock"
             onActionPress={handleAddLock}
           >
-            {/* Main Prominent Lock Card */}
+            {/* Main Prominent Lock Card - merge passage_mode_enabled from settings (like Lock Detail) */}
             {selectedLock && (
               <LockCard
-                lock={selectedLock}
+                lock={{
+                  ...selectedLock,
+                  passage_mode_enabled: passageModeByLockId[selectedLock.id] === true || selectedLock.passage_mode_enabled === true
+                }}
                 onPress={handleLockPress}
                 onLock={handleLock}
                 onUnlock={handleUnlock}

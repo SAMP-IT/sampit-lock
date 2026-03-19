@@ -6,6 +6,8 @@
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
+    "android:debug": "expo run:android",
+    "android:debug-apk": "node scripts/assemble-debug.js",
     "ios": "expo run:ios",
     "web": "expo start --web",
     "clear": "expo start --clear",
@@ -13,9 +15,10 @@
     "prebuild:clean": "expo prebuild --clean",
     "build:android": "expo run:android --variant release",
     "build:debug-apk": "expo prebuild --platform android --clean",
-    "build:debug-apk:gradle": "cd android && gradlew.bat assembleDebug && cd ..",
+    "build:debug-apk:gradle": "node scripts/assemble-debug.js",
     "build:debug-apk:full": "npm run build:debug-apk && npm run build:debug-apk:gradle",
-    "install:all": "npm install && cd android && ./gradlew clean && cd .."
+    "install:all": "npm install && cd android && ./gradlew clean && cd ..",
+    "postinstall": "patch-package"
   },
   "keywords": [
     "smart-lock",
@@ -66,7 +69,8 @@
     "@babel/core": "^7.24.0",
     "babel-preset-expo": "~11.0.0",
     "expo-build-properties": "^1.0.9",
-    "expo-modules-autolinking": "^1.11.3"
+    "expo-modules-autolinking": "^1.11.3",
+    "patch-package": "^8.0.0"
   },
   "private": true
 }

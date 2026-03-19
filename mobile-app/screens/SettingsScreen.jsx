@@ -20,17 +20,39 @@ import { useDevMode } from "../context/DevModeContext";
 import { logout, updateBackendApiUrl } from "../services/api";
 
 const settingsData = [
-  { id: 1, title: "Account", subtitle: "Manage your profile", icon: "person-outline" },
-  { id: 3, title: "Help & Support", subtitle: "Get assistance", icon: "help-circle-outline" },
-  { id: 4, title: "About", subtitle: "App version, policies", icon: "information-circle-outline" },
-  { id: 5, title: "Logout", subtitle: "", icon: "log-out-outline", isDestructive: true }
+  {
+    id: 1,
+    title: "Account",
+    subtitle: "Manage your profile",
+    icon: "person-outline",
+  },
+  {
+    id: 3,
+    title: "Help & Support",
+    subtitle: "Get assistance",
+    icon: "help-circle-outline",
+  },
+  {
+    id: 4,
+    title: "About",
+    subtitle: "App version, policies",
+    icon: "information-circle-outline",
+  },
+  {
+    id: 5,
+    title: "Logout",
+    subtitle: "",
+    icon: "log-out-outline",
+    isDestructive: true,
+  },
 ];
 
 const SettingsScreen = ({ navigation }) => {
   // Hidden debug mode - tap version number 7 times
   const [debugTapCount, setDebugTapCount] = useState(0);
   const debugTapTimer = useRef(null);
-  const { isDevMode, localServerUrl, toggleDevMode, updateLocalServerUrl } = useDevMode();
+  const { isDevMode, localServerUrl, toggleDevMode, updateLocalServerUrl } =
+    useDevMode();
   const [editingServerUrl, setEditingServerUrl] = useState(false);
   const [serverUrlInput, setServerUrlInput] = useState(localServerUrl);
 
@@ -46,11 +68,11 @@ const SettingsScreen = ({ navigation }) => {
     await toggleDevMode(value);
     await updateBackendApiUrl();
     Alert.alert(
-      value ? 'Development Mode Enabled' : 'Development Mode Disabled',
-      value 
+      value ? "Development Mode Enabled" : "Development Mode Disabled",
+      value
         ? `Using local server: ${localServerUrl}\n\nPlease restart the app for changes to take full effect.`
-        : 'Using production server.\n\nPlease restart the app for changes to take full effect.',
-      [{ text: 'OK' }]
+        : "Using production server.\n\nPlease restart the app for changes to take full effect.",
+      [{ text: "OK" }],
     );
   };
 
@@ -59,9 +81,12 @@ const SettingsScreen = ({ navigation }) => {
       await updateLocalServerUrl(serverUrlInput.trim());
       await updateBackendApiUrl();
       setEditingServerUrl(false);
-      Alert.alert('Server URL Updated', 'The local server URL has been updated. Please restart the app for changes to take effect.');
+      Alert.alert(
+        "Server URL Updated",
+        "The local server URL has been updated. Please restart the app for changes to take effect.",
+      );
     } else {
-      Alert.alert('Invalid URL', 'Please enter a valid server URL.');
+      Alert.alert("Invalid URL", "Please enter a valid server URL.");
     }
   };
 
@@ -75,8 +100,8 @@ const SettingsScreen = ({ navigation }) => {
     setDebugTapCount(newCount);
 
     if (newCount >= 7) {
-      console.log('Debug mode activated');
-      navigation.navigate('DebugLogs');
+      console.log("Debug mode activated");
+      navigation.navigate("DebugLogs");
       setDebugTapCount(0);
       return;
     }
@@ -94,13 +119,13 @@ const SettingsScreen = ({ navigation }) => {
   const handleSettingPress = (setting) => {
     switch (setting.id) {
       case 1: // Account
-        navigation.navigate('Profile');
+        navigation.navigate("Profile");
         break;
       case 3: // Help & Support
-        navigation.navigate('HelpSupport');
+        navigation.navigate("HelpSupport");
         break;
       case 4: // About
-        navigation.navigate('About');
+        navigation.navigate("About");
         break;
       case 5: // Logout
         handleLogout();
@@ -147,7 +172,11 @@ const SettingsScreen = ({ navigation }) => {
           ) : null}
         </View>
 
-        <Ionicons name="chevron-forward" size={20} color={Colors.subtitlecolor} />
+        <Ionicons
+          name="chevron-forward"
+          size={20}
+          color={Colors.subtitlecolor}
+        />
       </TouchableOpacity>
     );
   };
@@ -164,21 +193,25 @@ const SettingsScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <Section title="General" gapless>
+      {/* <Section title="General" gapless>
         <AppCard padding="none" elevated={false}>
-          {settingsData.slice(0, 4).map((setting, index, array) =>
-            renderSettingItem(setting, index, array)
-          )}
+          {settingsData
+            .slice(0, 4)
+            .map((setting, index, array) =>
+              renderSettingItem(setting, index, array),
+            )}
         </AppCard>
       </Section>
 
       <Section title="" gapless>
         <AppCard padding="none" elevated={false}>
-          {settingsData.slice(4).map((setting, index, array) =>
-            renderSettingItem(setting, index, array)
-          )}
+          {settingsData
+            .slice(4)
+            .map((setting, index, array) =>
+              renderSettingItem(setting, index, array),
+            )}
         </AppCard>
-      </Section>
+      </Section> */}
 
       {/* Development Mode Section - only visible in development builds */}
       {__DEV__ && (
@@ -187,12 +220,18 @@ const SettingsScreen = ({ navigation }) => {
             <View style={styles.devModeItem}>
               <View style={styles.devModeContent}>
                 <View style={styles.settingIcon}>
-                  <Ionicons name="code-outline" size={20} color={Colors.iconbackground} />
+                  <Ionicons
+                    name="code-outline"
+                    size={20}
+                    color={Colors.iconbackground}
+                  />
                 </View>
                 <View style={styles.devModeText}>
                   <Text style={styles.settingTitle}>Development Mode</Text>
                   <Text style={styles.settingSubtitle}>
-                    {isDevMode ? 'Using local server' : 'Using production server'}
+                    {isDevMode
+                      ? "Using local server"
+                      : "Using production server"}
                   </Text>
                 </View>
               </View>
@@ -200,14 +239,18 @@ const SettingsScreen = ({ navigation }) => {
                 value={isDevMode}
                 onValueChange={handleDevModeToggle}
                 trackColor={{ false: Colors.bordercolor, true: Colors.primary }}
-                thumbColor={isDevMode ? '#fff' : '#f4f3f4'}
+                thumbColor={isDevMode ? "#fff" : "#f4f3f4"}
               />
             </View>
 
             {isDevMode && (
               <View style={styles.serverUrlContainer}>
                 <View style={styles.serverUrlHeader}>
-                  <Ionicons name="server-outline" size={16} color={Colors.subtitlecolor} />
+                  <Ionicons
+                    name="server-outline"
+                    size={16}
+                    color={Colors.subtitlecolor}
+                  />
                   <Text style={styles.serverUrlLabel}>Local Server URL</Text>
                 </View>
                 {editingServerUrl ? (
@@ -225,7 +268,11 @@ const SettingsScreen = ({ navigation }) => {
                       onPress={handleServerUrlSave}
                       style={styles.saveButton}
                     >
-                      <Ionicons name="checkmark" size={20} color={Colors.primary} />
+                      <Ionicons
+                        name="checkmark"
+                        size={20}
+                        color={Colors.primary}
+                      />
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => {
@@ -234,7 +281,11 @@ const SettingsScreen = ({ navigation }) => {
                       }}
                       style={styles.cancelButton}
                     >
-                      <Ionicons name="close" size={20} color={Colors.subtitlecolor} />
+                      <Ionicons
+                        name="close"
+                        size={20}
+                        color={Colors.subtitlecolor}
+                      />
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -243,12 +294,17 @@ const SettingsScreen = ({ navigation }) => {
                     style={styles.serverUrlDisplay}
                   >
                     <Text style={styles.serverUrlText}>{localServerUrl}</Text>
-                    <Ionicons name="pencil" size={16} color={Colors.subtitlecolor} />
+                    <Ionicons
+                      name="pencil"
+                      size={16}
+                      color={Colors.subtitlecolor}
+                    />
                   </TouchableOpacity>
                 )}
                 <Text style={styles.serverUrlHint}>
-                  For Android emulator: use 10.0.2.2 instead of localhost{'\n'}
-                  For physical device: use your computer's IP address (e.g., 192.168.1.100:3009/api)
+                  For Android emulator: use 10.0.2.2 instead of localhost{"\n"}
+                  For physical device: use your computer's IP address (e.g.,
+                  192.168.1.100:3009/api)
                 </Text>
               </View>
             )}
@@ -330,14 +386,14 @@ const styles = StyleSheet.create({
     color: Colors.subtitlecolor,
   },
   versionFooter: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: Theme.spacing.xl,
     paddingHorizontal: Theme.spacing.lg,
     marginTop: Theme.spacing.md,
   },
   versionText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.subtitlecolor,
   },
   versionSubtext: {
@@ -347,17 +403,17 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   devModeItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: Theme.spacing.md,
     paddingVertical: Theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: Colors.bordercolor,
   },
   devModeContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   devModeText: {
@@ -372,19 +428,19 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cardbackground,
   },
   serverUrlHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: Theme.spacing.sm,
   },
   serverUrlLabel: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     color: Colors.titlecolor,
     marginLeft: Theme.spacing.xs,
   },
   serverUrlInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: Theme.spacing.sm,
   },
   serverUrlInput: {
@@ -407,9 +463,9 @@ const styles = StyleSheet.create({
     padding: Theme.spacing.xs,
   },
   serverUrlDisplay: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: Colors.background,
     borderWidth: 1,
     borderColor: Colors.bordercolor,

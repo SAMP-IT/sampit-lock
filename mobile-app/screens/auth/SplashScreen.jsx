@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Text, TouchableOpacity, StyleSheet, View, Dimensions } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { Text, TouchableOpacity, StyleSheet, View, Dimensions, ScrollView, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AppScreen from '../../components/ui/AppScreen';
 import AppCard from '../../components/ui/AppCard';
@@ -46,27 +46,50 @@ const splashFeatures = [
 const SplashScreen = ({ navigation }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const scrollViewRef = useRef(null);
+  const slideWidth = width - (Theme.spacing.lg * 2);
+  // Start at full opacity for smooth transition from logo splash (no fade-in reload)
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  const scrollToIndex = (index) => {
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({
+        x: index * slideWidth,
+        animated: true,
+      });
+    }
+  };
 
   useEffect(() => {
     if (!isAutoPlaying) return;
 
     const timer = setTimeout(() => {
       if (currentIndex < splashFeatures.length - 1) {
-        setCurrentIndex(currentIndex + 1);
+        const nextIndex = currentIndex + 1;
+        scrollToIndex(nextIndex);
       } else {
         setIsAutoPlaying(false);
       }
     }, 3000);
 
     return () => clearTimeout(timer);
-  }, [currentIndex, isAutoPlaying]);
+  }, [currentIndex, isAutoPlaying, slideWidth]);
 
   const currentFeature = splashFeatures[currentIndex];
+
+  const handleScroll = (event) => {
+    const scrollPosition = event.nativeEvent.contentOffset.x;
+    const index = Math.round(scrollPosition / slideWidth);
+    if (index !== currentIndex && index >= 0 && index < splashFeatures.length) {
+      setCurrentIndex(index);
+      setIsAutoPlaying(false);
+    }
+  };
 
   const handleNext = () => {
     setIsAutoPlaying(false);
     if (currentIndex < splashFeatures.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+      scrollToIndex(currentIndex + 1);
     } else {
       navigation.replace('Welcome');
     }
@@ -78,26 +101,47 @@ const SplashScreen = ({ navigation }) => {
 
   const handleDotPress = (index) => {
     setIsAutoPlaying(false);
-    setCurrentIndex(index);
+    scrollToIndex(index);
   };
 
   return (
-    <AppScreen contentContainerStyle={styles.content}>
-      <View style={styles.skipContainer}>
-        <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
-          <Text style={styles.skipText}>Skip</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.featureContainer}>
-        <View style={[styles.iconContainer, { backgroundColor: currentFeature.color }]}>
-          <Ionicons name={currentFeature.icon} size={64} color={Colors.textwhite} />
+    <Animated.View style={[styles.wrapper, { opacity: fadeAnim }]}>
+      <AppScreen contentContainerStyle={styles.content}>
+        <View style={styles.skipContainer}>
+          <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
+            <Text style={styles.skipText}>Skip</Text>
+          </TouchableOpacity>
         </View>
 
-        <Text style={styles.featureTitle}>{currentFeature.title}</Text>
-        <Text style={styles.featureSubtitle}>{currentFeature.subtitle}</Text>
-        <Text style={styles.featureDescription}>{currentFeature.description}</Text>
-      </View>
+        <ScrollView
+          ref={scrollViewRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          decelerationRate="fast"
+          snapToInterval={slideWidth}
+          snapToAlignment="center"
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          removeClippedSubviews={true}
+          initialNumToRender={2}
+        >
+        {splashFeatures.map((feature, index) => (
+          <View key={feature.id} style={[styles.slideContainer, { width: slideWidth }]}>
+            <View style={styles.featureContainer}>
+              <View style={[styles.iconContainer, { backgroundColor: feature.color }]}>
+                <Ionicons name={feature.icon} size={64} color={Colors.textwhite} />
+              </View>
+
+              <Text style={styles.featureTitle}>{feature.title}</Text>
+              <Text style={styles.featureSubtitle}>{feature.subtitle}</Text>
+              <Text style={styles.featureDescription}>{feature.description}</Text>
+            </View>
+          </View>
+        ))}
+      </ScrollView>
 
       <View style={styles.bottomContainer}>
         <View style={styles.dotsContainer}>
@@ -133,10 +177,15 @@ const SplashScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
     </AppScreen>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+    backgroundColor: Colors.backgroundwhite,
+  },
   content: {
     flex: 1,
     paddingHorizontal: Theme.spacing.lg,
@@ -154,6 +203,16 @@ const styles = StyleSheet.create({
     color: Colors.subtitlecolor,
     fontSize: 16,
     fontWeight: '500',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexDirection: 'row',
+  },
+  slideContainer: {
+    flex: 1,
+    justifyContent: 'center',
   },
   featureContainer: {
     flex: 1,

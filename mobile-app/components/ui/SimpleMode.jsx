@@ -1,9 +1,9 @@
-import React from 'react';
-import { Text, TouchableOpacity, View, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import Colors from '../../constants/Colors';
-import Theme from '../../constants/Theme';
-import { useRole } from '../../context/RoleContext';
+import React from "react";
+import { Text, TouchableOpacity, View, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import Colors from "../../constants/Colors";
+import Theme from "../../constants/Theme";
+import { useRole } from "../../context/RoleContext";
 
 // HOC to apply Simple Mode styling
 export const withSimpleMode = (WrappedComponent) => {
@@ -14,11 +14,21 @@ export const withSimpleMode = (WrappedComponent) => {
 };
 
 // Simple Mode Button Component
-export const SimpleModeButton = ({ onPress, children, icon, style, ...props }) => {
+export const SimpleModeButton = ({
+  onPress,
+  children,
+  icon,
+  style,
+  ...props
+}) => {
   const { isSimpleMode } = useRole();
 
-  const buttonStyle = isSimpleMode ? styles.simpleModeButton : styles.normalButton;
-  const textStyle = isSimpleMode ? styles.simpleModeButtonText : styles.normalButtonText;
+  const buttonStyle = isSimpleMode
+    ? styles.simpleModeButton
+    : styles.normalButton;
+  const textStyle = isSimpleMode
+    ? styles.simpleModeButtonText
+    : styles.normalButtonText;
 
   return (
     <TouchableOpacity
@@ -28,7 +38,11 @@ export const SimpleModeButton = ({ onPress, children, icon, style, ...props }) =
       {...props}
     >
       {icon && (
-        <View style={isSimpleMode ? styles.simpleModeIconWrap : styles.normalIconWrap}>
+        <View
+          style={
+            isSimpleMode ? styles.simpleModeIconWrap : styles.normalIconWrap
+          }
+        >
           <Ionicons
             name={icon}
             size={isSimpleMode ? 28 : 20}
@@ -62,32 +76,37 @@ export const SimpleModeCard = ({ children, style, ...props }) => {
 };
 
 // Simple Mode Text Component
-export const SimpleModeText = ({ children, variant = 'body', style, ...props }) => {
+export const SimpleModeText = ({
+  children,
+  variant = "body",
+  style,
+  ...props
+}) => {
   const { isSimpleMode } = useRole();
 
   let textStyle;
   if (isSimpleMode) {
     switch (variant) {
-      case 'heading':
+      case "heading":
         textStyle = styles.simpleModeHeading;
         break;
-      case 'title':
+      case "title":
         textStyle = styles.simpleModeTitle;
         break;
-      case 'body':
+      case "body":
       default:
         textStyle = styles.simpleModeBody;
         break;
     }
   } else {
     switch (variant) {
-      case 'heading':
+      case "heading":
         textStyle = Theme.typography.heading;
         break;
-      case 'title':
+      case "title":
         textStyle = styles.normalTitle;
         break;
-      case 'body':
+      case "body":
       default:
         textStyle = Theme.typography.body;
         break;
@@ -109,7 +128,7 @@ export const VoiceHelperButton = ({ text, style }) => {
 
   const handleVoiceRead = () => {
     // TODO: Implement text-to-speech using system TTS
-    console.log('Reading aloud:', text);
+    console.log("Reading aloud:", text);
   };
 
   return (
@@ -118,7 +137,11 @@ export const VoiceHelperButton = ({ text, style }) => {
       onPress={handleVoiceRead}
       accessibilityLabel="Read this aloud"
     >
-      <Ionicons name="volume-high-outline" size={16} color={Colors.iconbackground} />
+      <Ionicons
+        name="volume-high-outline"
+        size={16}
+        color={Colors.iconbackground}
+      />
       <Text style={styles.voiceButtonText}>🔊 Read this aloud</Text>
     </TouchableOpacity>
   );
@@ -127,9 +150,9 @@ export const VoiceHelperButton = ({ text, style }) => {
 const styles = StyleSheet.create({
   // Normal mode styles
   normalButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: Colors.iconbackground,
     paddingVertical: Theme.spacing.sm,
     paddingHorizontal: Theme.spacing.lg,
@@ -140,17 +163,17 @@ const styles = StyleSheet.create({
   normalButtonText: {
     color: Colors.textwhite,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     flex: 1,
-    textAlign: 'center',
+    textAlign: "center",
   },
   normalIconWrap: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   normalCard: {
     backgroundColor: Colors.cardbackground,
@@ -159,14 +182,14 @@ const styles = StyleSheet.create({
   },
   normalTitle: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.titlecolor,
   },
 
   // Simple mode styles (elder-friendly)
   simpleModeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: Colors.iconbackground,
     paddingVertical: Theme.accessibility.elderFriendly.spacing.xl,
     paddingHorizontal: Theme.spacing.xl,
@@ -177,16 +200,16 @@ const styles = StyleSheet.create({
   simpleModeButtonText: {
     color: Colors.textwhite,
     fontSize: Theme.accessibility.elderFriendly.fontSize.body,
-    fontWeight: '600',
+    fontWeight: "600",
     flex: 1,
   },
   simpleModeIconWrap: {
     width: Theme.accessibility.elderFriendly.touchTarget.icon,
     height: Theme.accessibility.elderFriendly.touchTarget.icon,
     borderRadius: 26,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   simpleModeCard: {
     backgroundColor: Colors.cardbackground,
@@ -196,13 +219,13 @@ const styles = StyleSheet.create({
   },
   simpleModeHeading: {
     fontSize: Theme.accessibility.elderFriendly.fontSize.heading,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.titlecolor,
     lineHeight: 34,
   },
   simpleModeTitle: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.titlecolor,
     lineHeight: 30,
   },
@@ -214,19 +237,19 @@ const styles = StyleSheet.create({
 
   // Voice helper
   voiceButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.05)",
     paddingVertical: Theme.spacing.xs,
     paddingHorizontal: Theme.spacing.sm,
     borderRadius: Theme.radius.sm,
     gap: Theme.spacing.xs,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   voiceButtonText: {
     fontSize: 12,
     color: Colors.iconbackground,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 });
 

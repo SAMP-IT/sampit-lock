@@ -1,11 +1,12 @@
 ﻿import React, { useState } from 'react';
-import { Text, TouchableOpacity, StyleSheet, View } from 'react-native';
+import { Text, TouchableOpacity, StyleSheet, View, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AppScreen from '../../components/ui/AppScreen';
 import AppCard from '../../components/ui/AppCard';
 import Colors from '../../constants/Colors';
 import Theme from '../../constants/Theme';
 import { useRole } from '../../context/RoleContext';
+import { getLogoForLightBlue } from '../../utils/logoUtils';
 
 const features = [
   {
@@ -42,8 +43,9 @@ const WelcomeScreen = ({ navigation }) => {
           onLongPress={handleInstallerActivation}
           activeOpacity={1}
           delayLongPress={1000}
+          style={styles.logoContainer}
         >
-          <Text style={styles.heroBadge}>Awakey Smart Lock</Text>
+          <Image source={getLogoForLightBlue()} style={styles.logo} resizeMode="contain" />
         </TouchableOpacity>
         <Text style={styles.heroTitle}>Welcome to Awakey</Text>
         <Text style={styles.heroSubtitle}>
@@ -106,15 +108,13 @@ const styles = StyleSheet.create({
     top: -40,
     right: -60,
   },
-  heroBadge: {
+  logoContainer: {
     alignSelf: 'flex-start',
-    backgroundColor: Colors.textwhite,
-    color: Colors.iconbackground,
-    fontWeight: '600',
-    paddingHorizontal: Theme.spacing.md,
-    paddingVertical: Theme.spacing.xs,
-    borderRadius: Theme.radius.pill,
     marginBottom: Theme.spacing.md,
+  },
+  logo: {
+    width: 140,
+    height: 50,
   },
   heroTitle: {
     fontSize: 28,

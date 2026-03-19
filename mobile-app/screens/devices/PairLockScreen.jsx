@@ -1,13 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, FlatList, PermissionsAndroid, Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import AppScreen from '../../components/ui/AppScreen';
-import AppCard from '../../components/ui/AppCard';
-import Colors from '../../constants/Colors';
-import Theme from '../../constants/Theme';
-import { SimpleModeText, SimpleModeButton } from '../../components/ui/SimpleMode';
-import TTLockService from '../../services/ttlockService';
-import { addLock, logLockActivity } from '../../services/api';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  FlatList,
+  PermissionsAndroid,
+  Platform,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import AppScreen from "../../components/ui/AppScreen";
+import AppCard from "../../components/ui/AppCard";
+import Colors from "../../constants/Colors";
+import Theme from "../../constants/Theme";
+import {
+  SimpleModeText,
+  SimpleModeButton,
+} from "../../components/ui/SimpleMode";
+import TTLockService from "../../services/ttlockService";
+import { addLock, logLockActivity } from "../../services/api";
+import { useLocks } from "../../hooks/useQueryHooks";
 
 // TTLock Bluetooth State constants (from native module)
 const BluetoothState = {
@@ -21,127 +35,148 @@ const BluetoothState = {
 
 // Helper to check if Bluetooth is ready
 const isBluetoothReady = (state) => {
-  return state === BluetoothState.PoweredOn || state === 'poweredOn';
+  return state === BluetoothState.PoweredOn || state === "poweredOn";
 };
 
 // Helper to get human-readable Bluetooth state
 const getBluetoothStateText = (state) => {
   switch (state) {
     case BluetoothState.PoweredOn:
-    case 'poweredOn':
-      return 'enabled';
+    case "poweredOn":
+      return "enabled";
     case BluetoothState.PoweredOff:
-    case 'poweredOff':
-      return 'turned off';
+    case "poweredOff":
+      return "turned off";
     case BluetoothState.Unauthorized:
-    case 'unauthorized':
-      return 'not authorized';
+    case "unauthorized":
+      return "not authorized";
     case BluetoothState.Unsupported:
-    case 'unsupported':
-      return 'not supported on this device';
-    case 'unavailable':
-      return 'unavailable (native module not loaded)';
+    case "unsupported":
+      return "not supported on this device";
+    case "unavailable":
+      return "unavailable (native module not loaded)";
     default:
       return `in state ${state}`;
   }
 };
 
+// Normalize MAC for comparison (uppercase, no colons)
+const normalizeMac = (mac) => (mac || "").replace(/:/g, "").toUpperCase();
+
 const PairLockScreen = ({ navigation }) => {
-  const [connectionStatus, setConnectionStatus] = useState('waiting'); // waiting, checking, scanning, selecting, pairing, connected, failed
-  const [bluetoothState, setBluetoothState] = useState('unknown');
+  const { data: userLocks = [] } = useLocks();
+  const [connectionStatus, setConnectionStatus] = useState("waiting"); // waiting, checking, scanning, selecting, pairing, connected, no_new_locks, failed
+  const [bluetoothState, setBluetoothState] = useState("unknown");
   const [discoveredLocks, setDiscoveredLocks] = useState([]);
   const [selectedLock, setSelectedLock] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState("");
   const [pairedLockData, setPairedLockData] = useState(null);
 
   useEffect(() => {
     checkBluetoothSetup();
   }, []);
 
+  const stopScanningIfActive = () => {
+    if (isScanning || connectionStatus === "scanning") {
+      TTLockService.stopScan();
+      setIsScanning(false);
+      setConnectionStatus("waiting");
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", () => {
+      stopScanningIfActive();
+    });
+    return unsubscribe;
+  }, [navigation, isScanning, connectionStatus]);
+
   const checkBluetoothSetup = async () => {
-    console.log('[PairLock] Checking Bluetooth setup...');
-    setConnectionStatus('checking');
+    console.log("[PairLock] Checking Bluetooth setup...");
+    setConnectionStatus("checking");
 
     // Step 1: Request permissions
     const permissionsOk = await requestBluetoothPermissions();
     if (!permissionsOk) {
-      setConnectionStatus('failed');
-      setErrorMessage('Bluetooth permissions are required to pair locks.');
+      setConnectionStatus("failed");
+      setErrorMessage("Bluetooth permissions are required to pair locks.");
       return;
     }
 
     // Step 2: Check Bluetooth state
     try {
       const state = await TTLockService.getBluetoothState();
-      console.log('[PairLock] Bluetooth state:', state, '- Ready:', isBluetoothReady(state));
+      console.log(
+        "[PairLock] Bluetooth state:",
+        state,
+        "- Ready:",
+        isBluetoothReady(state),
+      );
       setBluetoothState(state);
 
       if (isBluetoothReady(state)) {
-        setConnectionStatus('waiting');
+        setConnectionStatus("waiting");
       } else {
-        setConnectionStatus('failed');
-        setErrorMessage(`Bluetooth is ${getBluetoothStateText(state)}. Please enable Bluetooth to continue.`);
+        setConnectionStatus("failed");
+        setErrorMessage(
+          `Bluetooth is ${getBluetoothStateText(state)}. Please enable Bluetooth to continue.`,
+        );
       }
     } catch (error) {
-      console.error('[PairLock] Bluetooth state error:', error);
-      setConnectionStatus('failed');
-      setErrorMessage('Failed to check Bluetooth state. Please check permissions.');
+      console.error("[PairLock] Bluetooth state error:", error);
+      setConnectionStatus("failed");
+      setErrorMessage(
+        "Failed to check Bluetooth state. Please check permissions.",
+      );
     }
   };
 
   const requestBluetoothPermissions = async () => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS === "android") {
       try {
-        console.log('[PairLock] Requesting Bluetooth permissions...');
-        const permissions = [
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        ];
+        console.log("[PairLock] Requesting Bluetooth permissions...");
+
+        const androidVersion = Platform.Version;
+
+        // Android 12+ (API 31+): request new Bluetooth permissions + fine location
+        // Android 11 and below: only request fine location for BLE
+        const permissions =
+          androidVersion >= 31
+            ? [
+                PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+                PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+                PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+              ]
+            : [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION];
 
         const granted = await PermissionsAndroid.requestMultiple(permissions);
         const allGranted = Object.values(granted).every(
-          status => status === PermissionsAndroid.RESULTS.GRANTED
+          (status) => status === PermissionsAndroid.RESULTS.GRANTED,
         );
 
         if (!allGranted) {
-          console.log('[PairLock] Permissions denied:', granted);
+          console.log("[PairLock] Permissions denied:", granted);
           return false;
         }
 
-        console.log('[PairLock] All permissions granted');
+        console.log("[PairLock] All permissions granted");
         return true;
       } catch (err) {
-        console.error('[PairLock] Permission error:', err);
+        console.error("[PairLock] Permission error:", err);
         return false;
       }
     }
     return true; // iOS
   };
 
-  const handleStartPairing = async () => {
-    if (!isBluetoothReady(bluetoothState)) {
-      Alert.alert(
-        'Bluetooth Required',
-        `Bluetooth is ${getBluetoothStateText(bluetoothState)}. Please turn on Bluetooth to scan for locks.`,
-        [
-          { text: 'OK' },
-          {
-            text: 'Check Again',
-            onPress: () => checkBluetoothSetup()
-          }
-        ]
-      );
-      return;
-    }
-
-    setConnectionStatus('scanning');
+  const doStartScanning = async () => {
+    setConnectionStatus("scanning");
     setIsScanning(true);
     setDiscoveredLocks([]);
 
     try {
-      console.log('[PairLock] Starting scan for TTLock devices...');
+      console.log("[PairLock] Starting scan for TTLock devices...");
       const locks = await TTLockService.scanLocks(10000); // 10-second scan
 
       console.log(`[PairLock] Scan completed. Found ${locks.length} device(s)`);
@@ -149,64 +184,100 @@ const PairLockScreen = ({ navigation }) => {
       setIsScanning(false);
 
       if (locks.length === 0) {
-        setConnectionStatus('failed');
-        setErrorMessage('No locks found nearby. Make sure your lock is powered on and within range.');
-      } else if (locks.length === 1) {
-        // Auto-select if only one lock found
-        handleSelectLock(locks[0]);
+        setConnectionStatus("no_new_locks");
+        setErrorMessage(
+          "No locks found nearby. Make sure your lock is powered on and within range.",
+        );
       } else {
-        setConnectionStatus('selecting');
+        setConnectionStatus("selecting");
       }
     } catch (error) {
-      console.error('[PairLock] Scan error:', error);
+      console.error("[PairLock] Scan error:", error);
       setIsScanning(false);
-      setConnectionStatus('failed');
-      setErrorMessage(error.message || 'Failed to scan for locks. Please try again.');
+      setConnectionStatus("failed");
+      setErrorMessage(
+        error.message || "Failed to scan for locks. Please try again.",
+      );
     }
   };
 
-  const handleSelectLock = async (lock) => {
-    // Prevent double-tap while already processing a selection
-    if (connectionStatus === 'pairing' || connectionStatus === 'saving' || connectionStatus === 'connected') {
-      return;
-    }
-    console.log('[PairLock] Lock selected:', lock.lockMac);
-    setSelectedLock(lock);
-
-    if (lock.isInitialized) {
+  const handleStartPairing = async () => {
+    if (!isBluetoothReady(bluetoothState)) {
       Alert.alert(
-        'Lock Already Paired',
-        'This lock is already paired with another account. Please select a different lock that is available for pairing.',
+        "Bluetooth Required",
+        `Bluetooth is ${getBluetoothStateText(bluetoothState)}. Please turn on Bluetooth to scan for locks.`,
         [
-          { text: 'OK', style: 'cancel' }
-        ]
+          { text: "OK" },
+          {
+            text: "Check Again",
+            onPress: () => checkBluetoothSetup(),
+          },
+        ],
       );
       return;
     }
 
-    await pairLock(lock);
+    doStartScanning();
+  };
+
+  const handleSelectLock = (lock) => {
+    if (
+      connectionStatus === "pairing" ||
+      connectionStatus === "saving" ||
+      connectionStatus === "connected"
+    ) {
+      return;
+    }
+    if (lock.isInitialized) {
+      const scannedMac = normalizeMac(lock.lockMac);
+      const isOwnLock = userLocks.some(
+        (u) => normalizeMac(u.ttlock_mac || u.mac_address) === scannedMac,
+      );
+      const title = isOwnLock
+        ? "Lock Already in Your Account"
+        : "Lock Already Paired";
+      const message = isOwnLock
+        ? "You already have this lock in your account. To add a different lock, wake it up by touching its screen, then scan again."
+        : "This lock is already paired with another account. Please select a different lock that is available for pairing.";
+      Alert.alert(title, message, [{ text: "OK", style: "cancel" }]);
+      return;
+    }
+    console.log("[PairLock] Lock selected:", lock.lockMac);
+    setSelectedLock(lock);
+  };
+
+  const handleConfirmSelection = async () => {
+    if (!selectedLock || selectedLock.isInitialized) {
+      Alert.alert(
+        "Select a Lock",
+        "Please tap an available lock from the list first.",
+      );
+      return;
+    }
+    await pairLock(selectedLock);
   };
 
   const pairLock = async (lock) => {
-    setConnectionStatus('pairing');
+    setConnectionStatus("pairing");
 
     try {
-      console.log('[PairLock] Initializing lock via Bluetooth...');
+      console.log("[PairLock] Initializing lock via Bluetooth...");
       const lockData = await TTLockService.initializeLock(lock.lockData);
 
-      console.log('[PairLock] Lock paired successfully!');
-      console.log('[PairLock] Lock data:', JSON.stringify(lockData, null, 2));
+      console.log("[PairLock] Lock paired successfully!");
+      console.log("[PairLock] Lock data:", JSON.stringify(lockData, null, 2));
       setPairedLockData(lockData);
 
       // Save lock to database immediately after Bluetooth pairing
-      console.log('[PairLock] Saving lock to database...');
-      setConnectionStatus('saving');
+      console.log("[PairLock] Saving lock to database...");
+      setConnectionStatus("saving");
 
       try {
         // Prepare lock data for database
         // IMPORTANT: ttlock_data must be the encrypted lockData string from the SDK,
         // NOT a JSON object. The SDK's controlLock expects this exact string format.
-        const encryptedLockData = typeof lockData === 'string' ? lockData : lockData.lockData;
+        const encryptedLockData =
+          typeof lockData === "string" ? lockData : lockData.lockData;
 
         // Extract recovery keys from the SDK response
         // The TTLock SDK returns these keys during initLock:
@@ -219,20 +290,25 @@ const PairLockScreen = ({ navigation }) => {
         const noKeyPwd = rawLockData.noKeyPwd || lockData.noKeyPwd || null;
 
         // Recovery keys are sent to backend for storage (not stored locally in mobile app)
-        console.log('[PairLock] Recovery keys from SDK (sending to backend only):', {
-          hasAdminPwd: !!adminPwd,
-          hasDeletePwd: !!deletePwd,
-          hasNoKeyPwd: !!noKeyPwd,
-        });
+        console.log(
+          "[PairLock] Recovery keys from SDK (sending to backend only):",
+          {
+            hasAdminPwd: !!adminPwd,
+            hasDeletePwd: !!deletePwd,
+            hasNoKeyPwd: !!noKeyPwd,
+          },
+        );
 
         const lockPayload = {
-          name: lock.lockName || 'New Lock', // Temporary name, will be updated in Step 2
+          name: lock.lockName || "New Lock", // Temporary name, will be updated in Step 2
           ttlock_mac: lock.lockMac,
           ttlock_data: encryptedLockData, // The encrypted string from initLock
           ttlock_lock_name: lock.lockName,
           ttlock_lock_id: lockData.lockId || null,
           is_bluetooth_paired: true,
-          device_id: lockData.lockId ? `ttlock_${lockData.lockId}` : `ttlock_bt_${lock.lockMac}`,
+          device_id: lockData.lockId
+            ? `ttlock_${lockData.lockId}`
+            : `ttlock_bt_${lock.lockMac}`,
           mac_address: lock.lockMac,
           is_locked: true, // Assume locked by default
           battery_level: lockData.electricQuantity || null,
@@ -242,47 +318,49 @@ const PairLockScreen = ({ navigation }) => {
           no_key_pwd: noKeyPwd,
         };
 
-        console.log('[PairLock] Lock payload:', JSON.stringify(lockPayload, null, 2));
+        console.log(
+          "[PairLock] Lock payload:",
+          JSON.stringify(lockPayload, null, 2),
+        );
         const response = await addLock(lockPayload);
         // Backend returns { success: true, data: lockObject }, axios wraps in response.data
         const savedLock = response.data?.data || response.data;
 
-        console.log('[PairLock] Lock saved to database! ID:', savedLock.id);
+        console.log("[PairLock] Lock saved to database! ID:", savedLock.id);
 
         // Log the pairing activity
         try {
-          await logLockActivity(savedLock.id, 'paired', 'bluetooth');
-          console.log('[PairLock] Pairing activity logged');
+          await logLockActivity(savedLock.id, "paired", "bluetooth");
+          console.log("[PairLock] Pairing activity logged");
         } catch (logError) {
-          console.warn('[PairLock] Failed to log activity:', logError.message);
+          console.warn("[PairLock] Failed to log activity:", logError.message);
         }
 
-        setConnectionStatus('connected');
+        setConnectionStatus("connected");
 
         // Auto-advance to naming screen after 2 seconds with the database lock ID
         setTimeout(() => {
-          navigation.navigate('NameDoor', {
+          navigation.navigate("NameDoor", {
             lockId: savedLock.id,
             lockData: lockData,
             lockMac: lock.lockMac,
             lockName: lock.lockName,
           });
         }, 2000);
-
       } catch (saveError) {
-        console.error('[PairLock] Failed to save lock to database:', saveError);
+        console.error("[PairLock] Failed to save lock to database:", saveError);
         // Still proceed to naming screen but with lockData only
         // The naming screen will need to handle this case
-        setConnectionStatus('connected');
+        setConnectionStatus("connected");
 
         Alert.alert(
-          'Partial Success',
-          'Lock was paired via Bluetooth but could not be saved to the cloud. You can try again from settings.',
-          [{ text: 'OK' }]
+          "Partial Success",
+          "Lock was paired via Bluetooth but could not be saved to the cloud. You can try again from settings.",
+          [{ text: "OK" }],
         );
 
         setTimeout(() => {
-          navigation.navigate('NameDoor', {
+          navigation.navigate("NameDoor", {
             lockData: lockData,
             lockMac: lock.lockMac,
             lockName: lock.lockName,
@@ -290,65 +368,114 @@ const PairLockScreen = ({ navigation }) => {
           });
         }, 2000);
       }
-
     } catch (error) {
-      console.error('[PairLock] Pairing failed:', error);
-      setConnectionStatus('failed');
-      setErrorMessage(error.message || 'Failed to pair with lock. Please try again.');
+      console.error("[PairLock] Pairing failed:", error);
+      setConnectionStatus("failed");
+      let msg = error.message || "Failed to pair with lock. Please try again.";
+      if (
+        msg.includes("Non-setting mode") ||
+        msg.includes("notInSettingMode") ||
+        msg.includes("(7)") ||
+        msg.includes("connect time out") ||
+        msg.includes("connection is disconnected") ||
+        msg.includes("(34)")
+      ) {
+        msg =
+          "The lock wasn't ready. Touch the lock's keypad or screen to wake it, then try again.";
+      }
+      setErrorMessage(msg);
     }
   };
 
   const resetAndPair = async (lock) => {
-    setConnectionStatus('pairing');
+    setConnectionStatus("pairing");
 
     try {
-      console.log('[PairLock] Resetting lock...');
+      console.log("[PairLock] Resetting lock...");
       await TTLockService.resetLock(lock.lockData);
-      console.log('[PairLock] Lock reset successful, now pairing...');
+      console.log("[PairLock] Lock reset successful, now pairing...");
       await pairLock(lock);
     } catch (error) {
-      console.error('[PairLock] Reset/pair failed:', error);
-      setConnectionStatus('failed');
-      setErrorMessage(error.message || 'Failed to reset lock. Please try again.');
+      console.error("[PairLock] Reset/pair failed:", error);
+      setConnectionStatus("failed");
+      let msg = error.message || "Failed to reset lock. Please try again.";
+      if (
+        msg.includes("Non-setting mode") ||
+        msg.includes("notInSettingMode") ||
+        msg.includes("(7)") ||
+        msg.includes("connect time out") ||
+        msg.includes("connection is disconnected") ||
+        msg.includes("(34)")
+      ) {
+        msg =
+          "The lock wasn't ready. Touch the lock's keypad or screen to wake it, then try again.";
+      }
+      setErrorMessage(msg);
     }
   };
 
+  const renderAlreadyPairedLockItem = ({ item }) => (
+    <View style={[styles.lockCard, styles.lockCardAlreadyPaired]}>
+      <View style={styles.lockIconContainer}>
+        <Ionicons name="lock-closed" size={24} color={Colors.subtitlecolor} />
+      </View>
+      <View style={styles.lockInfo}>
+        <Text style={styles.lockName}>{item.name || "Lock"}</Text>
+        <View style={styles.lockStatusRow}>
+          <Ionicons
+            name="checkmark-circle"
+            size={16}
+            color={Colors.subtitlecolor}
+          />
+          <Text style={styles.lockStatus}>Already Paired</Text>
+        </View>
+      </View>
+    </View>
+  );
+
   const renderLockItem = ({ item, isNearest = false }) => {
     const isAvailable = !item.isInitialized;
-    
+
     return (
       <TouchableOpacity
         style={[
           styles.lockCard,
           isAvailable && styles.lockCardAvailable,
+          isNearest && isAvailable && styles.lockCardNearest,
           selectedLock?.lockMac === item.lockMac && styles.lockCardSelected,
-          isNearest && isAvailable && styles.lockCardNearest
         ]}
         onPress={() => handleSelectLock(item)}
         activeOpacity={0.7}
       >
-        <View style={[
-          styles.lockIconContainer,
-          isAvailable && !isNearest && styles.lockIconContainerAvailable,
-          isNearest && isAvailable && styles.lockIconContainerNearest
-        ]}>
+        <View
+          style={[
+            styles.lockIconContainer,
+            isAvailable && !isNearest && styles.lockIconContainerAvailable,
+            isNearest && isAvailable && styles.lockIconContainerNearest,
+          ]}
+        >
           <Ionicons
-            name={item.isInitialized ? 'lock-closed' : 'lock-open-outline'}
+            name={item.isInitialized ? "lock-closed" : "lock-open-outline"}
             size={24}
-            color={item.isInitialized ? Colors.subtitlecolor : Colors.iconbackground}
+            color={
+              item.isInitialized ? Colors.subtitlecolor : Colors.iconbackground
+            }
           />
           {isNearest && isAvailable && (
             <View style={styles.locationPinOverlay}>
-              <Ionicons name="location" size={12} color={Colors.iconbackground} />
+              <Ionicons
+                name="location"
+                size={12}
+                color={Colors.iconbackground}
+              />
             </View>
           )}
         </View>
         <View style={styles.lockInfo}>
           <View style={styles.lockNameRow}>
-            <Text style={[
-              styles.lockName,
-              isAvailable && styles.lockNameAvailable
-            ]}>
+            <Text
+              style={[styles.lockName, isAvailable && styles.lockNameAvailable]}
+            >
               {item.lockName}
             </Text>
             {isNearest && isAvailable && (
@@ -361,17 +488,23 @@ const PairLockScreen = ({ navigation }) => {
           <View style={styles.lockStatusRow}>
             {isAvailable ? (
               <>
-                <Ionicons name="checkmark-circle" size={16} color={Colors.iconbackground} />
+                <Ionicons
+                  name="checkmark-circle"
+                  size={16}
+                  color={Colors.iconbackground}
+                />
                 <Text style={styles.lockStatusAvailable}>
                   Available to Pair
                 </Text>
               </>
             ) : (
               <>
-                <Ionicons name="information-circle-outline" size={16} color={Colors.subtitlecolor} />
-                <Text style={styles.lockStatus}>
-                  Already Paired
-                </Text>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={16}
+                  color={Colors.subtitlecolor}
+                />
+                <Text style={styles.lockStatus}>Already Paired</Text>
               </>
             )}
           </View>
@@ -382,11 +515,13 @@ const PairLockScreen = ({ navigation }) => {
             size={18}
             color={isAvailable ? Colors.iconbackground : Colors.subtitlecolor}
           />
-          <Text style={[
-            styles.signalText,
-            isAvailable && styles.signalTextAvailable
-          ]}>
-            {item.rssi} dBm
+          <Text
+            style={[
+              styles.signalText,
+              isAvailable && styles.signalTextAvailable,
+            ]}
+          >
+            {item.rssi != null ? `${item.rssi} dBm` : "Not in range"}
           </Text>
           {isAvailable && item.rssi > -70 && (
             <Text style={styles.signalStrengthLabel}>STRONG</Text>
@@ -398,7 +533,7 @@ const PairLockScreen = ({ navigation }) => {
 
   const renderConnectionStatus = () => {
     switch (connectionStatus) {
-      case 'checking':
+      case "checking":
         return (
           <View style={styles.statusContainer}>
             <View style={styles.loadingIconWrap}>
@@ -413,11 +548,15 @@ const PairLockScreen = ({ navigation }) => {
           </View>
         );
 
-      case 'scanning':
+      case "scanning":
         return (
           <View style={styles.statusContainer}>
             <View style={styles.loadingIconWrap}>
-              <Ionicons name="bluetooth-outline" size={32} color={Colors.iconbackground} />
+              <Ionicons
+                name="bluetooth-outline"
+                size={32}
+                color={Colors.iconbackground}
+              />
             </View>
             <SimpleModeText variant="title" style={styles.statusTitle}>
               Scanning for locks...
@@ -425,22 +564,41 @@ const PairLockScreen = ({ navigation }) => {
             <SimpleModeText style={styles.statusDescription}>
               Keep your phone near the door. This takes about 10 seconds.
             </SimpleModeText>
-            <ActivityIndicator size="small" color={Colors.iconbackground} style={{ marginTop: 16 }} />
+            <ActivityIndicator
+              size="small"
+              color={Colors.iconbackground}
+              style={{ marginTop: 16 }}
+            />
           </View>
         );
 
-      case 'selecting':
-        // Sort locks: available first, then by signal strength (highest RSSI = nearest)
-        const sortedLocks = [...discoveredLocks].sort((a, b) => {
-          // Available locks first
+      case "selecting": {
+        // Merge: discovered locks from scan + user's already paired locks not in scan
+        const scannedMacs = new Set(
+          discoveredLocks.map((l) => normalizeMac(l.lockMac)),
+        );
+        const userLocksNotInScan = userLocks
+          .filter(
+            (u) =>
+              !scannedMacs.has(normalizeMac(u.ttlock_mac || u.mac_address)),
+          )
+          .map((u) => ({
+            lockMac: u.ttlock_mac || u.mac_address,
+            lockName: u.name || "Lock",
+            rssi: null,
+            isInitialized: true,
+            lockData: null,
+          }));
+        const combinedLocks = [...discoveredLocks, ...userLocksNotInScan];
+        // Sort: available first, then by signal strength (highest RSSI = nearest)
+        const sortedLocks = [...combinedLocks].sort((a, b) => {
           if (!a.isInitialized && b.isInitialized) return -1;
           if (a.isInitialized && !b.isInitialized) return 1;
-          // Then sort by RSSI (higher = closer)
           return (b.rssi || -100) - (a.rssi || -100);
         });
-        
-        // Find the nearest available lock
-        const nearestAvailableLock = sortedLocks.find(lock => !lock.isInitialized);
+        const nearestAvailableLock = sortedLocks.find(
+          (lock) => !lock.isInitialized,
+        );
         const nearestLockMac = nearestAvailableLock?.lockMac;
 
         return (
@@ -449,7 +607,8 @@ const PairLockScreen = ({ navigation }) => {
               <Ionicons name="search" size={32} color={Colors.iconbackground} />
             </View>
             <SimpleModeText variant="title" style={styles.statusTitle}>
-              {discoveredLocks.length} Lock{discoveredLocks.length > 1 ? 's' : ''} Found
+              {combinedLocks.length} Lock{combinedLocks.length > 1 ? "s" : ""}{" "}
+              Found
             </SimpleModeText>
             <SimpleModeText style={styles.statusDescription}>
               Select the lock you want to pair
@@ -457,23 +616,28 @@ const PairLockScreen = ({ navigation }) => {
 
             <FlatList
               data={sortedLocks}
-              renderItem={({ item }) => renderLockItem({ item, isNearest: item.lockMac === nearestLockMac })}
+              renderItem={({ item }) =>
+                renderLockItem({
+                  item,
+                  isNearest: item.lockMac === nearestLockMac,
+                })
+              }
               keyExtractor={(item) => item.lockMac}
               style={styles.locksList}
-              scrollEnabled={false}
+              scrollEnabled={combinedLocks.length > 3}
             />
 
             <SimpleModeButton
-              onPress={handleStartPairing}
-              icon="refresh-outline"
-              style={styles.rescanButton}
+              onPress={handleConfirmSelection}
+              style={[styles.rescanButton, styles.selectButton]}
             >
-              Scan Again
+              Select Lock
             </SimpleModeButton>
           </View>
         );
+      }
 
-      case 'pairing':
+      case "pairing":
         return (
           <View style={styles.statusContainer}>
             <View style={styles.loadingIconWrap}>
@@ -483,12 +647,13 @@ const PairLockScreen = ({ navigation }) => {
               Pairing with lock...
             </SimpleModeText>
             <SimpleModeText style={styles.statusDescription}>
-              {selectedLock?.lockName || 'Lock'} is being initialized. Please wait.
+              {selectedLock?.lockName || "Lock"} is being initialized. Please
+              wait.
             </SimpleModeText>
           </View>
         );
 
-      case 'saving':
+      case "saving":
         return (
           <View style={styles.statusContainer}>
             <View style={styles.loadingIconWrap}>
@@ -503,11 +668,15 @@ const PairLockScreen = ({ navigation }) => {
           </View>
         );
 
-      case 'connected':
+      case "connected":
         return (
           <View style={styles.statusContainer}>
             <View style={styles.successIconWrap}>
-              <Ionicons name="checkmark-circle" size={32} color={Colors.iconbackground} />
+              <Ionicons
+                name="checkmark-circle"
+                size={32}
+                color={Colors.iconbackground}
+              />
             </View>
             <SimpleModeText variant="title" style={styles.statusTitle}>
               Connected!
@@ -518,7 +687,45 @@ const PairLockScreen = ({ navigation }) => {
           </View>
         );
 
-      case 'failed':
+      case "no_new_locks":
+        return (
+          <View style={styles.statusContainer}>
+            <View style={styles.errorIconWrap}>
+              <Ionicons name="search-outline" size={32} color="#FF6B6B" />
+            </View>
+            <SimpleModeText variant="title" style={styles.statusTitle}>
+              No new locks found
+            </SimpleModeText>
+            <SimpleModeText style={styles.statusDescription}>
+              {errorMessage}
+            </SimpleModeText>
+            {userLocks.length > 0 && (
+              <>
+                <Text style={styles.alreadyPairedSectionTitle}>
+                  Already in your account
+                </Text>
+                <FlatList
+                  data={userLocks}
+                  renderItem={renderAlreadyPairedLockItem}
+                  keyExtractor={(item) =>
+                    String(item.id || item.ttlock_mac || item.mac_address)
+                  }
+                  style={styles.locksList}
+                  scrollEnabled={userLocks.length > 2}
+                />
+              </>
+            )}
+            <SimpleModeButton
+              onPress={handleStartPairing}
+              icon="refresh-outline"
+              style={styles.rescanButton}
+            >
+              Scan Again
+            </SimpleModeButton>
+          </View>
+        );
+
+      case "failed":
         return (
           <View style={styles.statusContainer}>
             <View style={styles.errorIconWrap}>
@@ -528,9 +735,12 @@ const PairLockScreen = ({ navigation }) => {
               Connection failed
             </SimpleModeText>
             <SimpleModeText style={styles.statusDescription}>
-              {errorMessage || 'Something went wrong. Please try again.'}
+              {errorMessage || "Something went wrong. Please try again."}
             </SimpleModeText>
-            <SimpleModeButton onPress={handleStartPairing} style={styles.retryButton}>
+            <SimpleModeButton
+              onPress={handleStartPairing}
+              style={styles.retryButton}
+            >
               Try Again
             </SimpleModeButton>
           </View>
@@ -540,7 +750,11 @@ const PairLockScreen = ({ navigation }) => {
         return (
           <View style={styles.statusContainer}>
             <View style={styles.iconWrap}>
-              <Ionicons name="radio-outline" size={32} color={Colors.iconbackground} />
+              <Ionicons
+                name="radio-outline"
+                size={32}
+                color={Colors.iconbackground}
+              />
             </View>
             <SimpleModeText variant="title" style={styles.statusTitle}>
               Ready to pair
@@ -548,13 +762,18 @@ const PairLockScreen = ({ navigation }) => {
             <SimpleModeText style={styles.statusDescription}>
               Stand near your door. We'll scan for locks automatically.
             </SimpleModeText>
-            
+
             <View style={styles.wakeUpReminder}>
               <View style={styles.wakeUpIconContainer}>
-                <Ionicons name="flash-outline" size={20} color={Colors.iconbackground} />
+                <Ionicons
+                  name="flash-outline"
+                  size={20}
+                  color={Colors.iconbackground}
+                />
               </View>
               <Text style={styles.wakeUpText}>
-                <Text style={styles.wakeUpTextBold}>Wake up the lock</Text> before Start
+                <Text style={styles.wakeUpTextBold}>Wake up the lock</Text>{" "}
+                before Start
               </Text>
             </View>
           </View>
@@ -577,12 +796,24 @@ const PairLockScreen = ({ navigation }) => {
             Pair the lock
           </SimpleModeText>
         </View>
+        {connectionStatus === "selecting" && (
+          <TouchableOpacity
+            onPress={handleStartPairing}
+            style={styles.headerIconButton}
+          >
+            <Ionicons
+              name="refresh-outline"
+              size={24}
+              color={Colors.iconbackground}
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
       <AppCard style={styles.mainCard}>
         {renderConnectionStatus()}
 
-        {connectionStatus === 'waiting' && (
+        {connectionStatus === "waiting" && (
           <>
             <SimpleModeButton
               onPress={handleStartPairing}
@@ -598,7 +829,11 @@ const PairLockScreen = ({ navigation }) => {
       <AppCard style={styles.helpCard}>
         <View style={styles.helpHeader}>
           <View style={styles.helpIconWrap}>
-            <Ionicons name="information-circle-outline" size={20} color={Colors.iconbackground} />
+            <Ionicons
+              name="information-circle-outline"
+              size={20}
+              color={Colors.iconbackground}
+            />
           </View>
           <SimpleModeText variant="title" style={styles.helpTitle}>
             Tips for success
@@ -606,7 +841,8 @@ const PairLockScreen = ({ navigation }) => {
         </View>
         <View style={styles.helpList}>
           <SimpleModeText style={styles.helpItem}>
-            • Make sure you wake up the lock by touching the lock keypad before Start
+            • Make sure you wake up the lock by touching the lock keypad before
+            Start
           </SimpleModeText>
           <SimpleModeText style={styles.helpItem}>
             • Stand within 2 meters of your door
@@ -634,8 +870,8 @@ const styles = StyleSheet.create({
     gap: Theme.spacing.lg,
   },
   headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Theme.spacing.md,
   },
   backButton: {
@@ -644,8 +880,17 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: Colors.bordercolor,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.bordercolor,
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerContent: {
     flex: 1,
@@ -653,69 +898,69 @@ const styles = StyleSheet.create({
   stepIndicator: {
     fontSize: 14,
     color: Colors.subtitlecolor,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   headerTitle: {
     marginTop: 2,
   },
   mainCard: {
     padding: Theme.spacing.xl,
-    alignItems: 'center',
+    alignItems: "center",
     gap: Theme.spacing.lg,
   },
   statusContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: Theme.spacing.md,
-    width: '100%',
+    width: "100%",
   },
   iconWrap: {
     width: 80,
     height: 80,
     borderRadius: 40,
     backgroundColor: Colors.cardbackground,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: Theme.spacing.sm,
   },
   loadingIconWrap: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#E3F2FD',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#E3F2FD",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: Theme.spacing.sm,
   },
   successIconWrap: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#E8F5E8',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#E8F5E8",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: Theme.spacing.sm,
   },
   errorIconWrap: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#FFEBEE',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#FFEBEE",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: Theme.spacing.sm,
   },
   statusTitle: {
-    textAlign: 'center',
+    textAlign: "center",
   },
   statusDescription: {
-    textAlign: 'center',
+    textAlign: "center",
     maxWidth: 280,
   },
   wakeUpReminder: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#E0F7F5', // Light teal background matching app theme
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#E0F7F5", // Light teal background matching app theme
     paddingHorizontal: Theme.spacing.md,
     paddingVertical: Theme.spacing.sm,
     borderRadius: 12,
@@ -730,41 +975,48 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 14,
     backgroundColor: Colors.iconbackground,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   wakeUpText: {
     fontSize: 14,
     color: Colors.titlecolor,
-    textAlign: 'center',
+    textAlign: "center",
   },
   wakeUpTextBold: {
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.iconbackground,
   },
   locksList: {
-    width: '100%',
+    width: "100%",
     maxHeight: 300,
     marginTop: Theme.spacing.md,
   },
+  alreadyPairedSectionTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.subtitlecolor,
+    marginTop: Theme.spacing.lg,
+    marginBottom: Theme.spacing.sm,
+  },
   lockCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: Colors.backgroundcolor,
     padding: Theme.spacing.md,
     borderRadius: 12,
     marginBottom: Theme.spacing.sm,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: "transparent",
   },
   lockCardAvailable: {
-    backgroundColor: '#f0f9ff', // Light blue background
-    borderColor: '#bae6fd', // Light blue border
+    backgroundColor: "#f0f9ff", // Light blue background
+    borderColor: "#bae6fd", // Light blue border
     borderWidth: 2,
   },
   lockCardNearest: {
-    backgroundColor: '#f0fdf4', // Light green background
-    borderColor: '#bbf7d0', // Light green border
+    backgroundColor: "#f0fdf4", // Light green background
+    borderColor: "#bbf7d0", // Light green border
     borderWidth: 2.5,
     shadowColor: Colors.iconbackground,
     shadowOffset: { width: 0, height: 2 },
@@ -773,35 +1025,39 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   lockCardSelected: {
-    borderColor: Colors.iconbackground,
-    backgroundColor: `${Colors.iconbackground}15`,
+    borderColor: "#008B7D",
+  },
+  lockCardAlreadyPaired: {
+    backgroundColor: Colors.cardbackground,
+    borderColor: "transparent",
+    opacity: 0.9,
   },
   lockIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: Colors.cardbackground,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: Theme.spacing.sm,
-    position: 'relative',
+    position: "relative",
   },
   lockIconContainerAvailable: {
-    backgroundColor: '#dbeafe', // Light blue icon background for available locks
+    backgroundColor: "#dbeafe", // Light blue icon background for available locks
   },
   lockIconContainerNearest: {
-    backgroundColor: '#dcfce7', // Light green icon background for nearest lock
+    backgroundColor: "#dcfce7", // Light green icon background for nearest lock
   },
   locationPinOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: -2,
     right: -2,
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#E0F7F5',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#E0F7F5",
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: Colors.iconbackground,
   },
@@ -809,20 +1065,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   lockNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Theme.spacing.xs,
     marginBottom: 2,
-    flexWrap: 'wrap',
+    flexWrap: "wrap",
   },
   lockName: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.titlecolor,
   },
   lockNameAvailable: {
     color: Colors.iconbackground,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   lockMac: {
     fontSize: 12,
@@ -830,35 +1086,35 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   lockStatusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     marginTop: 4,
   },
   lockStatus: {
     fontSize: 12,
     color: Colors.subtitlecolor,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   lockStatusAvailable: {
     fontSize: 12,
     color: Colors.iconbackground,
-    fontWeight: '600',
-    fontStyle: 'normal',
+    fontWeight: "600",
+    fontStyle: "normal",
   },
   nearestBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#86efac', // Light green badge for nearest lock
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#86efac", // Light green badge for nearest lock
     paddingHorizontal: 6,
     paddingVertical: 3,
     borderRadius: 6,
     gap: 4,
   },
   availableBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#bfdbfe', // Light blue badge for available locks
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#bfdbfe", // Light blue badge for available locks
     paddingHorizontal: 6,
     paddingVertical: 3,
     borderRadius: 6,
@@ -866,13 +1122,13 @@ const styles = StyleSheet.create({
   },
   nearestBadgeText: {
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.textwhite,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   signalContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: 4,
     minWidth: 60,
   },
@@ -883,13 +1139,13 @@ const styles = StyleSheet.create({
   signalTextAvailable: {
     fontSize: 11,
     color: Colors.iconbackground,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   signalStrengthLabel: {
     fontSize: 9,
     color: Colors.iconbackground,
-    fontWeight: '700',
-    textTransform: 'uppercase',
+    fontWeight: "700",
+    textTransform: "uppercase",
     letterSpacing: 0.5,
     marginTop: 2,
   },
@@ -901,23 +1157,29 @@ const styles = StyleSheet.create({
   },
   rescanButton: {
     marginTop: Theme.spacing.md,
+    marginLeft: Theme.spacing.md,
+    marginRight: Theme.spacing.md,
+  },
+  selectButton: {
+    alignSelf: "center",
+    marginLeft: Theme.spacing.sm,
   },
   helpCard: {
     padding: Theme.spacing.lg,
     gap: Theme.spacing.md,
   },
   helpHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Theme.spacing.sm,
   },
   helpIconWrap: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.05)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   helpTitle: {
     fontSize: 16,

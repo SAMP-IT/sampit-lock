@@ -6,6 +6,7 @@ import AppCard from '../components/ui/AppCard';
 import Section from '../components/ui/Section';
 import Colors from '../constants/Colors';
 import Theme from '../constants/Theme';
+import { getLogoForLightBlue } from '../utils/logoUtils';
 
 const AboutScreen = ({ navigation }) => {
   const appVersion = '1.0.0';
@@ -45,41 +46,41 @@ const AboutScreen = ({ navigation }) => {
 
       {/* App Info Card */}
       <View style={styles.appInfoCard}>
-        <View style={styles.appIconContainer}>
-          <Ionicons name="lock-closed" size={48} color={Colors.iconbackground} />
-        </View>
-        <Text style={styles.appName}>AwayKey</Text>
+        <Image source={getLogoForLightBlue()} style={styles.appLogo} resizeMode="contain" />
+        <Text style={styles.appName}>Awakey</Text>
         <Text style={styles.appTagline}>Smart Lock Management</Text>
         <Text style={styles.appVersion}>Version {appVersion} (Build {buildNumber})</Text>
       </View>
 
       <Section title="Legal" gapless>
         <AppCard padding="none">
-          {renderLinkItem('document-text-outline', 'Terms of Service', null, () => handleOpenLink('https://awaykey.com/terms'))}
-          {renderLinkItem('shield-outline', 'Privacy Policy', null, () => handleOpenLink('https://awaykey.com/privacy'))}
-          {renderLinkItem('information-circle-outline', 'Open Source Licenses', null, () => Alert.alert('Open Source', 'This app uses various open source libraries including React Native, Expo, and others.'))}
+          {renderLinkItem('document-text-outline', 'Terms of Service', null, () => handleOpenLink('https://www.jainsonlocks.com/terms-conditions/'))}
+          {renderLinkItem('shield-outline', 'Privacy Policy', null, () => handleOpenLink('https://www.jainsonlocks.com/privacy-policy/'))}
+          {renderLinkItem('cube-outline', 'Shipping Policy', null, () => handleOpenLink('https://www.jainsonlocks.com/shipping-policy/'))}
+          {renderLinkItem('swap-horizontal-outline', 'Return & Replacement Policy', null, () => handleOpenLink('https://www.jainsonlocks.com/return-replacement-policy/'))}
         </AppCard>
       </Section>
 
       <Section title="Connect" gapless>
         <AppCard padding="none">
-          {renderLinkItem('globe-outline', 'Website', 'awaykey.com', () => handleOpenLink('https://awaykey.com'))}
-          {renderLinkItem('logo-twitter', 'Twitter', '@awaykey', () => handleOpenLink('https://twitter.com/awaykey'))}
-          {renderLinkItem('logo-facebook', 'Facebook', null, () => handleOpenLink('https://facebook.com/awaykey'))}
+          {renderLinkItem('globe-outline', 'Website', 'awakey.com', () => handleOpenLink('https://jainsonlocks.com/smart-locks/'))}
+          {renderLinkItem('logo-facebook', 'Facebook', null, () => handleOpenLink('https://www.facebook.com/JainsonLocks/'))}
+          {renderLinkItem('logo-youtube', 'YouTube', null, () => handleOpenLink('https://www.youtube.com/@awakeytech2539'))}
+          {renderLinkItem('logo-instagram', 'Instagram', null, () => handleOpenLink('https://www.instagram.com/jainsonlocks/'))}
         </AppCard>
       </Section>
 
       <Section title="Developer" gapless>
         <AppCard style={styles.developerCard}>
-          <Text style={styles.developerText}>Made with love by AwayKey Team</Text>
-          <Text style={styles.copyrightText}>{currentYear} AwayKey Inc. All rights reserved.</Text>
+          <Text style={styles.developerText}>Made with love by Awakey Team</Text>
+          <Text style={styles.copyrightText}>{currentYear} Awakey. All rights reserved.</Text>
         </AppCard>
       </Section>
 
       {/* Rate Us Button */}
       <TouchableOpacity
         style={styles.rateButton}
-        onPress={() => Alert.alert('Rate Us', 'Thank you for using AwayKey! We appreciate your feedback.')}
+        onPress={() => Alert.alert('Rate Us', 'Thank you for using Awakey! We appreciate your feedback.')}
         activeOpacity={0.8}
       >
         <Ionicons name="star" size={20} color={Colors.textwhite} />
@@ -126,19 +127,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cardbackground,
     borderRadius: Theme.radius.lg,
   },
-  appIconContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 24,
-    backgroundColor: Colors.backgroundwhite,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Theme.spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+  appLogo: {
+    width: 150,
+    height: 150,
+    marginBottom: Theme.spacing.sm,
   },
   appName: {
     fontSize: 24,

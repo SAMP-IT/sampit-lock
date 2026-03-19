@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Colors from '../constants/Colors';
 import ttlockService from '../services/ttlockService';
 import { backendApi, factoryResetLock, factoryResetLockComplete } from '../services/api';
+import { invalidateCacheAfterLockDelete } from '../utils/queryClient';
 
 const FactoryResetScreen = ({ navigation, route }) => {
   const { lockId, lockName, lockData, ttlockLockId, deleteAfterReset } = route.params || {};
@@ -61,6 +62,7 @@ const FactoryResetScreen = ({ navigation, route }) => {
         console.log('[FactoryReset] Deleting lock from account after reset...');
         try {
           await backendApi.delete(`/locks/${lockId}`);
+          invalidateCacheAfterLockDelete(lockId);
           console.log('[FactoryReset] Lock deleted from account');
         } catch (apiError) {
           console.warn('[FactoryReset] Backend delete warning:', apiError.message);
@@ -135,6 +137,7 @@ const FactoryResetScreen = ({ navigation, route }) => {
       if (deleteAfterReset) {
         // Full deletion - remove lock from account completely
         await backendApi.delete(`/locks/${lockId}`);
+        invalidateCacheAfterLockDelete(lockId);
         console.log('[FactoryReset] Lock deleted from account');
 
         Alert.alert(
@@ -171,6 +174,7 @@ const FactoryResetScreen = ({ navigation, route }) => {
 
       // Delete from our database completely
       await backendApi.delete(`/locks/${lockId}`);
+      invalidateCacheAfterLockDelete(lockId);
 
       // Delete from TTLock Cloud if connected
       if (ttlockLockId) {

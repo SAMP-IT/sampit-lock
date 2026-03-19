@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -48,6 +48,7 @@ const SendCodeScreen = ({ navigation, route }) => {
   const [savedCodes, setSavedCodes] = useState([]);
   const [loadingCodes, setLoadingCodes] = useState(true);
   const [deleting, setDeleting] = useState(null);
+  const passcodeInputRef = useRef(null);
 
   // Check available control methods
   const controlMethods = lock ? LockControlService.getAvailableControlMethods(lock) : { bluetooth: false, cloud: false };
@@ -62,9 +63,18 @@ const SendCodeScreen = ({ navigation, route }) => {
   };
 
   useEffect(() => {
-    generateRandomCode();
     loadSavedCodes();
   }, []);
+
+  // When switching to temporary, optionally pre-fill with a generated code; permanent stays empty
+  const handleCodeTypeChange = (type) => {
+    setCodeType(type);
+    if (type === 'permanent') {
+      setPasscode('');
+    } else if (type === 'temporary') {
+      generateRandomCode();
+    }
+  };
 
   const loadSavedCodes = async () => {
     if (!lockId) return;
@@ -316,21 +326,39 @@ const SendCodeScreen = ({ navigation, route }) => {
           </View>
         </View>
         {item.valid_until && item.code_type !== 'permanent' && (
-          <Text style={styles.codeExpiry}>
-            {item.status === 'expired' ? 'Expired' : 
-             item.code_type === 'one_time' ? 
-               (() => {
-                 const now = new Date();
-                 const expiry = new Date(item.valid_until);
-                 const diff = expiry - now;
-                 if (diff <= 0) return 'Expired';
-                 const hours = Math.floor(diff / (1000 * 60 * 60));
-                 const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                 return hours > 0 ? `Expires in ${hours}h ${minutes}m (one-time use)` : `Expires in ${minutes}m (one-time use)`;
-               })() :
-               `Expires: ${new Date(item.valid_until).toLocaleDateString()}`
-            }
-          </Text>
+          item.code_type === 'temporary' && item.valid_from && item.valid_until ? (
+            <View style={styles.codeExpiryRow}>
+              <Text style={styles.codeExpiry} numberOfLines={1} ellipsizeMode="tail">
+                {'Expires: '}{new Date(item.valid_until).toLocaleDateString()}
+              </Text>
+              <Text style={styles.codeExpiry} numberOfLines={1}> · </Text>
+              <View style={styles.validForBadge}>
+                <Text style={styles.validForBadgeText}>
+                  {(() => {
+                    const from = new Date(item.valid_from).getTime();
+                    const to = new Date(item.valid_until).getTime();
+                    return Math.round((to - from) / (1000 * 60 * 60));
+                  })()} hr
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <Text style={styles.codeExpiry}>
+              {item.status === 'expired' ? 'Expired' : 
+               item.code_type === 'one_time' ? 
+                 (() => {
+                   const now = new Date();
+                   const expiry = new Date(item.valid_until);
+                   const diff = expiry - now;
+                   if (diff <= 0) return 'Expired';
+                   const hours = Math.floor(diff / (1000 * 60 * 60));
+                   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                   return hours > 0 ? `Expires in ${hours}h ${minutes}m (one-time use)` : `Expires in ${minutes}m (one-time use)`;
+                 })() :
+                 `Expires: ${new Date(item.valid_until).toLocaleDateString()}`
+              }
+            </Text>
+          )
         )}
       </View>
       <TouchableOpacity
@@ -380,7 +408,7 @@ const SendCodeScreen = ({ navigation, route }) => {
             <View style={styles.typeContainer}>
               <TouchableOpacity
                 style={[styles.typeButton, codeType === 'permanent' && styles.typeButtonActive]}
-                onPress={() => setCodeType('permanent')}
+                onPress={() => handleCodeTypeChange('permanent')}
               >
                 <Text style={[styles.typeText, codeType === 'permanent' && styles.typeTextActive]}>
                   Permanent
@@ -388,7 +416,7 @@ const SendCodeScreen = ({ navigation, route }) => {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.typeButton, codeType === 'temporary' && styles.typeButtonActive]}
-                onPress={() => setCodeType('temporary')}
+                onPress={() => handleCodeTypeChange('temporary')}
               >
                 <Text style={[styles.typeText, codeType === 'temporary' && styles.typeTextActive]}>
                   Temporary
@@ -424,7 +452,8 @@ const SendCodeScreen = ({ navigation, route }) => {
             <Text style={styles.sectionLabel}>Passcode</Text>
             <View style={styles.codeInputContainer}>
               <TextInput
-                style={styles.codeInput}
+                ref={passcodeInputRef}
+                style={[styles.codeInput, !passcode && styles.codeInputPlaceholder]}
                 value={passcode}
                 onChangeText={(text) => setPasscode(text.replace(/[^0-9]/g, '').slice(0, 9))}
                 keyboardType="number-pad"
@@ -432,6 +461,30 @@ const SendCodeScreen = ({ navigation, route }) => {
                 placeholder="Enter 4-9 digits"
                 placeholderTextColor={Colors.subtitlecolor}
               />
+              {codeType === 'temporary' && (
+                <TouchableOpacity
+                  onPress={() => passcodeInputRef.current?.focus()}
+                  style={styles.copyIconButton}
+                >
+                  <Ionicons name="pencil-outline" size={20} color={Colors.iconbackground} />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                onPress={copyToClipboard}
+                style={[styles.copyIconButton, !passcode && styles.copyIconButtonDisabled]}
+                disabled={!passcode}
+              >
+                <Ionicons
+                  name="copy-outline"
+                  size={20}
+                  color={passcode ? Colors.iconbackground : Colors.subtitlecolor}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Generate - new line with heading */}
+            <View style={styles.generateRow}>
+              <Text style={styles.generateLabel}>Generate</Text>
               <TouchableOpacity onPress={generateRandomCode} style={styles.randomButton}>
                 <Ionicons name="shuffle-outline" size={20} color={Colors.iconbackground} />
               </TouchableOpacity>
@@ -443,8 +496,6 @@ const SendCodeScreen = ({ navigation, route }) => {
               style={styles.nameInput}
               value={codeName}
               onChangeText={setCodeName}
-              placeholder="e.g., Guest, Cleaner, Airbnb"
-              placeholderTextColor={Colors.subtitlecolor}
               maxLength={50}
             />
 
@@ -461,12 +512,6 @@ const SendCodeScreen = ({ navigation, route }) => {
                   {canCreateCode ? 'Create Code on Lock' : 'Bluetooth Required'}
                 </Text>
               )}
-            </TouchableOpacity>
-
-            {/* Copy Button */}
-            <TouchableOpacity style={styles.secondaryButton} onPress={copyToClipboard}>
-              <Ionicons name="copy-outline" size={18} color={Colors.iconbackground} />
-              <Text style={styles.secondaryLabel}>Copy Code</Text>
             </TouchableOpacity>
           </AppCard>
         </Section>
@@ -613,6 +658,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 4,
   },
+  codeInputPlaceholder: {
+    fontSize: 15,
+    letterSpacing: 0,
+  },
   randomButton: {
     width: 44,
     height: 44,
@@ -620,6 +669,29 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cardbackground,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  copyIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.cardbackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.bordercolor,
+  },
+  copyIconButtonDisabled: {
+    opacity: 0.5,
+  },
+  generateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Theme.spacing.sm,
+  },
+  generateLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.titlecolor,
   },
   nameInput: {
     backgroundColor: Colors.cardbackground,
@@ -788,6 +860,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.subtitlecolor,
     marginTop: 2,
+    flexShrink: 1,
+  },
+  codeExpiryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'nowrap',
+    marginTop: 2,
+    gap: 4,
+  },
+  validForBadge: {
+    backgroundColor: 'rgba(220, 38, 38, 0.12)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  validForBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#b91c1c',
   },
   deleteButton: {
     width: 36,

@@ -1,5 +1,12 @@
 import React, { useState, useMemo, useCallback } from "react";
-import { StyleSheet, View, TouchableOpacity, ScrollView, Text, Modal } from "react-native";
+import {
+  StyleSheet,
+  View,
+  TouchableOpacity,
+  ScrollView,
+  Text,
+  Modal,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import Header from "../components/Header";
@@ -84,8 +91,8 @@ const HistoryScreen = ({ navigation }) => {
       limit: 200,
       action: actionFilter,
       access_method: accessMethodFilter,
-      sort_by: 'created_at',
-      sort_order: sortNewest ? 'desc' : 'asc',
+      // sort_by: "created_at",
+      // sort_order: sortNewest ? "desc" : "asc",
     };
     if (dateRange.start) f.start_date = dateRange.start.toISOString();
     if (dateRange.end) f.end_date = dateRange.end.toISOString();
@@ -102,7 +109,7 @@ const HistoryScreen = ({ navigation }) => {
   // Create lock name map for resolving user-friendly names
   const lockNameMap = useMemo(() => {
     const map = {};
-    locks.forEach(lock => {
+    locks.forEach((lock) => {
       if (lock.id) {
         const name = lock.name;
         if (name && !name.match(/^M\d+_|^[A-Z0-9_]+$/)) {
@@ -110,7 +117,7 @@ const HistoryScreen = ({ navigation }) => {
         } else if (lock.location) {
           map[lock.id] = lock.location;
         } else {
-          map[lock.id] = 'My Lock';
+          map[lock.id] = "My Lock";
         }
       }
     });
@@ -119,11 +126,14 @@ const HistoryScreen = ({ navigation }) => {
 
   // Enhance activities with resolved lock names
   const enhancedActivities = useMemo(() => {
-    return activities.map(activity => ({
+    const enhanced = activities.map((activity) => ({
       ...activity,
-      resolved_lock_name: activity.lock_id ? lockNameMap[activity.lock_id] : null
+      resolved_lock_name: activity.lock_id
+        ? lockNameMap[activity.lock_id]
+        : null,
     }));
-  }, [activities, lockNameMap]);
+    return sortNewest ? enhanced : [...enhanced].reverse();
+  }, [activities, lockNameMap, sortNewest]);
 
   const handleMenuPress = () => {
     navigation.navigate("Menu");
@@ -171,7 +181,9 @@ const HistoryScreen = ({ navigation }) => {
                 style={[styles.filterChip, active && styles.filterChipActive]}
                 onPress={() => setActionFilter(filter.id)}
               >
-                <Text style={[styles.filterText, active && styles.filterTextActive]}>
+                <Text
+                  style={[styles.filterText, active && styles.filterTextActive]}
+                >
                   {filter.label}
                 </Text>
               </TouchableOpacity>
@@ -180,39 +192,12 @@ const HistoryScreen = ({ navigation }) => {
         </ScrollView>
       </Section>
 
-      {/* Sort & Filter Controls */}
-      <View style={styles.controlsRow}>
-        {/* Sort Toggle */}
-        <TouchableOpacity
-          style={styles.sortButton}
-          onPress={() => setSortNewest(!sortNewest)}
-        >
-          <Ionicons
-            name={sortNewest ? "arrow-down" : "arrow-up"}
-            size={16}
-            color={Colors.iconbackground}
-          />
-          <Text style={styles.sortText}>
-            {sortNewest ? "Newest First" : "Oldest First"}
-          </Text>
-        </TouchableOpacity>
-
-        {/* More Filters Button */}
-        <TouchableOpacity
-          style={[styles.filterButton, activeFilterCount > 0 && styles.filterButtonActive]}
-          onPress={() => setShowFiltersModal(true)}
-        >
-          <Ionicons name="options-outline" size={18} color={activeFilterCount > 0 ? Colors.textwhite : Colors.iconbackground} />
-          <Text style={[styles.filterButtonText, activeFilterCount > 0 && styles.filterButtonTextActive]}>
-            Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ""}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Results Summary */}
       <View style={styles.resultsSummary}>
         <Text style={styles.resultsText}>
-          {isLoading ? "Loading..." : `${totalCount} event${totalCount !== 1 ? 's' : ''}`}
+          {isLoading
+            ? "Loading..."
+            : `${totalCount} event${totalCount !== 1 ? "s" : ""}`}
         </Text>
         {activeFilterCount > 0 && (
           <TouchableOpacity onPress={clearFilters}>
@@ -221,21 +206,44 @@ const HistoryScreen = ({ navigation }) => {
         )}
       </View>
 
-      {/* Activity List */}
+      {/* Activity List - heading left, sort (Newest/Oldest First) right at same level */}
       <Section
         title="Activity Log"
         gapless
+        rightAccessory={
+          <TouchableOpacity
+            style={styles.sortButton}
+            onPress={() => setSortNewest(!sortNewest)}
+          >
+            <Ionicons
+              name={sortNewest ? "arrow-down" : "arrow-up"}
+              size={16}
+              color={Colors.iconbackground}
+            />
+            <Text style={styles.sortText}>
+              {sortNewest ? "Newest First" : "Oldest First"}
+            </Text>
+          </TouchableOpacity>
+        }
       >
         <AppCard padding="none" elevated={false}>
-          {isLoading && <Text style={styles.loadingText}>Loading history...</Text>}
+          {isLoading && (
+            <Text style={styles.loadingText}>Loading history...</Text>
+          )}
           {error && <Text style={styles.errorText}>{error}</Text>}
-          {!isLoading && !error && enhancedActivities.map((activity) => (
-            <ActivityItem key={activity.id} activity={activity} />
-          ))}
+          {!isLoading &&
+            !error &&
+            enhancedActivities.map((activity) => (
+              <ActivityItem key={activity.id} activity={activity} />
+            ))}
           {!isLoading && !error && enhancedActivities.length === 0 && (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconWrapper}>
-                <Ionicons name="time-outline" size={32} color={Colors.subtitlecolor} />
+                <Ionicons
+                  name="time-outline"
+                  size={32}
+                  color={Colors.subtitlecolor}
+                />
               </View>
               <Text style={styles.emptyTitle}>No activity found</Text>
               <Text style={styles.emptyMessage}>
@@ -274,14 +282,17 @@ const HistoryScreen = ({ navigation }) => {
                       key={preset.id}
                       style={[
                         styles.datePresetChip,
-                        datePreset === preset.id && styles.datePresetChipActive
+                        datePreset === preset.id && styles.datePresetChipActive,
                       ]}
                       onPress={() => setDatePreset(preset.id)}
                     >
-                      <Text style={[
-                        styles.datePresetText,
-                        datePreset === preset.id && styles.datePresetTextActive
-                      ]}>
+                      <Text
+                        style={[
+                          styles.datePresetText,
+                          datePreset === preset.id &&
+                            styles.datePresetTextActive,
+                        ]}
+                      >
                         {preset.label}
                       </Text>
                     </TouchableOpacity>
@@ -298,14 +309,18 @@ const HistoryScreen = ({ navigation }) => {
                       key={method.id}
                       style={[
                         styles.filterOptionChip,
-                        accessMethodFilter === method.id && styles.filterOptionChipActive
+                        accessMethodFilter === method.id &&
+                          styles.filterOptionChipActive,
                       ]}
                       onPress={() => setAccessMethodFilter(method.id)}
                     >
-                      <Text style={[
-                        styles.filterOptionText,
-                        accessMethodFilter === method.id && styles.filterOptionTextActive
-                      ]}>
+                      <Text
+                        style={[
+                          styles.filterOptionText,
+                          accessMethodFilter === method.id &&
+                            styles.filterOptionTextActive,
+                        ]}
+                      >
                         {method.label}
                       </Text>
                     </TouchableOpacity>
@@ -371,26 +386,20 @@ const styles = StyleSheet.create({
   filterTextActive: {
     color: Colors.textwhite,
   },
-  controlsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Theme.spacing.lg,
-  },
   sortButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     paddingVertical: Theme.spacing.sm,
   },
   sortText: {
     fontSize: 14,
     color: Colors.iconbackground,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     paddingVertical: Theme.spacing.sm,
     paddingHorizontal: Theme.spacing.md,
@@ -404,15 +413,15 @@ const styles = StyleSheet.create({
   filterButtonText: {
     fontSize: 14,
     color: Colors.iconbackground,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   filterButtonTextActive: {
     color: Colors.textwhite,
   },
   resultsSummary: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: Theme.spacing.lg,
   },
   resultsText: {
@@ -422,7 +431,7 @@ const styles = StyleSheet.create({
   clearText: {
     fontSize: 14,
     color: Colors.iconbackground,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   emptyState: {
     alignItems: "center",
@@ -450,38 +459,38 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   loadingText: {
-    textAlign: 'center',
+    textAlign: "center",
     padding: Theme.spacing.lg,
     color: Colors.subtitlecolor,
   },
   errorText: {
-    textAlign: 'center',
+    textAlign: "center",
     padding: Theme.spacing.lg,
-    color: 'red',
+    color: "red",
   },
   // Modal Styles
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
     backgroundColor: Colors.backgroundwhite,
     borderTopLeftRadius: Theme.radius.xl,
     borderTopRightRadius: Theme.radius.xl,
-    maxHeight: '80%',
+    maxHeight: "80%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: Theme.spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: Colors.bordercolor,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.titlecolor,
   },
   modalScroll: {
@@ -492,13 +501,13 @@ const styles = StyleSheet.create({
   },
   filterSectionTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.titlecolor,
     marginBottom: Theme.spacing.md,
   },
   datePresetsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: Theme.spacing.sm,
   },
   datePresetChip: {
@@ -521,8 +530,8 @@ const styles = StyleSheet.create({
     color: Colors.textwhite,
   },
   filterOptionsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: Theme.spacing.sm,
   },
   filterOptionChip: {
@@ -545,7 +554,7 @@ const styles = StyleSheet.create({
     color: Colors.textwhite,
   },
   modalActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Theme.spacing.md,
     padding: Theme.spacing.lg,
     borderTopWidth: 1,
@@ -557,24 +566,24 @@ const styles = StyleSheet.create({
     borderRadius: Theme.radius.pill,
     borderWidth: 1,
     borderColor: Colors.bordercolor,
-    alignItems: 'center',
+    alignItems: "center",
   },
   clearButtonText: {
     fontSize: 16,
     color: Colors.subtitlecolor,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   applyButton: {
     flex: 1,
     paddingVertical: Theme.spacing.md,
     borderRadius: Theme.radius.pill,
     backgroundColor: Colors.iconbackground,
-    alignItems: 'center',
+    alignItems: "center",
   },
   applyButtonText: {
     fontSize: 16,
     color: Colors.textwhite,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 
