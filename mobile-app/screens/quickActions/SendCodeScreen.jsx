@@ -300,7 +300,8 @@ const SendCodeScreen = ({ navigation, route }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'active': return '#4CAF50';
-      case 'expired': return Colors.red;
+      // Keep the saved-code UI neutral for expired codes (avoid red keypad/dots)
+      case 'expired': return Colors.subtitlecolor;
       case 'scheduled': return '#2196F3';
       default: return Colors.subtitlecolor;
     }
@@ -332,15 +333,19 @@ const SendCodeScreen = ({ navigation, route }) => {
                 {'Expires: '}{new Date(item.valid_until).toLocaleDateString()}
               </Text>
               <Text style={styles.codeExpiry} numberOfLines={1}> · </Text>
-              <View style={styles.validForBadge}>
-                <Text style={styles.validForBadgeText}>
-                  {(() => {
-                    const from = new Date(item.valid_from).getTime();
-                    const to = new Date(item.valid_until).getTime();
-                    return Math.round((to - from) / (1000 * 60 * 60));
-                  })()} hr
-                </Text>
-              </View>
+              {item.status === 'expired' ? (
+                <Text style={styles.codeExpiry}>Expired</Text>
+              ) : (
+                <View style={styles.validForBadge}>
+                  <Text style={styles.validForBadgeText}>
+                    {(() => {
+                      const from = new Date(item.valid_from).getTime();
+                      const to = new Date(item.valid_until).getTime();
+                      return Math.round((to - from) / (1000 * 60 * 60));
+                    })()} hr
+                  </Text>
+                </View>
+              )}
             </View>
           ) : (
             <Text style={styles.codeExpiry}>
