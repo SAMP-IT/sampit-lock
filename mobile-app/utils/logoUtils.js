@@ -5,14 +5,14 @@
  */
 export const getLogoForBackground = (backgroundColor) => {
   // Map background colors to logo files
-  // logo1.jpeg - for white/light backgrounds (default)
-  // logo2.jpeg - for light blue/card backgrounds
-  // logo3.jpeg - for dark backgrounds
+  // awakey-02.png - white/light backgrounds (default)
+  // awakey-03.png - light blue/card backgrounds
+  // awakey-04.png - dark backgrounds (replaces former logo3.jpeg)
   
   const logoMap = {
     white: require('../assets/logos/awakey-02.png'),
     lightBlue: require('../assets/logos/awakey-03.png'),
-    cardBackground: require('../assets/logos/awakey-03.png'),
+    cardBackground: require('../assets/logos/awakey-02.png'),
     dark: require('../assets/logos/awakey-04.png'),
     default: require('../assets/logos/awakey-02.png'),
   };
@@ -23,15 +23,15 @@ export const getLogoForBackground = (backgroundColor) => {
 /**
  * Gets logo for white/light backgrounds
  */
-export const getLogoForWhite = () => require('../assets/logos/logo1.jpeg');
+export const getLogoForWhite = () => require('../assets/logos/awakey-02.png');
 
 /**
  * Gets logo for light blue/card backgrounds
  */
-export const getLogoForLightBlue = () => require('../assets/logos/logo2.jpeg');
+export const getLogoForLightBlue = () => require('../assets/logos/awakey-03.png');
 
 /**
- * Gets logo for dark backgrounds
+ * Dark backgrounds (former logo3.jpeg) → awakey-04.png
  */
-export const getLogoForDark = () => require('../assets/logos/logo3.jpeg');
+export const getLogoForDark = () => require('../assets/logos/awakey-04.png');
 

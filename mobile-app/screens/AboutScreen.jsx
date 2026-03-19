@@ -6,6 +6,7 @@ import AppCard from '../components/ui/AppCard';
 import Section from '../components/ui/Section';
 import Colors from '../constants/Colors';
 import Theme from '../constants/Theme';
+import { getLogoForLightBlue } from '../utils/logoUtils';
 
 const AboutScreen = ({ navigation }) => {
   const appVersion = '1.0.0';
@@ -45,7 +46,7 @@ const AboutScreen = ({ navigation }) => {
 
       {/* App Info Card */}
       <View style={styles.appInfoCard}>
-        <Image source={require('../assets/logos/logo2.jpeg')} style={styles.appLogo} resizeMode="contain" />
+        <Image source={getLogoForLightBlue()} style={styles.appLogo} resizeMode="contain" />
         <Text style={styles.appName}>Awakey</Text>
         <Text style={styles.appTagline}>Smart Lock Management</Text>
         <Text style={styles.appVersion}>Version {appVersion} (Build {buildNumber})</Text>
