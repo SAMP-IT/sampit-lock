@@ -710,6 +710,10 @@ export const logLockActivity = (lockId, action, accessMethod = 'bluetooth', meta
   });
 };
 
+export const syncActivityFromCloud = (lockId) => {
+  return backendApi.post(`/locks/${lockId}/sync-activity-from-cloud`);
+};
+
 export const getAllActivity = (filters = {}) => {
   // Use the /activity/all endpoint with filtering support
   const params = {
