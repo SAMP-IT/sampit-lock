@@ -584,33 +584,26 @@ class LockControlService {
         JSON.stringify(result),
       );
 
-      // Get battery level after unlock
-      let batteryLevel = null;
+      // Log activity to backend immediately (don't wait for battery)
       try {
-        batteryLevel = await TTLockService.getBatteryLevel(encryptedLockData);
-        console.log(`🔋 Battery level after unlock: ${batteryLevel}%`);
-      } catch (statusError) {
-        console.warn("⚠️ Could not get battery level:", statusError.message);
-      }
-
-      // Log activity to backend with battery level
-      try {
-        await logLockActivity(
-          lock.id,
-          "unlocked",
-          "bluetooth",
-          batteryLevel !== null ? { battery_level: batteryLevel } : null,
-        );
+        await logLockActivity(lock.id, "unlocked", "bluetooth", null);
         console.log("✅ Activity logged to database");
       } catch (logError) {
         console.warn("⚠️ Failed to log activity:", logError.message);
       }
 
+      // Fire-and-forget battery read — don't block the success response
+      TTLockService.getBatteryLevel(encryptedLockData)
+        .then((level) => {
+          console.log(`🔋 Battery level after unlock: ${level}%`);
+          logLockActivity(lock.id, "unlocked", "bluetooth", { battery_level: level }).catch(() => {});
+        })
+        .catch((err) => console.warn("⚠️ Could not get battery level:", err.message));
+
       return {
         success: true,
         method: "bluetooth",
         message: "Unlocked via Bluetooth",
-        battery_level: batteryLevel,
         data: result,
       };
     } catch (error) {
@@ -716,33 +709,26 @@ class LockControlService {
         JSON.stringify(result),
       );
 
-      // Get battery level after lock
-      let batteryLevel = null;
+      // Log activity to backend immediately (don't wait for battery)
       try {
-        batteryLevel = await TTLockService.getBatteryLevel(encryptedLockData);
-        console.log(`🔋 Battery level after lock: ${batteryLevel}%`);
-      } catch (statusError) {
-        console.warn("⚠️ Could not get battery level:", statusError.message);
-      }
-
-      // Log activity to backend with battery level
-      try {
-        await logLockActivity(
-          lock.id,
-          "locked",
-          "bluetooth",
-          batteryLevel !== null ? { battery_level: batteryLevel } : null,
-        );
+        await logLockActivity(lock.id, "locked", "bluetooth", null);
         console.log("✅ Activity logged to database");
       } catch (logError) {
         console.warn("⚠️ Failed to log activity:", logError.message);
       }
 
+      // Fire-and-forget battery read — don't block the success response
+      TTLockService.getBatteryLevel(encryptedLockData)
+        .then((level) => {
+          console.log(`🔋 Battery level after lock: ${level}%`);
+          logLockActivity(lock.id, "locked", "bluetooth", { battery_level: level }).catch(() => {});
+        })
+        .catch((err) => console.warn("⚠️ Could not get battery level:", err.message));
+
       return {
         success: true,
         method: "bluetooth",
         message: "Locked via Bluetooth",
-        battery_level: batteryLevel,
         data: result,
       };
     } catch (error) {

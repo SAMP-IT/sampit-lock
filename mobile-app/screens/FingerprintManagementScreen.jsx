@@ -28,7 +28,7 @@ import { useFingerprints } from '../hooks/useQueryHooks';
 // Global operation lock to prevent concurrent operations
 let globalOperationInProgress = false;
 let lastOperationTime = 0;
-const MIN_OPERATION_INTERVAL = 3000; // Minimum 3 seconds between operations
+const MIN_OPERATION_INTERVAL = 500; // Minimum 500ms between operations
 
 const FingerprintManagementScreen = ({ route, navigation }) => {
   const { lock } = route.params;
@@ -259,9 +259,6 @@ const FingerprintManagementScreen = ({ route, navigation }) => {
 
       // Record the operation time
       lastOperationTime = Date.now();
-
-      // Wait for lock to finish processing before saving to backend
-      await new Promise(resolve => setTimeout(resolve, 2000));
 
       // Ensure fingerprintNumber is a valid string — some TTLock SDK versions
       // return 0, null, or undefined even on successful enrollment

@@ -90,10 +90,11 @@ class TTLockService {
 
   /**
    * Start scanning for nearby TTLock devices
-   * @param {number} duration - Scan duration in milliseconds (default: 15000)
+   * @param {number} duration - Scan duration in milliseconds (default: 8000)
+   * @param {string} [targetMac] - Optional MAC address; stop scanning early when this lock is found
    * @returns {Promise<Array>} - Array of discovered locks
    */
-  async scanLocks(duration = 15000) {
+  async scanLocks(duration = 8000, targetMac = null) {
     if (!TTLOCK_AVAILABLE) {
       return [];
     }
@@ -107,7 +108,20 @@ class TTLockService {
       }
 
       this.isScanning = true;
-      console.log('[TTLock] Starting scan for', duration, 'ms');
+      this._scanTimeoutId = null;
+      console.log('[TTLock] Starting scan for', duration, 'ms', targetMac ? `(target: ${targetMac})` : '');
+
+      const finishScan = () => {
+        if (this._scanTimeoutId) {
+          clearTimeout(this._scanTimeoutId);
+          this._scanTimeoutId = null;
+        }
+        scanSubscription.remove();
+        this.stopScan();
+        this.isScanning = false;
+        console.log('[TTLock] Scan complete. Found', discoveredLocks.length, 'locks');
+        resolve(discoveredLocks);
+      };
 
       // Subscribe to scan events via NativeEventEmitter
       // IMPORTANT: Native event name is 'EventScanLock' (from TTLockEvent.java)
@@ -122,6 +136,12 @@ class TTLockService {
             lockData: lockData,
             rssi: lockData.rssi || -100
           });
+
+          // Early stop: target lock found
+          if (targetMac && lockData.lockMac === targetMac) {
+            console.log('[TTLock] Target lock found, stopping scan early');
+            finishScan();
+          }
         } else {
           // Update RSSI with latest signal strength (keep best reading)
           if (lockData.rssi > exists.rssi) {
@@ -134,13 +154,7 @@ class TTLockService {
       TtlockNative.startScan();
 
       // Stop after duration
-      setTimeout(() => {
-        scanSubscription.remove();
-        this.stopScan();
-        this.isScanning = false;
-        console.log('[TTLock] Scan complete. Found', discoveredLocks.length, 'locks');
-        resolve(discoveredLocks);
-      }, duration);
+      this._scanTimeoutId = setTimeout(finishScan, duration);
     });
   }
 
@@ -725,8 +739,7 @@ class TTLockService {
     // Convert any string/number values to proper boolean
     const boolValue = configValue === true || configValue === '1' || configValue === 1;
     const MAX_RETRIES = 2;
-    const RETRY_DELAY = 1000; // 1 second between retries
-    const INITIAL_DELAY = 300; // 300ms wake-up delay before first command
+    const RETRY_DELAY = 500; // 500ms between retries
 
     console.log('[TTLock] Setting lock config:', configType, '=', boolValue, '(type:', typeof boolValue, '), attempt:', retryCount + 1);
     console.log('[TTLock] LockData length:', lockData?.length);
@@ -734,13 +747,6 @@ class TTLockService {
     // Validate lockData
     if (!lockData || typeof lockData !== 'string' || lockData.length < 10) {
       throw new Error('Invalid lock data. Please ensure the lock is properly paired via Bluetooth.');
-    }
-
-    // Add a small delay before sending command to ensure lock is ready
-    // This helps with "hit or miss" issues caused by the lock not being fully awake
-    if (retryCount === 0) {
-      console.log('[TTLock] Waiting for lock to be ready...');
-      await new Promise(resolve => setTimeout(resolve, INITIAL_DELAY));
     }
 
     return new Promise((resolve, reject) => {
@@ -1082,67 +1088,57 @@ class TTLockService {
       resetButton: { success: false, enabled: true, error: null },
     };
 
-    // Helper function to add delay
-    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    // Fire all 5 reads in parallel instead of sequentially with 200ms gaps
+    const [autoLockResult, passageModeResult, soundResult, tamperResult, resetResult] =
+      await Promise.allSettled([
+        this.getAutomaticLockingPeriod(lockData),
+        this.getPassageMode(lockData),
+        this.getLockSoundStatus(lockData),
+        this.getTamperAlertStatus(lockData),
+        this.getResetButtonSwitchState(lockData),
+      ]);
 
-    // Read Auto Lock setting
-    try {
-      const autoLockSeconds = await this.getAutomaticLockingPeriod(lockData);
+    // Map settled results back into the return shape
+    if (autoLockResult.status === 'fulfilled') {
       results.autoLock.success = true;
-      results.autoLock.enabled = autoLockSeconds > 0;
-      results.autoLock.delay = autoLockSeconds;
-    } catch (err) {
-      results.autoLock.error = err.message;
-      console.warn('[TTLock] Failed to read auto-lock:', err.message);
+      results.autoLock.enabled = autoLockResult.value > 0;
+      results.autoLock.delay = autoLockResult.value;
+    } else {
+      results.autoLock.error = autoLockResult.reason?.message;
+      console.warn('[TTLock] Failed to read auto-lock:', autoLockResult.reason?.message);
     }
 
-    await delay(200);
-
-    // Read Passage Mode setting
-    try {
-      const passageModeData = await this.getPassageMode(lockData);
+    if (passageModeResult.status === 'fulfilled') {
       results.passageMode.success = true;
-      results.passageMode.enabled = passageModeData.enabled;
-      results.passageMode.data = passageModeData.data;
-    } catch (err) {
-      results.passageMode.error = err.message;
-      console.warn('[TTLock] Failed to read passage mode:', err.message);
+      results.passageMode.enabled = passageModeResult.value.enabled;
+      results.passageMode.data = passageModeResult.value.data;
+    } else {
+      results.passageMode.error = passageModeResult.reason?.message;
+      console.warn('[TTLock] Failed to read passage mode:', passageModeResult.reason?.message);
     }
 
-    await delay(200);
-
-    // Read Lock Sound setting
-    try {
-      const soundEnabled = await this.getLockSoundStatus(lockData);
+    if (soundResult.status === 'fulfilled') {
       results.lockSound.success = true;
-      results.lockSound.enabled = soundEnabled;
-    } catch (err) {
-      results.lockSound.error = err.message;
-      console.warn('[TTLock] Failed to read lock sound:', err.message);
+      results.lockSound.enabled = soundResult.value;
+    } else {
+      results.lockSound.error = soundResult.reason?.message;
+      console.warn('[TTLock] Failed to read lock sound:', soundResult.reason?.message);
     }
 
-    await delay(200);
-
-    // Read Tamper Alert setting
-    try {
-      const tamperEnabled = await this.getTamperAlertStatus(lockData);
+    if (tamperResult.status === 'fulfilled') {
       results.tamperAlert.success = true;
-      results.tamperAlert.enabled = tamperEnabled;
-    } catch (err) {
-      results.tamperAlert.error = err.message;
-      console.warn('[TTLock] Failed to read tamper alert:', err.message);
+      results.tamperAlert.enabled = tamperResult.value;
+    } else {
+      results.tamperAlert.error = tamperResult.reason?.message;
+      console.warn('[TTLock] Failed to read tamper alert:', tamperResult.reason?.message);
     }
 
-    await delay(200);
-
-    // Read Reset Button setting
-    try {
-      const resetEnabled = await this.getResetButtonSwitchState(lockData);
+    if (resetResult.status === 'fulfilled') {
       results.resetButton.success = true;
-      results.resetButton.enabled = resetEnabled;
-    } catch (err) {
-      results.resetButton.error = err.message;
-      console.warn('[TTLock] Failed to read reset button:', err.message);
+      results.resetButton.enabled = resetResult.value;
+    } else {
+      results.resetButton.error = resetResult.reason?.message;
+      console.warn('[TTLock] Failed to read reset button:', resetResult.reason?.message);
     }
 
     console.log('[TTLock] ✅ All settings read:', results);

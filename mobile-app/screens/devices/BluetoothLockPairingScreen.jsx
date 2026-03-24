@@ -212,8 +212,8 @@ const BluetoothLockPairingScreen = ({ navigation }) => {
       setIsScanning(true);
       setDiscoveredLocks([]);
 
-      console.log('[BluetoothPairing] Starting 20 second scan for TTLock devices...');
-      const locks = await TTLockService.scanLocks(20000); // 20 second scan for better discovery
+      console.log('[BluetoothPairing] Starting 10 second scan for TTLock devices...');
+      const locks = await TTLockService.scanLocks(10000); // 10 second scan
 
       console.log('[BluetoothPairing] Scan completed. Found', locks.length, 'locks');
       setDiscoveredLocks(locks);
@@ -502,7 +502,7 @@ const BluetoothLockPairingScreen = ({ navigation }) => {
         <Text style={styles.title}>Pair Lock via Bluetooth</Text>
         <Text style={styles.subtitle}>
           {isScanning
-            ? 'Scanning for nearby locks... (this takes about 20 seconds)'
+            ? 'Scanning for nearby locks...'
             : `${discoveredLocks.length} lock(s) found`}
         </Text>
       </View>
